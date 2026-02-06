@@ -793,24 +793,10 @@ export default function PostDetailPage() {
         return
       }
 
-      const focusInComments = (commentsSectionRef.current?.contains(target) ?? false) && hasRepliesSection
-      const inCommentsSection = hasRepliesSection && (postSectionIndex === postSectionCount - 1 || focusInComments)
+      const inCommentsSection = hasRepliesSection && (postSectionIndex === postSectionCount - 1 || (commentsSectionRef.current?.contains(target) ?? false))
       const inDescriptionSection = descriptionSectionRef.current?.contains(target) ?? false
       const inMediaSection = mediaSectionRef.current?.contains(target) ?? false
       const inCommentFormWrap = commentFormWrapRef.current?.contains(target) ?? false
-
-      const getFocusedCommentIndexFromDom = (): number => {
-        if (!commentsSectionRef.current || !target.closest) return focusedCommentIndex
-        const commentEl = target.closest('[data-comment-uri]') as HTMLElement | null
-        if (!commentEl) return focusedCommentIndex
-        const uri = commentEl.getAttribute('data-comment-uri')
-        if (!uri) return focusedCommentIndex
-        const idx = threadRepliesFlat.findIndex((f) => f.uri === uri)
-        return idx >= 0 ? idx : focusedCommentIndex
-      }
-      const effectiveFocusedCommentIndex = focusInComments && postSectionIndex !== postSectionCount - 1
-        ? getFocusedCommentIndexFromDom()
-        : focusedCommentIndex
 
       if (key === 'e' || key === 'enter') {
         e.preventDefault()
@@ -852,7 +838,7 @@ export default function PostDetailPage() {
           }
         }
         if (inDescriptionSection) return mediaCount
-        if (focusInComments && commentsSectionRef.current) {
+        if (hasRepliesSection && commentsSectionRef.current?.contains(target)) {
           const commentEl = target.closest?.('[data-comment-uri]') as HTMLElement | null
           if (commentEl) {
             const uri = commentEl.getAttribute('data-comment-uri')
