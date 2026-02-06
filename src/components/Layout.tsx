@@ -198,6 +198,7 @@ export default function Layout({ title, children, showNav, showColumnView = true
   const { session, sessionsList, logout, switchAccount } = useSession()
   const [accountProfiles, setAccountProfiles] = useState<Record<string, { avatar?: string; handle?: string }>>({})
   const sessionsDidKey = useMemo(() => sessionsList.map((s) => s.did).sort().join(','), [sessionsList])
+  const currentAccountAvatar = session ? accountProfiles[session.did]?.avatar : null
 
   useEffect(() => {
     if (sessionsList.length === 0) {
@@ -549,7 +550,13 @@ export default function Layout({ title, children, showNav, showColumnView = true
           aria-label="Accounts and settings"
           aria-expanded={accountSheetOpen || accountMenuOpen}
         >
-          <span className={styles.navIcon}><AccountIcon /></span>
+          <span className={styles.navIcon}>
+            {currentAccountAvatar ? (
+              <img src={currentAccountAvatar} alt="" className={styles.headerAccountAvatar} />
+            ) : (
+              <AccountIcon />
+            )}
+          </span>
           <span className={styles.navLabel}>Accounts</span>
         </button>
       )}
@@ -783,7 +790,13 @@ export default function Layout({ title, children, showNav, showColumnView = true
                         aria-label="Accounts and settings"
                         aria-expanded={accountSheetOpen}
                       >
-                        <span className={styles.navIcon}><AccountIcon /></span>
+                        <span className={styles.navIcon}>
+                          {currentAccountAvatar ? (
+                            <img src={currentAccountAvatar} alt="" className={styles.headerAccountAvatar} />
+                          ) : (
+                            <AccountIcon />
+                          )}
+                        </span>
                         <span className={styles.navLabel}>Accounts</span>
                       </button>
                     </div>
@@ -913,7 +926,13 @@ export default function Layout({ title, children, showNav, showColumnView = true
                   aria-label="Accounts and settings"
                   aria-expanded={accountMenuOpen}
                 >
-                  <span className={styles.navIcon}><AccountIcon /></span>
+                  <span className={styles.navIcon}>
+                    {currentAccountAvatar ? (
+                      <img src={currentAccountAvatar} alt="" className={styles.headerAccountAvatar} />
+                    ) : (
+                      <AccountIcon />
+                    )}
+                  </span>
                   {!isDesktop && <span className={styles.navLabel}>Accounts</span>}
                 </button>
                 {accountMenuOpen && (

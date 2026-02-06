@@ -23,6 +23,7 @@ function ReplyAsRow({
   currentDid: string
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [accountProfiles, setAccountProfiles] = useState<Record<string, { avatar?: string; handle?: string }>>({})
   const wrapRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!dropdownOpen) return
@@ -33,6 +34,22 @@ function ReplyAsRow({
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [dropdownOpen])
+  const sessionsDidKey = useMemo(() => sessionsList.map((s) => s.did).sort().join(','), [sessionsList])
+  useEffect(() => {
+    if (sessionsList.length === 0) {
+      setAccountProfiles({})
+      return
+    }
+    let cancelled = false
+    sessionsList.forEach((s) => {
+      publicAgent.getProfile({ actor: s.did }).then((res) => {
+        if (cancelled) return
+        const data = res.data as { avatar?: string; handle?: string }
+        setAccountProfiles((prev) => ({ ...prev, [s.did]: { avatar: data.avatar, handle: data.handle } }))
+      }).catch(() => {})
+    })
+    return () => { cancelled = true }
+  }, [sessionsDidKey, sessionsList])
   const canSwitch = sessionsList.length > 1
   return (
     <p className={styles.replyAs}>
@@ -58,7 +75,8 @@ function ReplyAsRow({
               {dropdownOpen && (
                 <div className={styles.replyAsDropdown} role="menu">
                   {sessionsList.map((s) => {
-                    const handle = (s as { handle?: string }).handle ?? s.did
+                    const profile = accountProfiles[s.did]
+                    const handle = profile?.handle ?? (s as { handle?: string }).handle ?? s.did
                     const isCurrent = s.did === currentDid
                     return (
                       <button
@@ -71,8 +89,13 @@ function ReplyAsRow({
                           if (ok) setDropdownOpen(false)
                         }}
                       >
-                        @{handle}
-                        {isCurrent && <span aria-hidden> ✓</span>}
+                        {profile?.avatar ? (
+                          <img src={profile.avatar} alt="" className={styles.replyAsDropdownAvatar} />
+                        ) : (
+                          <span className={styles.replyAsDropdownAvatarPlaceholder} aria-hidden>{(handle || s.did).slice(0, 1).toUpperCase()}</span>
+                        )}
+                        <span className={styles.replyAsDropdownHandle}>@{handle}</span>
+                        {isCurrent && <span className={styles.replyAsDropdownCheck} aria-hidden>✓</span>}
                       </button>
                     )
                   })}
@@ -172,7 +195,12 @@ function MediaGallery({
         {items.map((m, i) => {
           if (m.type === 'video' && m.videoPlaylist) {
             return (
-              <div key={i} className={styles.galleryVideoWrap}>
+              <div
+                key={i}
+                className={styles.galleryVideoWrap}
+                data-media-item={i}
+                tabIndex={0}
+              >
                 <VideoWithHls
                   playlistUrl={m.videoPlaylist}
                   poster={m.url || undefined}
@@ -189,6 +217,7 @@ function MediaGallery({
               className={styles.galleryImageBtn}
               onClick={() => setFullscreenIndex(i)}
               aria-label="View full screen"
+              data-media-item={i}
             >
               <img src={m.url} alt="" className={styles.galleryMedia} />
             </button>
@@ -761,10 +790,104 @@ export default function PostDetailPage() {
         return
       }
       if (key !== 'w' && key !== 'a' && key !== 's') return
+      if (postSectionCount <= 1 && key !== 'w') return
+
+      const inCommentsSection = hasRepliesSection && postSectionIndex === postSectionCount - 1
+      const inDescriptionSection = descriptionSectionRef.current?.contains(target) ?? false
+      const inMediaSection = mediaSectionRef.current?.contains(target) ?? false
+
+      if (key === 'w') {
+        if (inDescriptionSection && hasMediaSection && rootMediaForNav.length > 0) {
+          e.preventDefault()
+          setPostSectionIndex(0)
+          const mediaSection = mediaSectionRef.current
+          const items = mediaSection?.querySelectorAll<HTMLElement>('[data-media-item]')
+          const last = items?.[rootMediaForNav.length - 1]
+          if (last) {
+            requestAnimationFrame(() => {
+              last.focus()
+              last.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            })
+          }
+          return
+        }
+        if (inMediaSection && rootMediaForNav.length > 0) {
+          const mediaSection = mediaSectionRef.current
+          const items = mediaSection?.querySelectorAll<HTMLElement>('[data-media-item]')
+          let el: HTMLElement | null = target
+          let currentIndex = -1
+          while (el && el !== mediaSection) {
+            const idx = el.getAttribute?.('data-media-item')
+            if (idx != null) {
+              currentIndex = parseInt(idx, 10)
+              break
+            }
+            el = el.parentElement
+          }
+          if (currentIndex >= 0) {
+            e.preventDefault()
+            if (currentIndex > 0) {
+              const prev = items?.[currentIndex - 1]
+              if (prev) {
+                requestAnimationFrame(() => {
+                  prev.focus()
+                  prev.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                })
+              }
+            } else {
+              setPostSectionIndex(1)
+              requestAnimationFrame(() => descriptionSectionRef.current?.focus())
+            }
+            return
+          }
+        }
+      }
+
+      if (key === 's' || key === 'a') {
+        if (inDescriptionSection && hasMediaSection && rootMediaForNav.length > 0) {
+          e.preventDefault()
+          setPostSectionIndex(0)
+          const mediaSection = mediaSectionRef.current
+          const items = mediaSection?.querySelectorAll<HTMLElement>('[data-media-item]')
+          const first = items?.[0]
+          if (first) {
+            requestAnimationFrame(() => {
+              first.focus()
+              first.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            })
+          }
+          return
+        }
+        if (inMediaSection && rootMediaForNav.length > 0) {
+          const mediaSection = mediaSectionRef.current
+          const items = mediaSection?.querySelectorAll<HTMLElement>('[data-media-item]')
+          let el: HTMLElement | null = target
+          let currentIndex = -1
+          while (el && el !== mediaSection) {
+            const idx = el.getAttribute?.('data-media-item')
+            if (idx != null) {
+              currentIndex = parseInt(idx, 10)
+              break
+            }
+            el = el.parentElement
+          }
+          if (currentIndex >= 0 && currentIndex < rootMediaForNav.length - 1) {
+            e.preventDefault()
+            const next = items?.[currentIndex + 1]
+            if (next) {
+              requestAnimationFrame(() => {
+                next.focus()
+                next.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              })
+            }
+            return
+          }
+        }
+      }
+
       if (postSectionCount <= 1) return
       e.preventDefault()
 
-      const inCommentsSection = hasRepliesSection && postSectionIndex === postSectionCount - 1
       const nextComment = key === 'w' || key === 's' || key === 'a'
       if (inCommentsSection && threadRepliesFlat.length > 0 && nextComment) {
         if (key === 'w') {
@@ -787,7 +910,7 @@ export default function PostDetailPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [postSectionCount, postSectionIndex, hasRepliesSection, threadRepliesFlat, focusedCommentIndex, thread, hasMediaSection, handleReplyTo])
+  }, [postSectionCount, postSectionIndex, hasRepliesSection, threadRepliesFlat, focusedCommentIndex, thread, hasMediaSection, handleReplyTo, rootMediaForNav.length])
 
   useEffect(() => {
     if (postSectionCount <= 1) return
@@ -798,6 +921,22 @@ export default function PostDetailPage() {
     if (hasRepliesSection && postSectionIndex === postSectionCount - 1) ref = commentsSectionRef.current
     if (ref) ref.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [postSectionIndex, hasMediaSection, hasRepliesSection, postSectionCount])
+
+  useEffect(() => {
+    if (hasMediaSection && postSectionIndex === 0 && rootMediaForNav.length > 0) {
+      const mediaSection = mediaSectionRef.current
+      const items = mediaSection?.querySelectorAll<HTMLElement>('[data-media-item]')
+      const activeElement = document.activeElement as HTMLElement
+      const isMediaFocused = mediaSection?.contains(activeElement) && activeElement.hasAttribute?.('data-media-item')
+      if (!isMediaFocused && items && items.length > 0) {
+        const first = items[0]
+        requestAnimationFrame(() => {
+          first.focus()
+          first.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        })
+      }
+    }
+  }, [postSectionIndex, hasMediaSection, rootMediaForNav.length])
 
   useEffect(() => {
     if (postSectionIndex === postSectionCount - 1 && hasRepliesSection && prevSectionIndexRef.current !== postSectionCount - 1) {
@@ -848,6 +987,7 @@ export default function PostDetailPage() {
               <div
                 ref={descriptionSectionRef}
                 className={postSectionIndex === (hasMediaSection ? 1 : 0) ? styles.sectionFocused : undefined}
+                tabIndex={-1}
               >
                 <div className={styles.postHead}>
                   {thread.post.author.avatar && (
