@@ -80,38 +80,6 @@ function EyeIcon({ off }: { off?: boolean }) {
   )
 }
 
-function SunIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-    </svg>
-  )
-}
-function MoonIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-    </svg>
-  )
-}
-function SystemIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      {/* Sun (top) */}
-      <circle cx="12" cy="6" r="2" />
-      <path d="M12 3.5v1M12 8.5v1M9.5 6h1M13.5 6h1" />
-      {/* Moon (bottom) */}
-      <path d="M12 19a3.5 3.5 0 0 1 0-7 3 3 0 0 0 0 7Z" />
-      {/* Curved arrow: sun → moon (right side, clockwise) */}
-      <path d="M14.5 8 Q18 12 14.5 16" />
-      <path d="M13.2 14.8l1.8-1.2-1.2-1.8" />
-      {/* Curved arrow: moon → sun (left side, counter) */}
-      <path d="M9.5 16 Q6 12 9.5 8" />
-      <path d="M10.8 9.2L9 10.4l1.8 1.2" />
-    </svg>
-  )
-}
 function Column1Icon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -217,6 +185,17 @@ export default function Layout({ title, children, showNav, showColumnView = true
     return () => { cancelled = true }
   }, [sessionsDidKey, sessionsList])
   const { theme, setTheme } = useTheme()
+  const themeThumbTop = theme === 'light' ? '0' : theme === 'system' ? '33.333%' : '66.666%'
+  const themeSwitchVertical = (
+    <div className={styles.themeSwitchVertical} role="group" aria-label="Theme">
+      <div className={styles.themeSwitchTrack}>
+        <span className={styles.themeSwitchThumb} style={{ top: themeThumbTop }} aria-hidden />
+        <button type="button" className={styles.themeSwitchZone} onClick={() => setTheme('light')} title="Light" aria-label="Light" aria-pressed={theme === 'light'} />
+        <button type="button" className={styles.themeSwitchZone} onClick={() => setTheme('system')} title="Auto (system)" aria-label="Auto" aria-pressed={theme === 'system'} />
+        <button type="button" className={styles.themeSwitchZone} onClick={() => setTheme('dark')} title="Dark" aria-label="Dark" aria-pressed={theme === 'dark'} />
+      </div>
+    </div>
+  )
   const { viewMode, setViewMode, viewOptions } = useViewMode()
   const { artOnly, toggleArtOnly } = useArtOnly()
   const path = loc.pathname
@@ -498,38 +477,7 @@ export default function Layout({ title, children, showNav, showColumnView = true
       )}
       <section className={styles.menuSection}>
         <span className={styles.menuSectionTitle}>Appearance</span>
-        <div className={styles.themeSwitch} role="group" aria-label="Theme">
-          <button
-            type="button"
-            className={theme === 'light' ? styles.themeSwitchActive : styles.themeSwitchSegment}
-            onClick={() => setTheme('light')}
-            title="Light"
-            aria-label="Light"
-            aria-pressed={theme === 'light'}
-          >
-            <SunIcon />
-          </button>
-          <button
-            type="button"
-            className={theme === 'system' ? styles.themeSwitchActive : styles.themeSwitchSegment}
-            onClick={() => setTheme('system')}
-            title="Auto (system)"
-            aria-label="Auto"
-            aria-pressed={theme === 'system'}
-          >
-            <SystemIcon />
-          </button>
-          <button
-            type="button"
-            className={theme === 'dark' ? styles.themeSwitchActive : styles.themeSwitchSegment}
-            onClick={() => setTheme('dark')}
-            title="Dark"
-            aria-label="Dark"
-            aria-pressed={theme === 'dark'}
-          >
-            <MoonIcon />
-          </button>
-        </div>
+        {themeSwitchVertical}
       </section>
       <section className={styles.menuSection}>
         <span className={styles.menuSectionTitle}>Columns</span>
@@ -611,38 +559,7 @@ export default function Layout({ title, children, showNav, showColumnView = true
         </div>
       )}
       <div className={styles.menuCompactRow}>
-        <div className={styles.themeSwitch} role="group" aria-label="Theme">
-          <button
-            type="button"
-            className={theme === 'light' ? styles.themeSwitchActive : styles.themeSwitchSegment}
-            onClick={() => setTheme('light')}
-            title="Light"
-            aria-label="Light"
-            aria-pressed={theme === 'light'}
-          >
-            <SunIcon />
-          </button>
-          <button
-            type="button"
-            className={theme === 'system' ? styles.themeSwitchActive : styles.themeSwitchSegment}
-            onClick={() => setTheme('system')}
-            title="Auto (system)"
-            aria-label="Auto"
-            aria-pressed={theme === 'system'}
-          >
-            <SystemIcon />
-          </button>
-          <button
-            type="button"
-            className={theme === 'dark' ? styles.themeSwitchActive : styles.themeSwitchSegment}
-            onClick={() => setTheme('dark')}
-            title="Dark"
-            aria-label="Dark"
-            aria-pressed={theme === 'dark'}
-          >
-            <MoonIcon />
-          </button>
-        </div>
+        {themeSwitchVertical}
       </div>
       <div className={styles.menuCompactRow}>
         {viewOptions.map((m) => (
@@ -708,38 +625,7 @@ export default function Layout({ title, children, showNav, showColumnView = true
                       {viewMode === '3' && <Column3Icon />}
                     </button>
                   )}
-                  <div className={styles.themeSwitch} role="group" aria-label="Theme">
-                    <button
-                      type="button"
-                      className={theme === 'light' ? styles.themeSwitchActive : styles.themeSwitchSegment}
-                      onClick={() => setTheme('light')}
-                      title="Light"
-                      aria-label="Light"
-                      aria-pressed={theme === 'light'}
-                    >
-                      <SunIcon />
-                    </button>
-                    <button
-                      type="button"
-                      className={theme === 'system' ? styles.themeSwitchActive : styles.themeSwitchSegment}
-                      onClick={() => setTheme('system')}
-                      title="Auto (system)"
-                      aria-label="Auto"
-                      aria-pressed={theme === 'system'}
-                    >
-                      <SystemIcon />
-                    </button>
-                    <button
-                      type="button"
-                      className={theme === 'dark' ? styles.themeSwitchActive : styles.themeSwitchSegment}
-                      onClick={() => setTheme('dark')}
-                      title="Dark"
-                      aria-label="Dark"
-                      aria-pressed={theme === 'dark'}
-                    >
-                      <MoonIcon />
-                    </button>
-                  </div>
+                  {themeSwitchVertical}
                   <Link to="/login" className={styles.headerAuthLink}>
                     Log in
                   </Link>
@@ -773,38 +659,7 @@ export default function Layout({ title, children, showNav, showColumnView = true
                   {viewMode === '3' && <Column3Icon />}
                 </button>
               )}
-              <div className={styles.themeSwitch} role="group" aria-label="Theme">
-                <button
-                  type="button"
-                  className={theme === 'light' ? styles.themeSwitchActive : styles.themeSwitchSegment}
-                  onClick={() => setTheme('light')}
-                  title="Light"
-                  aria-label="Light"
-                  aria-pressed={theme === 'light'}
-                >
-                  <SunIcon />
-                </button>
-                <button
-                  type="button"
-                  className={theme === 'system' ? styles.themeSwitchActive : styles.themeSwitchSegment}
-                  onClick={() => setTheme('system')}
-                  title="Auto (system)"
-                  aria-label="Auto"
-                  aria-pressed={theme === 'system'}
-                >
-                  <SystemIcon />
-                </button>
-                <button
-                  type="button"
-                  className={theme === 'dark' ? styles.themeSwitchActive : styles.themeSwitchSegment}
-                  onClick={() => setTheme('dark')}
-                  title="Dark"
-                  aria-label="Dark"
-                  aria-pressed={theme === 'dark'}
-                >
-                  <MoonIcon />
-                </button>
-              </div>
+              {themeSwitchVertical}
               {!isDesktop && (
                 <button
                   type="button"
