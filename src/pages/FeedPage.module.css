@@ -1,6 +1,9 @@
 .wrap {
   padding: 0.5rem;
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+  padding-right: max(0.5rem, env(safe-area-inset-right));
   padding-bottom: 5rem;
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom));
 }
 
 .error {

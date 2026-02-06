@@ -7,10 +7,12 @@
   display: flex;
   align-items: center;
   gap: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
+  background: var(--glass-highlight);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
   position: relative;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 .searchRow:focus-within {
@@ -20,8 +22,9 @@
 
 .filterIconBtn {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  min-width: var(--touch-min);
+  height: var(--touch-min);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -29,7 +32,8 @@
   background: none;
   color: var(--muted);
   cursor: pointer;
-  border-radius: 0.5rem 0 0 0.5rem;
+  border-radius: var(--glass-radius-sm) 0 0 var(--glass-radius-sm);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .filterIconBtn:hover {
@@ -45,13 +49,15 @@
 .input {
   flex: 1;
   min-width: 0;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.9rem;
+  padding: 0.6rem 0.75rem;
+  min-height: var(--touch-min);
+  font-size: 16px; /* prevents iOS zoom on focus */
   color: var(--text);
   background: transparent;
   border: none;
-  border-radius: 0 0.5rem 0.5rem 0;
+  border-radius: 0 var(--glass-radius-sm) var(--glass-radius-sm) 0;
   outline: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .filterDropdown {
@@ -62,10 +68,12 @@
   display: flex;
   gap: 0.25rem;
   padding: 0.35rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+  backdrop-filter: blur(var(--glass-blur-strong));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
   z-index: 101;
 }
 
@@ -101,10 +109,12 @@
   right: 0;
   max-height: 280px;
   overflow-y: auto;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+  backdrop-filter: blur(var(--glass-blur-strong));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
   z-index: 100;
 }
 
@@ -113,13 +123,15 @@
   align-items: center;
   gap: 0.5rem;
   width: 100%;
-  padding: 0.5rem 0.75rem;
+  padding: 0.6rem 0.75rem;
+  min-height: var(--touch-min);
   text-align: left;
   font-size: 0.9rem;
   color: var(--text);
   background: none;
   border: none;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .item:hover,
