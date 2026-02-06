@@ -89,6 +89,7 @@ export default function PostCard({ item }: Props) {
   const showNotFollowingGreen = !!session && !isOwnPost && !isFollowingAuthor
 
   const [imageIndex, setImageIndex] = useState(0)
+  const [multiImageExpanded, setMultiImageExpanded] = useState(false)
   const [mediaAspect, setMediaAspect] = useState<number | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const [addToBoardIds, setAddToBoardIds] = useState<Set<string>>(new Set())
@@ -400,30 +401,15 @@ export default function PostCard({ item }: Props) {
               }}
             />
           ) : isMultipleImages && imageItems.length > 1 ? (
-            <>
-              <div
-                className={styles.mediaWrapGrid}
-                style={{
-                  aspectRatio:
-                    mediaAspect != null ? String(mediaAspect) : undefined,
-                }}
-              >
-                <div className={styles.mediaGrid}>
-                  {imageItems.map((imgItem, idx) => (
-                    <div
-                      key={idx}
-                      className={`${styles.mediaGridCell} ${idx === imageIndex ? styles.mediaGridCellCurrent : ''}`}
-                    >
-                      <img
-                        src={imgItem.url}
-                        alt=""
-                        className={styles.mediaGridImg}
-                        loading="lazy"
-                        onLoad={idx === 0 ? handleImageLoad : undefined}
-                      />
-                    </div>
-                  ))}
-                </div>
+            multiImageExpanded ? (
+              <>
+                <img
+                  src={currentImageUrl}
+                  alt=""
+                  className={styles.media}
+                  loading="lazy"
+                  onLoad={handleImageLoad}
+                />
                 <button
                   type="button"
                   className={styles.mediaArrow}
@@ -450,8 +436,63 @@ export default function PostCard({ item }: Props) {
                 >
                   ›
                 </button>
-              </div>
-            </>
+              </>
+            ) : (
+              <>
+                <div
+                  className={styles.mediaWrapGrid}
+                  style={{
+                    aspectRatio:
+                      mediaAspect != null ? String(mediaAspect) : undefined,
+                  }}
+                >
+                  <div className={styles.mediaGrid}>
+                    {imageItems.map((imgItem, idx) => (
+                      <div
+                        key={idx}
+                        className={`${styles.mediaGridCell} ${idx === imageIndex ? styles.mediaGridCellCurrent : ''}`}
+                      >
+                        <img
+                          src={imgItem.url}
+                          alt=""
+                          className={styles.mediaGridImg}
+                          loading="lazy"
+                          onLoad={idx === 0 ? handleImageLoad : undefined}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.mediaArrow}
+                    style={{ left: 0 }}
+                    aria-label="Previous image"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setMultiImageExpanded(true)
+                      setImageIndex(0)
+                    }}
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.mediaArrow}
+                    style={{ right: 0 }}
+                    aria-label="Next image"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setMultiImageExpanded(true)
+                      setImageIndex(0)
+                    }}
+                  >
+                    ›
+                  </button>
+                </div>
+              </>
+            )
           ) : (
             <>
               <img src={currentImageUrl} alt="" className={styles.media} loading="lazy" onLoad={handleImageLoad} />
