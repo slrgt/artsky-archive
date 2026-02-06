@@ -5,12 +5,13 @@ import {
   deleteStandardSiteDocument,
   updateStandardSiteDocument,
   uploadStandardSiteDocumentBlob,
-  searchPostsByDomain,
-  createPost,
+  listStandardSiteRepliesForDocument,
+  createStandardSiteComment,
   getSession,
   agent,
   type StandardSiteDocumentView,
   type StandardSiteDocumentBlobRef,
+  type ForumReplyView,
 } from '../lib/bsky'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import Layout from '../components/Layout'
@@ -33,15 +34,6 @@ function domainFromBaseUrl(baseUrl: string): string {
   }
 }
 
-type ReplyPost = {
-  uri: string
-  cid: string
-  author: { did: string; handle?: string; avatar?: string; displayName?: string }
-  record: { text?: string; createdAt?: string }
-  likeCount?: number
-  viewer?: { like?: string }
-}
-
 export default function ForumPostDetailPage() {
   const { uri } = useParams<{ uri: string }>()
   const navigate = useNavigate()
@@ -49,7 +41,7 @@ export default function ForumPostDetailPage() {
   const [doc, setDoc] = useState<StandardSiteDocumentView | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [replyPosts, setReplyPosts] = useState<ReplyPost[]>([])
+  const [replyPosts, setReplyPosts] = useState<ForumReplyView[]>([])
   const [replyLoading, setReplyLoading] = useState(false)
   const [replyText, setReplyText] = useState('')
   const [posting, setPosting] = useState(false)
@@ -98,24 +90,17 @@ export default function ForumPostDetailPage() {
   }, [decodedUri])
 
   const loadReplies = useCallback(async () => {
-    if (!domain) return
+    if (!decodedUri || !domain) return
     setReplyLoading(true)
     try {
-      const { posts } = await searchPostsByDomain(domain)
-      setReplyPosts((posts ?? []).map((p) => ({
-        uri: p.uri,
-        cid: p.cid,
-        author: p.author as ReplyPost['author'],
-        record: (p.record ?? {}) as ReplyPost['record'],
-        likeCount: (p as { likeCount?: number }).likeCount,
-        viewer: (p as { viewer?: { like?: string } }).viewer,
-      })))
+      const replies = await listStandardSiteRepliesForDocument(decodedUri, domain, docUrl)
+      setReplyPosts(replies)
     } catch {
       setReplyPosts([])
     } finally {
       setReplyLoading(false)
     }
-  }, [domain])
+  }, [decodedUri, domain, docUrl])
 
   useEffect(() => {
     setDoc(null)
@@ -131,9 +116,7 @@ export default function ForumPostDetailPage() {
     if (!session || !doc || !replyText.trim() || posting) return
     setPosting(true)
     try {
-      const link = docUrl || doc.uri
-      const text = `${replyText.trim()}\n\n${link}`
-      await createPost(text)
+      await createStandardSiteComment(doc.uri, replyText.trim())
       setReplyText('')
       await loadReplies()
     } catch (err: unknown) {
@@ -218,7 +201,8 @@ export default function ForumPostDetailPage() {
     }
   }
 
-  async function handleLikePost(post: ReplyPost) {
+  async function handleLikePost(post: ForumReplyView) {
+    if (post.isComment) return
     const likedUri = likeUriOverrideMap[post.uri] ?? post.viewer?.like
     const isLiked = !!likedUri
     setLikeLoadingMap((m) => ({ ...m, [post.uri]: true }))
@@ -437,6 +421,7 @@ export default function ForumPostDetailPage() {
                     const isLiked = !!likedUri
                     const likeLoading = likeLoadingMap[p.uri]
                     const handle = p.author.handle ?? p.author.did
+                    const isComment = p.isComment === true
                     return (
                       <li key={p.uri} className={styles.replyItem}>
                         <div className={postBlockStyles.postHead}>
@@ -449,23 +434,26 @@ export default function ForumPostDetailPage() {
                             <Link to={`/profile/${encodeURIComponent(handle)}`} className={postBlockStyles.handleLink}>
                               @{handle}
                             </Link>
-                            {p.record.createdAt && (
+                            {isComment && <span className={styles.commentBadge}>standard.site comment</span>}
+                            {p.record?.createdAt && (
                               <span className={postBlockStyles.postTimestamp} title={formatExactDateTime(p.record.createdAt)}>
                                 {formatRelativeTime(p.record.createdAt)}
                               </span>
                             )}
                           </div>
                         </div>
-                        {p.record.text && (
+                        {p.record?.text && (
                           <div className={styles.replyText}>
                             <PostText text={p.record.text} />
                           </div>
                         )}
                         <div className={styles.replyItemActions}>
-                          <Link to={`/post/${encodeURIComponent(p.uri)}`} className={styles.viewPostLink}>
-                            View post
-                          </Link>
-                          {session && (
+                          {!isComment && (
+                            <Link to={`/post/${encodeURIComponent(p.uri)}`} className={styles.viewPostLink}>
+                              View post
+                            </Link>
+                          )}
+                          {session && !isComment && (
                             <button
                               type="button"
                               className={isLiked ? styles.likeBtnLiked : styles.likeBtn}

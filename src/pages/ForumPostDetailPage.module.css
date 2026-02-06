@@ -279,6 +279,13 @@
   color: var(--text);
 }
 
+.commentBadge {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-left: 0.35rem;
+  font-weight: normal;
+}
+
 .replyForm {
   display: flex;
   flex-direction: column;

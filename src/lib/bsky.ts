@@ -371,6 +371,8 @@ export const STANDARD_SITE_DOMAIN = 'standard.site'
 /** Standard.site lexicon collection NSIDs (long-form blogs on AT Protocol). */
 export const STANDARD_SITE_DOCUMENT_COLLECTION = 'site.standard.document'
 export const STANDARD_SITE_PUBLICATION_COLLECTION = 'site.standard.publication'
+/** Standard.site comment lexicon (comments on documents; interoperable with leaflet.pub etc.). */
+export const STANDARD_SITE_COMMENT_COLLECTION = 'site.standard.comment'
 
 /** Blob ref as returned from uploadBlob (CID reference). */
 export type StandardSiteDocumentBlobRef = { $link: string }
@@ -561,6 +563,142 @@ export async function updateStandardSiteDocument(
   return updated
 }
 
+/** Standard.site comment record (comments on documents; interoperable with leaflet.pub etc.). */
+export type StandardSiteCommentRecord = {
+  subject: string // AT-URI of the document
+  text: string
+  createdAt: string
+  [k: string]: unknown
+}
+
+/** Generate a unique rkey for new records (timestamp + random). */
+function generateRecordRkey(): string {
+  const t = Math.floor(Date.now() / 1000).toString(36)
+  const r = Math.random().toString(36).slice(2, 10)
+  return `${t}-${r}`
+}
+
+/** Create a standard.site comment on a document. Requires session. */
+export async function createStandardSiteComment(documentUri: string, text: string): Promise<{ uri: string; cid: string }> {
+  const session = getSession()
+  if (!session?.did) throw new Error('Not logged in')
+  const parsed = parseAtUri(documentUri)
+  if (!parsed || parsed.collection !== STANDARD_SITE_DOCUMENT_COLLECTION) throw new Error('Invalid document URI')
+  const t = text.trim()
+  if (!t) throw new Error('Comment text is required')
+  const record: StandardSiteCommentRecord = {
+    subject: documentUri,
+    text: t,
+    createdAt: new Date().toISOString(),
+  }
+  const rkey = generateRecordRkey()
+  const res = await agent.com.atproto.repo.putRecord({
+    repo: session.did,
+    collection: STANDARD_SITE_COMMENT_COLLECTION,
+    rkey,
+    record,
+  })
+  return { uri: res.data.uri, cid: res.data.cid }
+}
+
+/** List standard.site comment records from a repo (e.g. current user). Filter by subject client-side. */
+export async function listStandardSiteComments(
+  client: AtpAgent,
+  repo: string,
+  opts?: { limit?: number; cursor?: string }
+): Promise<{ records: { uri: string; cid: string; value: StandardSiteCommentRecord }[]; cursor?: string }> {
+  try {
+    const res = await client.com.atproto.repo.listRecords({
+      repo,
+      collection: STANDARD_SITE_COMMENT_COLLECTION,
+      limit: opts?.limit ?? 100,
+      cursor: opts?.cursor,
+    })
+    const records = (res.data.records ?? []).map((r: { uri: string; cid: string; value: Record<string, unknown> }) => ({
+      uri: r.uri,
+      cid: r.cid,
+      value: r.value as StandardSiteCommentRecord,
+    }))
+    return { records, cursor: res.data.cursor }
+  } catch {
+    return { records: [], cursor: undefined }
+  }
+}
+
+/** Unified reply view for forum post detail (standard.site comment or Bluesky post that links to the doc). */
+export type ForumReplyView = {
+  uri: string
+  cid: string
+  author: { did: string; handle?: string; avatar?: string; displayName?: string }
+  record: { text?: string; createdAt?: string }
+  likeCount?: number
+  viewer?: { like?: string }
+  isComment?: boolean
+}
+
+/** List replies for a standard.site document: comment records (from current user repo) + Bluesky posts that link to this doc. */
+export async function listStandardSiteRepliesForDocument(
+  documentUri: string,
+  domain: string,
+  documentUrl?: string | null
+): Promise<ForumReplyView[]> {
+  const client = getSession() ? agent : publicAgent
+  const replies: ForumReplyView[] = []
+  const session = getSession()
+  const linkMatches = (text: string) =>
+    text.includes(documentUri) || (!!documentUrl && text.includes(documentUrl))
+
+  if (session?.did) {
+    const { records } = await listStandardSiteComments(agent, session.did, { limit: 100 })
+    for (const r of records.filter((rec) => rec.value.subject === documentUri)) {
+      const did = r.uri.split('/')[2] ?? session.did
+      let handle: string | undefined
+      let avatar: string | undefined
+      try {
+        const profile = await client.getProfile({ actor: did })
+        const data = profile.data as { handle?: string; avatar?: string }
+        handle = data.handle
+        avatar = data.avatar
+      } catch {
+        // ignore
+      }
+      replies.push({
+        uri: r.uri,
+        cid: r.cid,
+        author: { did, handle, avatar },
+        record: { text: r.value.text, createdAt: r.value.createdAt },
+        isComment: true,
+      })
+    }
+  }
+
+  try {
+    const { posts } = await searchPostsByDomain(domain)
+    for (const p of posts ?? []) {
+      const text = (p.record as { text?: string })?.text ?? ''
+      if (!linkMatches(text)) continue
+      replies.push({
+        uri: p.uri,
+        cid: p.cid,
+        author: p.author as ForumReplyView['author'],
+        record: (p.record ?? {}) as ForumReplyView['record'],
+        likeCount: (p as { likeCount?: number }).likeCount,
+        viewer: (p as { viewer?: { like?: string } }).viewer,
+        isComment: false,
+      })
+    }
+  } catch {
+    // ignore
+  }
+
+  replies.sort((a, b) => {
+    const ta = new Date(a.record?.createdAt ?? 0).getTime()
+    const tb = new Date(b.record?.createdAt ?? 0).getTime()
+    return ta - tb
+  })
+  return replies
+}
+
 /** Get DIDs (and handles) of accounts that the actor follows. */
 export async function getFollows(
   client: AtpAgent,
@@ -727,14 +865,67 @@ export async function listStandardSiteDocumentsForForum(): Promise<StandardSiteD
   return allViews
 }
 
-/** All forum documents: discovery sources (always) + from you and people you follow (when logged in). Dedupes by uri. */
+/** Extract site.standard.document AT-URIs from text (e.g. post content). */
+const DOCUMENT_URI_REGEX = /at:\/\/[^/]+\/site\.standard\.document\/[^\s)\]}>"\']+/g
+function extractDocumentUrisFromText(text: string): string[] {
+  const uris = text.match(DOCUMENT_URI_REGEX) ?? []
+  return [...new Set(uris)]
+}
+
+/** Discover standard.site documents by searching posts that reference standard.site, parsing document URIs from content. Uses publicAgent. */
+export async function listStandardSiteDocumentsFromSearch(limit = 60): Promise<StandardSiteDocumentView[]> {
+  const client = publicAgent
+  const seen = new Set<string>()
+  const views: StandardSiteDocumentView[] = []
+  let cursor: string | undefined
+  const maxPages = 3
+  for (let page = 0; page < maxPages; page++) {
+    try {
+      const res = await client.app.bsky.feed.searchPosts({
+        q: 'standard.site',
+        domain: 'standard.site',
+        limit: 30,
+        cursor,
+        sort: 'latest',
+      })
+      const posts = res.data.posts ?? []
+      cursor = res.data.cursor
+      for (const p of posts) {
+        const text = (p.record as { text?: string })?.text ?? ''
+        const uris = extractDocumentUrisFromText(text)
+        for (const uri of uris) {
+          if (seen.has(uri) || views.length >= limit) continue
+          seen.add(uri)
+          try {
+            const doc = await getStandardSiteDocument(uri)
+            if (doc) views.push(doc)
+          } catch {
+            // skip
+          }
+        }
+      }
+      if (!cursor || posts.length === 0) break
+    } catch {
+      break
+    }
+  }
+  views.sort((a, b) => {
+    const ta = new Date(a.createdAt ?? 0).getTime()
+    const tb = new Date(b.createdAt ?? 0).getTime()
+    return tb - ta
+  })
+  return views
+}
+
+/** All forum documents: discovery + search (latest from network) + from you and people you follow. Dedupes by uri. */
 export async function listStandardSiteDocumentsAll(discoveryUrls: string[]): Promise<StandardSiteDocumentView[]> {
-  const [discovery, fromFollows] = await Promise.all([
+  const [discovery, fromSearch, fromFollows] = await Promise.all([
     listStandardSiteDocumentsFromDiscovery(discoveryUrls),
+    listStandardSiteDocumentsFromSearch(80),
     listStandardSiteDocumentsForForum(),
   ])
   const byUri = new Map<string, StandardSiteDocumentView>()
-  for (const d of [...discovery, ...fromFollows]) byUri.set(d.uri, d)
+  for (const d of [...discovery, ...fromSearch, ...fromFollows]) byUri.set(d.uri, d)
   const merged = Array.from(byUri.values())
   merged.sort((a, b) => {
     const ta = new Date(a.createdAt ?? 0).getTime()
