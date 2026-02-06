@@ -474,10 +474,10 @@ export default function Layout({ title, children, showNav, showColumnView = true
         type="button"
         className={styles.navBtn}
         onClick={openCompose}
-        aria-label="Create post"
+        aria-label="New post"
       >
         <span className={styles.navIcon}><PlusIcon /></span>
-        <span className={styles.navLabel}>Create</span>
+        <span className={styles.navLabel}>New</span>
       </button>
       <button type="button" className={styles.navBtn} onClick={focusSearch} aria-label="Search">
         <span className={styles.navIcon}><SearchIcon /></span>
@@ -702,7 +702,6 @@ export default function Layout({ title, children, showNav, showColumnView = true
                       {viewMode === '3' && <Column3Icon />}
                     </button>
                   )}
-                  {themeSwitchControl}
                   <Link to="/login" className={styles.headerAuthLink}>
                     Log in
                   </Link>
@@ -717,8 +716,8 @@ export default function Layout({ title, children, showNav, showColumnView = true
                   type="button"
                   className={styles.headerBtn}
                   onClick={openCompose}
-                  aria-label="Create post"
-                  title="Create post"
+                  aria-label="New post"
+                  title="New post"
                 >
                   <PlusIcon />
                 </button>
@@ -736,7 +735,6 @@ export default function Layout({ title, children, showNav, showColumnView = true
                   {viewMode === '3' && <Column3Icon />}
                 </button>
               )}
-              {themeSwitchControl}
               {!isDesktop && (
                 <button
                   type="button"
