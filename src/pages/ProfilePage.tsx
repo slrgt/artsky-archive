@@ -573,7 +573,7 @@ export default function ProfilePage() {
                             </div>
                             {text ? (
                               <p className={postBlockStyles.postText}>
-                                <PostText text={text} />
+                                <PostText text={text} facets={(p.record as { facets?: unknown[] })?.facets} />
                               </p>
                             ) : null}
                           </div>

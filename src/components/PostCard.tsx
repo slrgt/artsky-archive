@@ -596,7 +596,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
           </div>
           {text ? (
             <p className={styles.text}>
-              <PostText text={text} maxLength={80} stopPropagation />
+              <PostText text={text} facets={(post.record as { facets?: unknown[] })?.facets} maxLength={80} stopPropagation />
             </p>
           ) : null}
         </div>

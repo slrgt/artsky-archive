@@ -1,5 +1,9 @@
 import { Link } from 'react-router-dom'
+import { RichText as AtpRichText } from '@atproto/api'
 import styles from './PostText.module.css'
+
+/** Bluesky facet from post record (optional). When present, links/mentions/tags render from facets. */
+export type PostTextFacet = { index: { byteStart: number; byteEnd: number }; features: Array<{ $type?: string; uri?: string; did?: string; tag?: string }> }
 
 /** Matches: explicit URLs, www. URLs, bare domains, hashtags, and @mentions (not after alphanumeric, to avoid emails). */
 const LINKIFY_REGEX =
@@ -17,6 +21,8 @@ function linkDisplayText(href: string, value: string, display: 'url' | 'domain')
 
 export interface PostTextProps {
   text: string
+  /** Bluesky facets from record.facets – when provided, links/mentions/tags render as clickable from facets. */
+  facets?: PostTextFacet[] | null | unknown[]
   className?: string
   /** Truncate to this many characters (e.g. 80 for cards). No truncation if undefined. */
   maxLength?: number
@@ -26,7 +32,92 @@ export interface PostTextProps {
   linkDisplay?: 'url' | 'domain'
 }
 
-export default function PostText({ text, className, maxLength, stopPropagation, linkDisplay = 'url' }: PostTextProps) {
+function renderSegment(
+  seg: { type: 'text' | 'url' | 'bareUrl' | 'hashtag' | 'mention'; value: string; href?: string; tag?: string; did?: string },
+  i: number,
+  linkDisplay: 'url' | 'domain',
+  onClick: ((e: React.MouseEvent) => void) | undefined
+) {
+  if (seg.type === 'text') {
+    return <span key={i}>{seg.value}</span>
+  }
+  if (seg.type === 'url' || (seg.type === 'bareUrl' && seg.href)) {
+    const href = seg.href ?? seg.value
+    const display = linkDisplayText(href, seg.value, linkDisplay)
+    return (
+      <a key={i} href={href} target="_blank" rel="noopener noreferrer" className={styles.link} onClick={onClick} title={href}>
+        {display}
+      </a>
+    )
+  }
+  if (seg.type === 'bareUrl') {
+    const raw = seg.value.replace(/[.,;:)!?]+$/, '')
+    const href = `https://${raw}`
+    const display = linkDisplayText(href, seg.value, linkDisplay)
+    return (
+      <a key={i} href={href} target="_blank" rel="noopener noreferrer" className={styles.link} onClick={onClick} title={href}>
+        {display}
+      </a>
+    )
+  }
+  if (seg.type === 'hashtag') {
+    const tagSlug = encodeURIComponent((seg.tag ?? seg.value).replace(/^#/, ''))
+    return (
+      <Link key={i} to={`/tag/${tagSlug}`} className={styles.hashtag} onClick={onClick}>
+        {seg.value}
+      </Link>
+    )
+  }
+  const handle = seg.value.replace(/^@/, '')
+  const profileSlug = encodeURIComponent(handle)
+  return (
+    <Link key={i} to={`/profile/${profileSlug}`} className={styles.mention} onClick={onClick}>
+      {seg.value}
+    </Link>
+  )
+}
+
+export default function PostText({ text, facets, className, maxLength, stopPropagation, linkDisplay = 'url' }: PostTextProps) {
+  const onClick = stopPropagation ? (e: React.MouseEvent) => e.stopPropagation() : undefined
+
+  if (facets && Array.isArray(facets) && facets.length > 0) {
+    try {
+      const rt = new AtpRichText({ text, facets: facets as NonNullable<ConstructorParameters<typeof AtpRichText>[0]>['facets'] })
+      const segs: Array<{ type: 'text' | 'url' | 'bareUrl' | 'hashtag' | 'mention'; value: string; href?: string; tag?: string; did?: string }> = []
+      let len = 0
+      for (const seg of rt.segments()) {
+        const value = seg.text
+        if (seg.isLink() && seg.link?.uri) {
+          segs.push({ type: 'url', value, href: seg.link.uri })
+        } else if (seg.isMention() && seg.mention?.did) {
+          segs.push({ type: 'mention', value, did: seg.mention.did })
+        } else if (seg.isTag() && seg.tag?.tag != null) {
+          segs.push({ type: 'hashtag', value, tag: '#' + seg.tag.tag })
+        } else {
+          segs.push({ type: 'text', value })
+        }
+        len += value.length
+        if (maxLength != null && len >= maxLength && segs[segs.length - 1].type === 'text') {
+          const last = segs[segs.length - 1]
+          const take = last.value.length - (len - maxLength)
+          if (take < last.value.length) {
+            segs[segs.length - 1] = { ...last, value: last.value.slice(0, take) + '…' }
+          }
+          break
+        }
+      }
+      if (segs.length > 0) {
+        return (
+          <span className={className ?? undefined}>
+            {segs.map((seg, i) => renderSegment(seg, i, linkDisplay, onClick))}
+          </span>
+        )
+      }
+    } catch {
+      /* fall through to regex linkify */
+    }
+  }
+
   const segments: Array<{ type: 'text' | 'url' | 'bareUrl' | 'hashtag' | 'mention'; value: string }> = []
   let lastIndex = 0
   let match: RegExpExecArray | null
@@ -69,7 +160,6 @@ export default function PostText({ text, className, maxLength, stopPropagation, 
         }
       } else {
         displaySegments.push(seg)
-        /* Never truncate links/mentions/hashtags: add in full and don't count toward limit */
       }
     }
   } else {
@@ -81,66 +171,9 @@ export default function PostText({ text, className, maxLength, stopPropagation, 
     return <span className={className}>{displayText || text}</span>
   }
 
-  const onClick = stopPropagation ? (e: React.MouseEvent) => e.stopPropagation() : undefined
-
   return (
     <span className={className ?? undefined}>
-      {displaySegments.map((seg, i) => {
-        if (seg.type === 'text') {
-          return <span key={i}>{seg.value}</span>
-        }
-        if (seg.type === 'url') {
-          const href = seg.value
-          const display = linkDisplayText(href, href, linkDisplay)
-          return (
-            <a
-              key={i}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.link}
-              onClick={onClick}
-              title={href}
-            >
-              {display}
-            </a>
-          )
-        }
-        if (seg.type === 'bareUrl') {
-          const raw = seg.value.replace(/[.,;:)!?]+$/, '')
-          const href = `https://${raw}`
-          const display = linkDisplayText(href, seg.value, linkDisplay)
-          return (
-            <a
-              key={i}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.link}
-              onClick={onClick}
-              title={href}
-            >
-              {display}
-            </a>
-          )
-        }
-        if (seg.type === 'hashtag') {
-          const tagSlug = encodeURIComponent(seg.value.slice(1))
-          return (
-            <Link key={i} to={`/tag/${tagSlug}`} className={styles.hashtag} onClick={onClick}>
-              {seg.value}
-            </Link>
-          )
-        }
-        // mention: value is e.g. "@user" -> link to /profile/user
-        const handle = seg.value.slice(1)
-        const profileSlug = encodeURIComponent(handle)
-        return (
-          <Link key={i} to={`/profile/${profileSlug}`} className={styles.mention} onClick={onClick}>
-            {seg.value}
-          </Link>
-        )
-      })}
+      {displaySegments.map((seg, i) => renderSegment(seg, i, linkDisplay, onClick))}
     </span>
   )
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   getStandardSiteDocument,
   deleteStandardSiteDocument,
@@ -34,10 +34,24 @@ function domainFromBaseUrl(baseUrl: string): string {
   }
 }
 
+const FORUM_POST_PREFIX = '/forum/post/'
+
+/** Get document URI from pathname so it works on refresh (encoded or decoded path). */
+function getForumPostUriFromPathname(pathname: string): string {
+  if (!pathname.startsWith(FORUM_POST_PREFIX)) return ''
+  const rest = pathname.slice(FORUM_POST_PREFIX.length).replace(/^\/+/, '')
+  if (!rest) return ''
+  try {
+    return rest.includes('%') ? decodeURIComponent(rest) : rest
+  } catch {
+    return rest
+  }
+}
+
 export default function ForumPostDetailPage() {
-  const { '*': uriSplat } = useParams<{ '*': string }>()
+  const { pathname } = useLocation()
   const navigate = useNavigate()
-  const decodedUri = uriSplat ? decodeURIComponent(uriSplat.replace(/^\/+/, '')) : ''
+  const decodedUri = useMemo(() => getForumPostUriFromPathname(pathname), [pathname])
   const [doc, setDoc] = useState<StandardSiteDocumentView | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -234,7 +248,7 @@ export default function ForumPostDetailPage() {
   }
 
   return (
-    <Layout title={doc?.title ?? 'Forum post'} showNav showColumnView={false}>
+    <Layout title={doc?.title ?? 'Forum post'} showNav>
       <div className={styles.wrap}>
         {loading && <div className={styles.loading}>Loading…</div>}
         {error && <p className={styles.error}>{error}</p>}
@@ -446,7 +460,7 @@ export default function ForumPostDetailPage() {
                         </div>
                         {p.record?.text && (
                           <div className={styles.replyText}>
-                            <PostText text={p.record.text} />
+                            <PostText text={p.record.text} facets={!p.isComment ? p.record.facets : undefined} />
                           </div>
                         )}
                         <div className={styles.replyItemActions}>

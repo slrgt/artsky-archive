@@ -1,4 +1,4 @@
-import { AtpAgent, type AtpSessionData, type AtpSessionEvent } from '@atproto/api'
+import { AtpAgent, RichText, type AtpSessionData, type AtpSessionEvent } from '@atproto/api'
 import { GUEST_FEED_ACCOUNTS } from '../config/guestFeed'
 
 const BSKY_SERVICE = 'https://bsky.social'
@@ -630,7 +630,7 @@ export type ForumReplyView = {
   uri: string
   cid: string
   author: { did: string; handle?: string; avatar?: string; displayName?: string }
-  record: { text?: string; createdAt?: string }
+  record: { text?: string; createdAt?: string; facets?: unknown[] }
   likeCount?: number
   viewer?: { like?: string }
   isComment?: boolean
@@ -716,11 +716,12 @@ export async function listStandardSiteRepliesForDocument(
       if (did) linkingPostDids.add(did)
       if (seenUri.has(p.uri)) continue
       seenUri.add(p.uri)
+      const rec = p.record as { text?: string; createdAt?: string; facets?: unknown[] } | undefined
       replies.push({
         uri: p.uri,
         cid: p.cid,
         author: p.author as ForumReplyView['author'],
-        record: (p.record ?? {}) as ForumReplyView['record'],
+        record: { text: rec?.text, createdAt: rec?.createdAt, facets: rec?.facets },
         likeCount: (p as { likeCount?: number }).likeCount,
         viewer: (p as { viewer?: { like?: string } }).viewer,
         isComment: false,
@@ -1111,8 +1112,11 @@ export async function createPost(
     )
     embed = { $type: 'app.bsky.embed.images', images: uploaded }
   }
+  const rt = new RichText({ text: t || '' })
+  await rt.detectFacets(agent)
   const res = await agent.post({
-    text: t || '',
+    text: rt.text,
+    facets: rt.facets,
     embed,
     createdAt: new Date().toISOString(),
   })
@@ -1149,7 +1153,7 @@ export async function getUnreadNotificationCount(): Promise<number> {
   return res.data.count ?? 0
 }
 
-/** Post a reply to a post. For top-level reply use same uri/cid for root and parent. */
+/** Post a reply to a post. For top-level reply use same uri/cid for root and parent. Detects links/mentions/hashtags and stores facets so they render as clickable. */
 export async function postReply(
   rootUri: string,
   rootCid: string,
@@ -1159,8 +1163,11 @@ export async function postReply(
 ) {
   const t = text.trim()
   if (!t) throw new Error('Comment text is required')
+  const rt = new RichText({ text: t })
+  await rt.detectFacets(agent)
   return agent.post({
-    text: t,
+    text: rt.text,
+    facets: rt.facets,
     createdAt: new Date().toISOString(),
     reply: {
       root: { uri: rootUri, cid: rootCid },

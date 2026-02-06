@@ -381,7 +381,7 @@ function PostBlock({
       {allMedia.length > 0 && <MediaGallery items={allMedia} />}
       {text && (
         <p className={styles.postText}>
-          <PostText text={text} />
+          <PostText text={text} facets={(post.record as { facets?: unknown[] })?.facets} />
         </p>
       )}
       {onReply && (
@@ -1032,7 +1032,7 @@ export default function PostDetailPage() {
     thread && isThreadViewPost(thread) ? getPostAllMedia(thread.post) : []
 
   return (
-    <Layout title="Post" showNav showColumnView={false}>
+    <Layout title="Post" showNav>
       <div className={styles.wrap}>
         {loading && <div className={styles.loading}>Loading…</div>}
         {error && <p className={styles.error}>{error}</p>}
@@ -1091,7 +1091,7 @@ export default function PostDetailPage() {
                 </div>
                 {(thread.post.record as { text?: string })?.text && (
                   <p className={styles.postText}>
-                    <PostText text={(thread.post.record as { text?: string }).text!} />
+                    <PostText text={(thread.post.record as { text?: string }).text!} facets={(thread.post.record as { facets?: unknown[] })?.facets} />
                   </p>
                 )}
               </div>

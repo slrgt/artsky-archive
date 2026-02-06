@@ -12,8 +12,6 @@ interface Props {
   title: string
   children: React.ReactNode
   showNav?: boolean
-  /** When false, hide the column view (1/2/3) button; use on pages like post detail where it doesn't apply. */
-  showColumnView?: boolean
 }
 
 function FeedIcon() {
@@ -192,7 +190,7 @@ function subscribeDesktop(cb: () => void) {
   return () => mq.removeEventListener('change', cb)
 }
 
-export default function Layout({ title, children, showNav, showColumnView = true }: Props) {
+export default function Layout({ title, children, showNav }: Props) {
   const loc = useLocation()
   const navigate = useNavigate()
   const { session, sessionsList, logout, switchAccount } = useSession()
