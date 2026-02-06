@@ -593,14 +593,18 @@ export default function ProfilePage() {
             <>
               <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
                 {likedMediaItems.map((item, index) => (
-                  <PostCard
+                  <div
                     key={item.post.uri}
-                    item={item}
-                    isSelected={tab === 'liked' && index === keyboardFocusIndex}
-                    cardRef={(el) => { cardRefsRef.current[index] = el }}
-                    openAddDropdown={tab === 'liked' && index === keyboardFocusIndex && keyboardAddOpen}
-                    onAddClose={() => setKeyboardAddOpen(false)}
-                  />
+                    onMouseEnter={() => setKeyboardFocusIndex(index)}
+                  >
+                    <PostCard
+                      item={item}
+                      isSelected={tab === 'liked' && index === keyboardFocusIndex}
+                      cardRef={(el) => { cardRefsRef.current[index] = el }}
+                      openAddDropdown={tab === 'liked' && index === keyboardFocusIndex && keyboardAddOpen}
+                      onAddClose={() => setKeyboardAddOpen(false)}
+                    />
+                  </div>
                 ))}
               </div>
               {likedCursor && <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />}
@@ -615,14 +619,18 @@ export default function ProfilePage() {
           <>
             <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
               {mediaItems.map((item, index) => (
-                <PostCard
+                <div
                   key={item.post.uri}
-                  item={item}
-                  isSelected={(tab === 'posts' || tab === 'reposts') && index === keyboardFocusIndex}
-                  cardRef={(el) => { cardRefsRef.current[index] = el }}
-                  openAddDropdown={(tab === 'posts' || tab === 'reposts') && index === keyboardFocusIndex && keyboardAddOpen}
-                  onAddClose={() => setKeyboardAddOpen(false)}
-                />
+                  onMouseEnter={() => setKeyboardFocusIndex(index)}
+                >
+                  <PostCard
+                    item={item}
+                    isSelected={(tab === 'posts' || tab === 'reposts') && index === keyboardFocusIndex}
+                    cardRef={(el) => { cardRefsRef.current[index] = el }}
+                    openAddDropdown={(tab === 'posts' || tab === 'reposts') && index === keyboardFocusIndex && keyboardAddOpen}
+                    onAddClose={() => setKeyboardAddOpen(false)}
+                  />
+                </div>
               ))}
             </div>
             {cursor && <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />}

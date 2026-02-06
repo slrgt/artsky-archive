@@ -139,14 +139,18 @@ export default function TagPage() {
           <>
             <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
               {mediaItems.map((item, index) => (
-                <PostCard
+                <div
                   key={item.post.uri}
-                  item={item}
-                  isSelected={index === keyboardFocusIndex}
-                  cardRef={(el) => { cardRefsRef.current[index] = el }}
-                  openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
-                  onAddClose={() => setKeyboardAddOpen(false)}
-                />
+                  onMouseEnter={() => setKeyboardFocusIndex(index)}
+                >
+                  <PostCard
+                    item={item}
+                    isSelected={index === keyboardFocusIndex}
+                    cardRef={(el) => { cardRefsRef.current[index] = el }}
+                    openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
+                    onAddClose={() => setKeyboardAddOpen(false)}
+                  />
+                </div>
               ))}
             </div>
             {cursor && (
