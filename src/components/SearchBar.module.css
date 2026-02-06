@@ -3,6 +3,22 @@
   width: 100%;
 }
 
+.compact .searchRow {
+  min-height: 0;
+}
+
+.compact .filterIconBtn {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+}
+
+.compact .input {
+  padding: 0.35rem 0.5rem;
+  min-height: 32px;
+  font-size: 14px;
+}
+
 .searchRow {
   display: flex;
   align-items: center;

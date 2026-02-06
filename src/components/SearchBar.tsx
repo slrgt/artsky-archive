@@ -21,9 +21,11 @@ interface Props {
   onSelectFeed?: (source: FeedSource) => void
   /** Optional ref so parent can focus the search input (e.g. from bottom bar) */
   inputRef?: React.RefObject<HTMLInputElement | null>
+  /** Compact height for desktop header */
+  compact?: boolean
 }
 
-export default function SearchBar({ onSelectFeed, inputRef: externalInputRef }: Props) {
+export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, compact }: Props) {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<SearchFilter>('all')
@@ -145,7 +147,7 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef }: 
   }
 
   return (
-    <div className={styles.wrap} ref={containerRef}>
+    <div className={`${styles.wrap} ${compact ? styles.compact : ''}`} ref={containerRef}>
       <div className={styles.searchRow}>
         <button
           type="button"

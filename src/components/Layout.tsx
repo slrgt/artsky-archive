@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useSyncExternalStore } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../context/SessionContext'
 import { useTheme } from '../context/ThemeContext'
@@ -50,6 +50,17 @@ function AccountIcon() {
   )
 }
 
+const DESKTOP_BREAKPOINT = 768
+function getDesktopSnapshot() {
+  return typeof window !== 'undefined' ? window.innerWidth >= DESKTOP_BREAKPOINT : false
+}
+function subscribeDesktop(cb: () => void) {
+  if (typeof window === 'undefined') return () => {}
+  const mq = window.matchMedia(`(min-width: ${DESKTOP_BREAKPOINT}px)`)
+  mq.addEventListener('change', cb)
+  return () => mq.removeEventListener('change', cb)
+}
+
 export default function Layout({ title, children, showNav }: Props) {
   const loc = useLocation()
   const navigate = useNavigate()
@@ -57,6 +68,7 @@ export default function Layout({ title, children, showNav }: Props) {
   const { theme, setTheme } = useTheme()
   const { viewMode, setViewMode, viewOptions } = useViewMode()
   const path = loc.pathname
+  const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
   const [accountSheetOpen, setAccountSheetOpen] = useState(false)
   const [navVisible, setNavVisible] = useState(true)
   const lastScrollY = useRef(0)
@@ -101,21 +113,60 @@ export default function Layout({ title, children, showNav }: Props) {
     navigate('/login', { replace: true })
   }
 
+  const navItems = (
+    <>
+      <Link
+        to="/feed"
+        className={path === '/feed' ? styles.navActive : ''}
+        aria-current={path === '/feed' ? 'page' : undefined}
+      >
+        <span className={styles.navIcon}><FeedIcon /></span>
+        <span className={styles.navLabel}>Feed</span>
+      </Link>
+      <Link
+        to="/artboards"
+        className={path === '/artboards' ? styles.navActive : ''}
+        aria-current={path === '/artboards' ? 'page' : undefined}
+      >
+        <span className={styles.navIcon}><ArtboardsIcon /></span>
+        <span className={styles.navLabel}>Artboards</span>
+      </Link>
+      <button type="button" className={styles.navBtn} onClick={focusSearch} aria-label="Search">
+        <span className={styles.navIcon}><SearchIcon /></span>
+        <span className={styles.navLabel}>Search</span>
+      </button>
+      <button
+        type="button"
+        className={styles.navBtn}
+        onClick={() => setAccountSheetOpen(true)}
+        aria-label="Account and settings"
+        aria-expanded={accountSheetOpen}
+      >
+        <span className={styles.navIcon}><AccountIcon /></span>
+        <span className={styles.navLabel}>Account</span>
+      </button>
+    </>
+  )
+
   return (
     <div className={styles.wrap}>
       <header className={styles.header}>
         {showNav && (
-          <Link to="/feed" className={styles.logoLink} aria-label="ArtSky – back to feed">
-            <img src={`${import.meta.env.BASE_URL || '/'}icon.svg`} alt="" className={styles.logoIcon} />
-            <span className={styles.logoText}>ArtSky</span>
-          </Link>
+          <>
+            <Link to="/feed" className={styles.logoLink} aria-label="ArtSky – back to feed">
+              <img src={`${import.meta.env.BASE_URL || '/'}icon.svg`} alt="" className={styles.logoIcon} />
+              <span className={styles.logoText}>ArtSky</span>
+            </Link>
+            <div className={styles.navTray} aria-label="Main">
+              {navItems}
+            </div>
+            <h1 className={styles.title}>{title}</h1>
+            <div className={styles.searchSlot}>
+              <SearchBar inputRef={searchInputRef} compact={isDesktop} />
+            </div>
+          </>
         )}
-        {showNav && (
-          <div className={styles.searchSlot}>
-            <SearchBar inputRef={searchInputRef} />
-          </div>
-        )}
-        <h1 className={styles.title}>{title}</h1>
+        {!showNav && <h1 className={styles.title}>{title}</h1>}
       </header>
       <main className={styles.main}>
         {children}
@@ -126,41 +177,7 @@ export default function Layout({ title, children, showNav }: Props) {
             className={`${styles.nav} ${navVisible ? '' : styles.navHidden}`}
             aria-label="Main"
           >
-            <Link
-              to="/feed"
-              className={path === '/feed' ? styles.navActive : ''}
-              aria-current={path === '/feed' ? 'page' : undefined}
-            >
-              <span className={styles.navIcon}><FeedIcon /></span>
-              <span className={styles.navLabel}>Feed</span>
-            </Link>
-            <Link
-              to="/artboards"
-              className={path === '/artboards' ? styles.navActive : ''}
-              aria-current={path === '/artboards' ? 'page' : undefined}
-            >
-              <span className={styles.navIcon}><ArtboardsIcon /></span>
-              <span className={styles.navLabel}>Artboards</span>
-            </Link>
-            <button
-              type="button"
-              className={styles.navBtn}
-              onClick={focusSearch}
-              aria-label="Search"
-            >
-              <span className={styles.navIcon}><SearchIcon /></span>
-              <span className={styles.navLabel}>Search</span>
-            </button>
-            <button
-              type="button"
-              className={styles.navBtn}
-              onClick={() => setAccountSheetOpen(true)}
-              aria-label="Account and settings"
-              aria-expanded={accountSheetOpen}
-            >
-              <span className={styles.navIcon}><AccountIcon /></span>
-              <span className={styles.navLabel}>Account</span>
-            </button>
+            {navItems}
           </nav>
           {accountSheetOpen && (
             <div
