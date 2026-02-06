@@ -443,6 +443,17 @@
   color: var(--muted);
 }
 
+.boardDropdownNew {
+  margin-top: 0.25rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border);
+}
+
+.boardDropdownNew .newBoardInput {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .boardDropdownActions {
   display: flex;
   gap: 0.35rem;

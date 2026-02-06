@@ -307,7 +307,6 @@ export default function PostDetailPage() {
   const [repostUriOverride, setRepostUriOverride] = useState<string | null>(null)
   const [replyingTo, setReplyingTo] = useState<{ uri: string; cid: string; handle: string } | null>(null)
   const [newBoardName, setNewBoardName] = useState('')
-  const [showNewBoardForm, setShowNewBoardForm] = useState(false)
   const [showBoardDropdown, setShowBoardDropdown] = useState(false)
   const commentFormRef = useRef<HTMLFormElement>(null)
   const boards = getArtboards()
@@ -424,25 +423,10 @@ export default function PostDetailPage() {
     form?.focus()
   }
 
-  function handleCreateArtboardAndAdd() {
-    if (!thread || !isThreadViewPost(thread) || !newBoardName.trim()) return
-    const post = thread.post
-    const media = getPostMediaUrl(post)
-    const board = createArtboard(newBoardName.trim())
-    addPostToArtboard(board.id, {
-      uri: post.uri,
-      cid: post.cid,
-      authorHandle: post.author.handle,
-      text: (post.record as { text?: string })?.text?.slice(0, 200),
-      thumb: media?.url,
-    })
-    setAddedToBoard(board.id)
-    setNewBoardName('')
-    setShowNewBoardForm(false)
-  }
-
   function handleAddToArtboard() {
-    if (!thread || !isThreadViewPost(thread) || addToBoardIds.size === 0) return
+    if (!thread || !isThreadViewPost(thread)) return
+    const hasSelection = addToBoardIds.size > 0 || newBoardName.trim().length > 0
+    if (!hasSelection) return
     const post = thread.post
     const media = getPostMediaUrl(post)
     const payload = {
@@ -453,12 +437,19 @@ export default function PostDetailPage() {
       thumb: media?.url,
     }
     const added: string[] = []
+    if (newBoardName.trim()) {
+      const board = createArtboard(newBoardName.trim())
+      addPostToArtboard(board.id, payload)
+      added.push(board.id)
+      setNewBoardName('')
+    }
     addToBoardIds.forEach((id) => {
       addPostToArtboard(id, payload)
       added.push(id)
     })
     setAddedToBoard(added[0] ?? null)
     setAddToBoardIds(new Set())
+    setShowBoardDropdown(false)
   }
 
   function toggleBoardSelection(boardId: string) {
@@ -522,24 +513,6 @@ export default function PostDetailPage() {
             </article>
             <section className={styles.actions} aria-label="Post actions">
               <div className={styles.actionRow}>
-                <button
-                  type="button"
-                  className={`${styles.likeRepostBtn} ${isLiked ? styles.likeRepostBtnActive : ''}`}
-                  onClick={handleLike}
-                  disabled={likeLoading}
-                  title={isLiked ? 'Unlike' : 'Like'}
-                >
-                  {likeLoading ? '…' : isLiked ? '♥' : '♡'} Like
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.likeRepostBtn} ${isReposted ? styles.likeRepostBtnActive : ''}`}
-                  onClick={handleRepost}
-                  disabled={repostLoading}
-                  title={isReposted ? 'Remove repost' : 'Repost'}
-                >
-                  {repostLoading ? '…' : 'Repost'}
-                </button>
                 <div className={styles.addToBoardWrap}>
                   <button
                     type="button"
@@ -552,9 +525,7 @@ export default function PostDetailPage() {
                   </button>
                   {showBoardDropdown && (
                     <div className={styles.boardDropdown}>
-                      {boards.length === 0 ? (
-                        <p className={styles.boardDropdownEmpty}>No artboards yet.</p>
-                      ) : (
+                      {boards.length === 0 ? null : (
                         <>
                           {boards.map((b) => {
                             const alreadyIn = isPostInArtboard(b.id, thread.post.uri)
@@ -580,49 +551,50 @@ export default function PostDetailPage() {
                               </label>
                             )
                           })}
-                          <div className={styles.boardDropdownActions}>
-                            <button
-                              type="button"
-                              className={styles.addBtn}
-                              onClick={() => { handleAddToArtboard(); setShowBoardDropdown(false); }}
-                              disabled={addToBoardIds.size === 0}
-                            >
-                              Add to selected
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.newBoardTrigger}
-                              onClick={() => { setShowBoardDropdown(false); setShowNewBoardForm(true); }}
-                            >
-                              + New artboard…
-                            </button>
-                          </div>
                         </>
                       )}
+                      <div className={styles.boardDropdownNew}>
+                        <input
+                          type="text"
+                          placeholder="New collection name"
+                          value={newBoardName}
+                          onChange={(e) => setNewBoardName(e.target.value)}
+                          className={styles.newBoardInput}
+                          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddToArtboard())}
+                        />
+                      </div>
+                      <div className={styles.boardDropdownActions}>
+                        <button
+                          type="button"
+                          className={styles.addBtn}
+                          onClick={handleAddToArtboard}
+                          disabled={addToBoardIds.size === 0 && !newBoardName.trim()}
+                        >
+                          Add to selected
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
+                <button
+                  type="button"
+                  className={`${styles.likeRepostBtn} ${isLiked ? styles.likeRepostBtnActive : ''}`}
+                  onClick={handleLike}
+                  disabled={likeLoading}
+                  title={isLiked ? 'Unlike' : 'Like'}
+                >
+                  {likeLoading ? '…' : isLiked ? '♥' : '♡'} Like
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.likeRepostBtn} ${isReposted ? styles.likeRepostBtnActive : ''}`}
+                  onClick={handleRepost}
+                  disabled={repostLoading}
+                  title={isReposted ? 'Remove repost' : 'Repost'}
+                >
+                  {repostLoading ? '…' : 'Repost'}
+                </button>
               </div>
-              {showNewBoardForm && (
-                <div className={styles.newBoardForm}>
-                  <input
-                    type="text"
-                    placeholder="Artboard name"
-                    value={newBoardName}
-                    onChange={(e) => setNewBoardName(e.target.value)}
-                    className={styles.newBoardInput}
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleCreateArtboardAndAdd())}
-                  />
-                  <div className={styles.newBoardActions}>
-                    <button type="button" className={styles.addBtn} onClick={handleCreateArtboardAndAdd} disabled={!newBoardName.trim()}>
-                      Create &amp; add
-                    </button>
-                    <button type="button" className={styles.cancelBtn} onClick={() => { setShowNewBoardForm(false); setNewBoardName(''); }}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
               {addedToBoard && (
                 <p className={styles.added}>
                   Added to {boards.find((b) => b.id === addedToBoard)?.name}
