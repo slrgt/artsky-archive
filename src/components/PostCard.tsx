@@ -507,36 +507,9 @@ export default function PostCard({ item }: Props) {
         <div className={styles.meta}>
           <div className={styles.handleBlock}>
             <div className={styles.handleRow}>
-              <div className={styles.avatarBadgeBlock}>
-                {post.author.avatar && (
-                  <img src={post.author.avatar} alt="" className={styles.authorAvatar} loading="lazy" />
-                )}
-                <span className={styles.badgeTimeRow}>
-                  {isVideo && (
-                    <span className={styles.mediaBadge} title="Video">
-                      <VideoIcon />
-                    </span>
-                  )}
-                  {isMultipleImages && (
-                    <span className={styles.mediaBadge} title={`${media.imageCount} images`}>
-                      <ImagesIcon />
-                    </span>
-                  )}
-                  {isSingleImage && (
-                    <span className={styles.mediaBadge} title="Image">
-                      <ImageIcon />
-                    </span>
-                  )}
-                  {createdAt && (
-                    <span
-                      className={styles.timestamp}
-                      title={formatExactDateTime(createdAt)}
-                    >
-                      {formatRelativeTime(createdAt)}
-                    </span>
-                  )}
-                </span>
-              </div>
+              {post.author.avatar && (
+                <img src={post.author.avatar} alt="" className={styles.authorAvatar} loading="lazy" />
+              )}
               <span className={styles.handleRowMain}>
                 <span className={showNotFollowingGreen ? styles.handleLinkWrapNotFollowing : styles.handleLinkWrap}>
                   <Link
@@ -626,6 +599,32 @@ export default function PostCard({ item }: Props) {
                 )}
               </div>
             </span>
+            </div>
+            <div className={styles.metaBadgeRow}>
+              {isVideo && (
+                <span className={styles.mediaBadge} title="Video">
+                  <VideoIcon />
+                </span>
+              )}
+              {isMultipleImages && (
+                <span className={styles.mediaBadge} title={`${media.imageCount} images`}>
+                  <ImagesIcon />
+                </span>
+              )}
+              {isSingleImage && (
+                <span className={styles.mediaBadge} title="Image">
+                  <ImageIcon />
+                </span>
+              )}
+              {createdAt && (
+                <span
+                  className={styles.timestamp}
+                  title={formatExactDateTime(createdAt)}
+                >
+                  {formatRelativeTime(createdAt)}
+                </span>
+              )}
+            </div>
           </div>
         </div>
           {text ? (

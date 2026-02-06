@@ -196,6 +196,23 @@
   z-index: 0;
 }
 
+.themeSwitchIconZone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 33.333%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+  color: var(--muted);
+}
+
+.themeSwitchTrack:hover .themeSwitchIconZone {
+  color: var(--text);
+}
+
 @media (min-width: 768px) {
   .headerBtnActive {
     color: var(--accent);
