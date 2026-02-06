@@ -32,6 +32,7 @@ function artboardToRecord(board: Artboard): ArtboardRecord {
       authorHandle: p.authorHandle,
       text: p.text?.slice(0, 2000),
       thumb: p.thumb,
+      thumbs: p.thumbs,
     })),
     createdAt: board.createdAt,
   }

@@ -100,6 +100,7 @@
   min-height: 0;
   text-decoration: none;
   color: inherit;
+  min-width: 0;
 }
 
 .bentoLink:hover .bentoName {
@@ -179,16 +180,13 @@
 }
 
 .bentoActions {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  flex-shrink: 0;
   display: flex;
   gap: 0.35rem;
   padding: 0.4rem 0.6rem;
   background: var(--glass-bg-strong);
   border-top: 1px solid var(--glass-border);
-  z-index: 1;
+  align-items: center;
 }
 
 .bentoActions .editInput {

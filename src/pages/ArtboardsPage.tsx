@@ -25,6 +25,7 @@ export default function ArtboardsPage() {
   const [boards, setBoards] = useState<Artboard[]>(() => getArtboards())
   const [newName, setNewName] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editMenuOpenId, setEditMenuOpenId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [pdsError, setPdsError] = useState<string | null>(null)
@@ -79,6 +80,7 @@ export default function ArtboardsPage() {
   }
 
   function startEdit(board: Artboard) {
+    setEditMenuOpenId(null)
     setEditingId(board.id)
     setEditName(board.name)
   }
@@ -88,6 +90,7 @@ export default function ArtboardsPage() {
     updateArtboardName(editingId, editName)
     const board = getArtboard(editingId)
     setEditingId(null)
+    setEditMenuOpenId(null)
     refresh()
     if (session?.did && board) {
       try {
@@ -157,11 +160,13 @@ export default function ArtboardsPage() {
                       />
                       <button type="button" className={styles.smallBtn} onClick={(e) => { e.preventDefault(); saveEdit(); }}>Save</button>
                     </>
-                  ) : (
+                  ) : editMenuOpenId === board.id ? (
                     <>
                       <button type="button" className={styles.smallBtn} onClick={(e) => { e.preventDefault(); startEdit(board); }}>Rename</button>
-                      <button type="button" className={styles.smallBtnDanger} onClick={(e) => { e.preventDefault(); handleDelete(board.id); }}>Delete</button>
+                      <button type="button" className={styles.smallBtnDanger} onClick={(e) => { e.preventDefault(); handleDelete(board.id); setEditMenuOpenId(null); }}>Delete</button>
                     </>
+                  ) : (
+                    <button type="button" className={styles.smallBtn} onClick={(e) => { e.preventDefault(); setEditMenuOpenId((id) => id === board.id ? null : board.id); }}>Edit</button>
                   )}
                 </div>
               </div>

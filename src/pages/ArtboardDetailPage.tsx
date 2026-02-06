@@ -62,7 +62,13 @@ export default function ArtboardDetailPage() {
               <div key={p.uri} className={styles.card}>
                 <Link to={`/post/${encodeURIComponent(p.uri)}`} className={styles.link}>
                   <div className={styles.mediaWrap}>
-                    {p.thumb ? (
+                    {(p.thumbs && p.thumbs.length > 0) ? (
+                      <div className={styles.thumbsGrid}>
+                        {p.thumbs.map((url, i) => (
+                          <img key={i} src={url} alt="" className={p.thumbs!.length === 1 ? `${styles.thumb} ${styles.thumbSpan}` : styles.thumb} />
+                        ))}
+                      </div>
+                    ) : p.thumb ? (
                       <img src={p.thumb} alt="" className={styles.thumb} />
                     ) : (
                       <div className={styles.placeholder}>📌</div>

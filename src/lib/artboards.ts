@@ -6,7 +6,10 @@ export interface ArtboardPost {
   /** Cached for offline/list view */
   authorHandle?: string
   text?: string
+  /** First/single media URL (backward compat and list previews) */
   thumb?: string
+  /** All media URLs for posts with multiple images/video (shown in artboard detail) */
+  thumbs?: string[]
 }
 
 export interface Artboard {
@@ -75,7 +78,7 @@ export function deleteArtboard(id: string): void {
 
 export function addPostToArtboard(
   boardId: string,
-  post: { uri: string; cid: string; authorHandle?: string; text?: string; thumb?: string }
+  post: { uri: string; cid: string; authorHandle?: string; text?: string; thumb?: string; thumbs?: string[] }
 ): boolean {
   const boards = load()
   const board = boards.find((b) => b.id === boardId)
@@ -86,7 +89,8 @@ export function addPostToArtboard(
     cid: post.cid,
     authorHandle: post.authorHandle,
     text: post.text,
-    thumb: post.thumb,
+    thumb: post.thumb ?? post.thumbs?.[0],
+    thumbs: post.thumbs,
   })
   save(boards)
   return true

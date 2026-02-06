@@ -177,12 +177,15 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
     const hasSelection = addToBoardIds.size > 0 || newBoardName.trim().length > 0
     if (!hasSelection) return
     const mediaUrl = getPostMediaUrl(post)
+    const allMedia = getPostAllMedia(post)
+    const thumbs = allMedia.length > 0 ? allMedia.map((m) => m.url) : undefined
     const payload = {
       uri: post.uri,
       cid: post.cid,
       authorHandle: post.author.handle,
       text: (post.record as { text?: string })?.text?.slice(0, 200),
-      thumb: mediaUrl?.url,
+      thumb: mediaUrl?.url ?? thumbs?.[0],
+      thumbs,
     }
     const modifiedIds: string[] = []
     if (newBoardName.trim()) {

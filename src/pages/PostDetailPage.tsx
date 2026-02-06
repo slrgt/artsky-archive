@@ -730,12 +730,15 @@ export default function PostDetailPage() {
     if (!hasSelection) return
     const post = thread.post
     const media = getPostMediaUrl(post)
+    const allMedia = getPostAllMedia(post)
+    const thumbs = allMedia.length > 0 ? allMedia.map((m) => m.url) : undefined
     const payload = {
       uri: post.uri,
       cid: post.cid,
       authorHandle: post.author.handle,
       text: (post.record as { text?: string })?.text?.slice(0, 200),
-      thumb: media?.url,
+      thumb: media?.url ?? thumbs?.[0],
+      thumbs,
     }
     const added: string[] = []
     if (newBoardName.trim()) {
