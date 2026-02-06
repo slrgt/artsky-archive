@@ -806,7 +806,7 @@ export default function PostDetailPage() {
           if (last) {
             requestAnimationFrame(() => {
               last.focus()
-              last.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              last.scrollIntoView({ behavior: 'smooth', block: 'start' })
             })
           }
           return
@@ -831,7 +831,7 @@ export default function PostDetailPage() {
               if (prev) {
                 requestAnimationFrame(() => {
                   prev.focus()
-                  prev.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  prev.scrollIntoView({ behavior: 'smooth', block: 'start' })
                 })
               }
             } else {
@@ -853,7 +853,7 @@ export default function PostDetailPage() {
           if (first) {
             requestAnimationFrame(() => {
               first.focus()
-              first.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              first.scrollIntoView({ behavior: 'smooth', block: 'start' })
             })
           }
           return
@@ -877,7 +877,7 @@ export default function PostDetailPage() {
             if (next) {
               requestAnimationFrame(() => {
                 next.focus()
-                next.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                next.scrollIntoView({ behavior: 'smooth', block: 'start' })
               })
             }
             return
@@ -932,7 +932,7 @@ export default function PostDetailPage() {
         const first = items[0]
         requestAnimationFrame(() => {
           first.focus()
-          first.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          first.scrollIntoView({ behavior: 'smooth', block: 'start' })
         })
       }
     }
@@ -984,11 +984,7 @@ export default function PostDetailPage() {
                   <MediaGallery items={rootMedia} autoPlayFirstVideo />
                 </div>
               )}
-              <div
-                ref={descriptionSectionRef}
-                className={postSectionIndex === (hasMediaSection ? 1 : 0) ? styles.sectionFocused : undefined}
-                tabIndex={-1}
-              >
+              <div ref={descriptionSectionRef} tabIndex={-1}>
                 <div className={styles.postHead}>
                   {thread.post.author.avatar && (
                     <img src={thread.post.author.avatar} alt="" className={styles.avatar} />
