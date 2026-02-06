@@ -498,7 +498,7 @@ export default function PostDetailPage() {
     thread && isThreadViewPost(thread) ? getPostAllMedia(thread.post) : []
 
   return (
-    <Layout title="Post" showNav>
+    <Layout title="Post" showNav showColumnView={false}>
       <div className={styles.wrap}>
         {loading && <div className={styles.loading}>Loading…</div>}
         {error && <p className={styles.error}>{error}</p>}

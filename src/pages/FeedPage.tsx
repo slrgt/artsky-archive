@@ -143,46 +143,65 @@ export default function FeedPage() {
         )}
         {showGuestSection && (
           <section className={styles.guestSection} aria-label={session ? 'Accounts you follow' : 'Guest feed'}>
-            <p className={styles.guestHint}>
-              {session ? (
-                <>Quick access to accounts you follow:</>
-              ) : (
-                <>
-                  Showing posts from{' '}
-                  {GUEST_FEED_ACCOUNTS.map((a, i) => (
-                    <span key={a.handle}>
-                      {i > 0 && i === GUEST_FEED_ACCOUNTS.length - 1 ? ' & ' : i > 0 ? ', ' : ''}
-                      <Link to={`/profile/${encodeURIComponent(a.handle)}`} className={styles.guestLink}>
-                        {a.label}
+            {session ? (
+              <p className={styles.guestHint}>Quick access to accounts you follow:</p>
+            ) : (
+              <>
+                <p className={styles.guestHint}>Showing posts from these accounts:</p>
+                <div className={styles.guestPreview}>
+                  {guestHandlesToShow.map((handle) => {
+                    const a = GUEST_FEED_ACCOUNTS.find((x) => x.handle === handle)
+                    if (!a) return null
+                    const profile = guestProfiles[a.handle]
+                    return (
+                      <Link
+                        key={a.handle}
+                        to={`/profile/${encodeURIComponent(a.handle)}`}
+                        className={styles.guestPreviewCard}
+                      >
+                        {profile?.avatar ? (
+                          <img src={profile.avatar} alt="" className={styles.guestPreviewAvatar} />
+                        ) : (
+                          <span className={styles.guestPreviewAvatarPlaceholder} aria-hidden>@{a.handle.slice(0, 1)}</span>
+                        )}
+                        <span className={styles.guestPreviewLabel}>@{a.handle}</span>
+                        <span className={styles.guestPreviewName}>{profile?.displayName ?? a.label}</span>
                       </Link>
-                    </span>
-                  ))}
-                  . Sign in to see your feed.
-                </>
-              )}
-            </p>
-            <div className={styles.guestPreview}>
-              {guestHandlesToShow.map((handle) => {
-                const a = GUEST_FEED_ACCOUNTS.find((x) => x.handle === handle)
-                if (!a) return null
-                const profile = guestProfiles[a.handle]
-                return (
-                  <Link
-                    key={a.handle}
-                    to={`/profile/${encodeURIComponent(a.handle)}`}
-                    className={styles.guestPreviewCard}
-                  >
-                    {profile?.avatar ? (
-                      <img src={profile.avatar} alt="" className={styles.guestPreviewAvatar} />
-                    ) : (
-                      <span className={styles.guestPreviewAvatarPlaceholder} aria-hidden>@{a.handle.slice(0, 1)}</span>
-                    )}
-                    <span className={styles.guestPreviewLabel}>@{a.handle}</span>
-                    <span className={styles.guestPreviewName}>{profile?.displayName ?? a.label}</span>
+                    )
+                  })}
+                </div>
+                <div className={styles.guestSignInRow}>
+                  <Link to="/login" className={styles.guestSignInBtn}>
+                    Sign in
                   </Link>
-                )
-              })}
-            </div>
+                  <span className={styles.guestSignInSuffix}> to see your feed</span>
+                </div>
+              </>
+            )}
+            {session && (
+              <div className={styles.guestPreview}>
+                {guestHandlesToShow.map((handle) => {
+                  const a = GUEST_FEED_ACCOUNTS.find((x) => x.handle === handle)
+                  if (!a) return null
+                  const profile = guestProfiles[a.handle]
+                  return (
+                    <Link
+                      key={a.handle}
+                      to={`/profile/${encodeURIComponent(a.handle)}`}
+                      className={styles.guestPreviewCard}
+                    >
+                      {profile?.avatar ? (
+                        <img src={profile.avatar} alt="" className={styles.guestPreviewAvatar} />
+                      ) : (
+                        <span className={styles.guestPreviewAvatarPlaceholder} aria-hidden>@{a.handle.slice(0, 1)}</span>
+                      )}
+                      <span className={styles.guestPreviewLabel}>@{a.handle}</span>
+                      <span className={styles.guestPreviewName}>{profile?.displayName ?? a.label}</span>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
           </section>
         )}
         {error && <p className={styles.error}>{error}</p>}

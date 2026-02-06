@@ -98,6 +98,36 @@
   font-weight: 600;
 }
 
+.guestSignInRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+
+.guestSignInBtn {
+  display: inline-block;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: white;
+  background: var(--accent);
+  border-radius: var(--glass-radius-sm);
+  text-decoration: none;
+}
+
+.guestSignInBtn:hover {
+  background: color-mix(in srgb, var(--accent) 90%, black);
+  color: white;
+}
+
+.guestSignInSuffix {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
 /* Grid layout so items stay in document order when loading more (like profile), without forcing same card dimensions */
 .grid {
   display: grid;

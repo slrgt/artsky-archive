@@ -224,6 +224,15 @@
   display: block;
 }
 
+/* Video: same scaling as post detail – width 100%, height auto so aspect ratio is preserved, capped by container */
+.mediaWrap video.media {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+  object-fit: contain;
+}
+
 .meta {
   padding: 0.5rem 0.6rem;
 }

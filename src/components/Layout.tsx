@@ -11,6 +11,8 @@ interface Props {
   title: string
   children: React.ReactNode
   showNav?: boolean
+  /** When false, hide the column view (1/2/3) button; use on pages like post detail where it doesn't apply. */
+  showColumnView?: boolean
 }
 
 function FeedIcon() {
@@ -171,7 +173,7 @@ function subscribeDesktop(cb: () => void) {
   return () => mq.removeEventListener('change', cb)
 }
 
-export default function Layout({ title, children, showNav }: Props) {
+export default function Layout({ title, children, showNav, showColumnView = true }: Props) {
   const loc = useLocation()
   const navigate = useNavigate()
   const { session, sessionsList, logout, switchAccount } = useSession()
@@ -498,6 +500,19 @@ export default function Layout({ title, children, showNav }: Props) {
             <div className={styles.headerRight}>
               {!session ? (
                 <>
+                  {showColumnView && (
+                    <button
+                      type="button"
+                      className={styles.headerBtn}
+                      onClick={cycleViewMode}
+                      aria-label={`View: ${VIEW_LABELS[viewMode]}. Click to cycle.`}
+                      title={VIEW_LABELS[viewMode]}
+                    >
+                      {viewMode === '1' && <Column1Icon />}
+                      {viewMode === '2' && <Column2Icon />}
+                      {viewMode === '3' && <Column3Icon />}
+                    </button>
+                  )}
                   <Link to="/login" className={styles.headerAuthLink}>
                     Log in
                   </Link>
@@ -507,17 +522,19 @@ export default function Layout({ title, children, showNav }: Props) {
                 </>
               ) : (
                 <>
-              <button
-                type="button"
-                className={styles.headerBtn}
-                onClick={cycleViewMode}
-                aria-label={`View: ${VIEW_LABELS[viewMode]}. Click to cycle.`}
-                title={VIEW_LABELS[viewMode]}
-              >
-                {viewMode === '1' && <Column1Icon />}
-                {viewMode === '2' && <Column2Icon />}
-                {viewMode === '3' && <Column3Icon />}
-              </button>
+              {showColumnView && (
+                <button
+                  type="button"
+                  className={styles.headerBtn}
+                  onClick={cycleViewMode}
+                  aria-label={`View: ${VIEW_LABELS[viewMode]}. Click to cycle.`}
+                  title={VIEW_LABELS[viewMode]}
+                >
+                  {viewMode === '1' && <Column1Icon />}
+                  {viewMode === '2' && <Column2Icon />}
+                  {viewMode === '3' && <Column3Icon />}
+                </button>
+              )}
               {!isDesktop && (
                 <button
                   type="button"

@@ -81,7 +81,9 @@ export default function LoginPage() {
     if (!id) return
 
     if (!password.trim()) {
-      window.location.href = BLUESKY_SIGNIN_URL
+      setError(
+        'Enter an App Password to sign in here (Bluesky Settings → App passwords), or use the link below to sign in on Bluesky.',
+      )
       return
     }
 
@@ -237,9 +239,16 @@ export default function LoginPage() {
               {password.trim() ? (loading ? 'Signing in…' : 'Sign in') : 'Sign in with Bluesky'}
             </button>
             <p className={styles.hint}>
-              Leave password blank to open Bluesky and sign in there. Or create an App Password in Bluesky: Settings
-              → App passwords, then enter it above.
+              Create an App Password in Bluesky: Settings → App passwords, then enter it above.
             </p>
+            <a
+              href={BLUESKY_SIGNIN_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.signupLink}
+            >
+              Sign in on Bluesky →
+            </a>
           </form>
         ) : (
           <form onSubmit={handleCreateAccount} className={styles.form}>
