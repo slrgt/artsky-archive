@@ -259,6 +259,7 @@ export default function Layout({ title, children, showNav, showColumnView = true
     if (ok) {
       setAccountSheetOpen(false)
       setAccountMenuOpen(false)
+      window.location.reload()
     }
   }
 

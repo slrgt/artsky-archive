@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import type { AppBskyFeedDefs } from '@atproto/api'
 import { agent, publicAgent, postReply, getPostAllMedia, getPostMediaUrl, getSession } from '../lib/bsky'
+import { useSession } from '../context/SessionContext'
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard } from '../lib/artboards'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import Layout from '../components/Layout'
@@ -155,6 +156,7 @@ function PostBlock({
   replyPosting,
   clearReplyingTo,
   commentFormRef,
+  replyAs,
 }: {
   node: AppBskyFeedDefs.ThreadViewPost | AppBskyFeedDefs.NotFoundPost | AppBskyFeedDefs.BlockedPost | { $type: string }
   depth?: number
@@ -170,6 +172,7 @@ function PostBlock({
   replyPosting?: boolean
   clearReplyingTo?: () => void
   commentFormRef?: React.RefObject<HTMLFormElement | null>
+  replyAs?: { handle: string; avatar?: string } | null
 }) {
   if (!isThreadViewPost(node)) return null
   const { post } = node
@@ -222,6 +225,12 @@ function PostBlock({
       )}
       {isReplyTarget && replyingTo && setReplyComment && onReplySubmit && clearReplyingTo && commentFormRef && (
         <form ref={commentFormRef} onSubmit={onReplySubmit} className={styles.inlineReplyForm}>
+          {replyAs && (
+            <p className={styles.replyAs}>
+              {replyAs.avatar && <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />}
+              <span className={styles.replyAsHandle}>@{replyAs.handle}</span>
+            </p>
+          )}
           <p className={styles.replyingTo}>
             Replying to @{replyingTo.handle}
             <button type="button" className={styles.cancelReply} onClick={clearReplyingTo} aria-label="Cancel reply">
@@ -285,6 +294,7 @@ function PostBlock({
                   replyPosting={replyPosting}
                   clearReplyingTo={clearReplyingTo}
                   commentFormRef={commentFormRef}
+                  replyAs={replyAs}
                 />
               ))}
             </div>
@@ -322,6 +332,22 @@ export default function PostDetailPage() {
   const commentFormRef = useRef<HTMLFormElement>(null)
   const boards = getArtboards()
   const session = getSession()
+  const { session: sessionFromContext } = useSession()
+  const [replyAsProfile, setReplyAsProfile] = useState<{ handle: string; avatar?: string } | null>(null)
+
+  useEffect(() => {
+    const s = sessionFromContext ?? session
+    if (!s?.did) {
+      setReplyAsProfile(null)
+      return
+    }
+    const handle = (s as { handle?: string }).handle ?? s.did
+    agent.getProfile({ actor: s.did })
+      .then((res) => setReplyAsProfile({ handle: res.data.handle ?? handle, avatar: res.data.avatar }))
+      .catch(() => setReplyAsProfile({ handle }))
+  }, [sessionFromContext?.did, session?.did])
+
+  const replyAs = replyAsProfile ?? (session ? { handle: (session as { handle?: string }).handle ?? session.did } : null)
   const isOwnPost = thread && isThreadViewPost(thread) && session?.did === thread.post.author.did
   const authorViewer = thread && isThreadViewPost(thread) ? (thread.post.author as { viewer?: { following?: string } }).viewer : undefined
   const followingUri = authorViewer?.following ?? followUriOverride
@@ -665,12 +691,19 @@ export default function PostDetailPage() {
                     replyPosting={posting}
                     clearReplyingTo={() => setReplyingTo(null)}
                     commentFormRef={commentFormRef}
+                    replyAs={replyAs}
                   />
                 ))}
               </div>
             )}
             {!replyingTo && (
               <form ref={commentFormRef} onSubmit={handlePostReply} className={styles.commentForm}>
+                {replyAs && (
+                  <p className={styles.replyAs}>
+                    {replyAs.avatar && <img src={replyAs.avatar} alt="" className={styles.replyAsAvatar} />}
+                    <span className={styles.replyAsHandle}>@{replyAs.handle}</span>
+                  </p>
+                )}
                 <textarea
                   placeholder="Write a comment…"
                   value={comment}
