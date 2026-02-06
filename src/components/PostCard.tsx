@@ -5,6 +5,7 @@ import { getPostMediaInfo, getPostAllMedia, getPostMediaUrl, agent, type Timelin
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard, getArtboard } from '../lib/artboards'
 import { putArtboardOnPds } from '../lib/artboardsPds'
 import { useSession } from '../context/SessionContext'
+import { useArtOnly } from '../context/ArtOnlyContext'
 import PostText from './PostText'
 import styles from './PostCard.module.css'
 
@@ -61,6 +62,7 @@ function isHlsUrl(url: string): boolean {
 export default function PostCard({ item }: Props) {
   const navigate = useNavigate()
   const { session } = useSession()
+  const { artOnly } = useArtOnly()
   const videoRef = useRef<HTMLVideoElement>(null)
   const hlsRef = useRef<Hls | null>(null)
   const { post, reason } = item as { post: typeof item.post; reason?: { $type?: string; by?: { handle?: string; did?: string } } }
@@ -333,6 +335,7 @@ export default function PostCard({ item }: Props) {
             </>
           )}
         </div>
+        {!artOnly && (
         <div className={styles.meta}>
           <div className={styles.handleBlock}>
             <span className={styles.handleRow}>
@@ -446,6 +449,7 @@ export default function PostCard({ item }: Props) {
             </p>
           ) : null}
         </div>
+        )}
       </div>
       {showLongPressMenu && (
         <div

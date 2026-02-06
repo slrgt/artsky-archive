@@ -3,6 +3,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { SessionProvider } from './context/SessionContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ViewModeProvider } from './context/ViewModeContext'
+import { ArtOnlyProvider } from './context/ArtOnlyContext'
 import LoginPage from './pages/LoginPage'
 import FeedPage from './pages/FeedPage'
 import ArtboardsPage from './pages/ArtboardsPage'
@@ -70,9 +71,11 @@ export default function App() {
       <HashRouter>
         <ThemeProvider>
           <ViewModeProvider>
-            <SessionProvider>
-              <AppRoutes />
-            </SessionProvider>
+            <ArtOnlyProvider>
+              <SessionProvider>
+                <AppRoutes />
+              </SessionProvider>
+            </ArtOnlyProvider>
           </ViewModeProvider>
         </ThemeProvider>
       </HashRouter>

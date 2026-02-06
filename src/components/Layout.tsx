@@ -2,7 +2,8 @@ import { useState, useRef, useEffect, useSyncExternalStore } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../context/SessionContext'
 import { useTheme } from '../context/ThemeContext'
-import { useViewMode, VIEW_LABELS, type ViewMode } from '../context/ViewModeContext'
+import { useViewMode, VIEW_LABELS } from '../context/ViewModeContext'
+import { useArtOnly } from '../context/ArtOnlyContext'
 import SearchBar from './SearchBar'
 import styles from './Layout.module.css'
 
@@ -61,6 +62,23 @@ function ViewIcon() {
   )
 }
 
+function EyeIcon({ off }: { off?: boolean }) {
+  if (off) {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+        <line x1="1" y1="1" x2="23" y2="23" />
+      </svg>
+    )
+  }
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
 const DESKTOP_BREAKPOINT = 768
 function getDesktopSnapshot() {
   return typeof window !== 'undefined' ? window.innerWidth >= DESKTOP_BREAKPOINT : false
@@ -78,38 +96,32 @@ export default function Layout({ title, children, showNav }: Props) {
   const { session, sessionsList, logout, switchAccount } = useSession()
   const { theme, setTheme } = useTheme()
   const { viewMode, setViewMode, viewOptions } = useViewMode()
+  const { artOnly, toggleArtOnly } = useArtOnly()
   const path = loc.pathname
   const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
   const [accountSheetOpen, setAccountSheetOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
-  const [viewMenuOpen, setViewMenuOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [navVisible, setNavVisible] = useState(true)
   const lastScrollY = useRef(0)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const accountBtnRef = useRef<HTMLButtonElement>(null)
-  const viewBtnRef = useRef<HTMLButtonElement>(null)
   const accountMenuRef = useRef<HTMLDivElement>(null)
-  const viewMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     document.title = title ? `${title} · ArtSky` : 'ArtSky'
   }, [title])
 
   useEffect(() => {
-    if (!viewMenuOpen && !accountMenuOpen) return
+    if (!accountMenuOpen) return
     const onDocClick = (e: MouseEvent) => {
       const t = e.target as Node
-      if (
-        viewMenuRef.current?.contains(t) || viewBtnRef.current?.contains(t) ||
-        accountMenuRef.current?.contains(t) || accountBtnRef.current?.contains(t)
-      ) return
-      setViewMenuOpen(false)
+      if (accountMenuRef.current?.contains(t) || accountBtnRef.current?.contains(t)) return
       setAccountMenuOpen(false)
     }
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
-  }, [viewMenuOpen, accountMenuOpen])
+  }, [accountMenuOpen])
 
   const scrollThreshold = 8
   useEffect(() => {
@@ -144,6 +156,12 @@ export default function Layout({ title, children, showNav }: Props) {
   function closeMobileSearch() {
     setMobileSearchOpen(false)
     searchInputRef.current?.blur()
+  }
+
+  function cycleViewMode() {
+    const idx = viewOptions.indexOf(viewMode)
+    const next = (idx + 1) % viewOptions.length
+    setViewMode(viewOptions[next])
   }
 
   function openAccountPanel() {
@@ -292,41 +310,37 @@ export default function Layout({ title, children, showNav }: Props) {
       <header className={styles.header}>
         {showNav && (
           <>
-            <Link to="/feed" className={styles.logoLink} aria-label="ArtSky – back to feed">
-              <img src={`${import.meta.env.BASE_URL || '/'}icon.svg`} alt="" className={styles.logoIcon} />
-              <span className={styles.logoText}>ArtSky</span>
-            </Link>
-            <div className={styles.navTray} aria-label="Main">
-              {navTrayItems}
+            <div className={styles.headerLeft}>
+              <Link to="/feed" className={styles.logoLink} aria-label="ArtSky – back to feed">
+                <img src={`${import.meta.env.BASE_URL || '/'}icon.svg`} alt="" className={styles.logoIcon} />
+                <span className={styles.logoText}>ArtSky</span>
+              </Link>
+            </div>
+            <div className={styles.headerCenter}>
+              <SearchBar inputRef={searchInputRef} compact={isDesktop} />
             </div>
             <div className={styles.headerRight}>
-              <div className={styles.headerBtnWrap}>
-                <button
-                  ref={viewBtnRef}
-                  type="button"
-                  className={styles.headerBtn}
-                  onClick={() => setViewMenuOpen((o) => !o)}
-                  aria-label="View mode"
-                  aria-expanded={viewMenuOpen}
-                >
-                  <ViewIcon />
-                </button>
-                {viewMenuOpen && (
-                  <div ref={viewMenuRef} className={styles.viewMenu} role="menu">
-                    {(['1', '2', '3', '4', '5'] as ViewMode[]).map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        role="menuitem"
-                        className={viewMode === m ? styles.menuOptionActive : styles.menuOption}
-                        onClick={() => { setViewMode(m); setViewMenuOpen(false) }}
-                      >
-                        {VIEW_LABELS[m]}
-                      </button>
-                    ))}
-                  </div>
-                )}
+              <div className={styles.navTray} aria-label="Main">
+                {navTrayItems}
               </div>
+              <button
+                type="button"
+                className={styles.headerBtn}
+                onClick={cycleViewMode}
+                aria-label={`View: ${VIEW_LABELS[viewMode]}. Click to cycle.`}
+                title={VIEW_LABELS[viewMode]}
+              >
+                <ViewIcon />
+              </button>
+              <button
+                type="button"
+                className={`${styles.headerBtn} ${artOnly ? styles.headerBtnActive : ''}`}
+                onClick={toggleArtOnly}
+                aria-label={artOnly ? 'Show text on feed' : 'Hide text, focus on art'}
+                title={artOnly ? 'Show text' : 'Art only'}
+              >
+                <EyeIcon off={artOnly} />
+              </button>
               <div className={styles.headerBtnWrap}>
                 <button
                   ref={accountBtnRef}
@@ -345,9 +359,6 @@ export default function Layout({ title, children, showNav }: Props) {
                   </div>
                 )}
               </div>
-            </div>
-            <div className={styles.searchSlot}>
-              <SearchBar inputRef={searchInputRef} compact={isDesktop} />
             </div>
           </>
         )}
