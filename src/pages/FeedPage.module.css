@@ -76,55 +76,36 @@
   font-weight: 600;
 }
 
+/* Pinterest-style: column layout so items pack, horizontal posts can sit next to tall vertical ones */
 .masonry {
-  display: grid;
-  grid-auto-rows: auto;
-  align-items: start;
+  column-gap: 0.4rem;
   width: 100%;
   min-width: 0;
 }
 
-/* View N = N columns. On mobile use smaller preview heights so columns fit. */
-@media (max-width: 599px) {
-  .masonryView1 { --card-media-height: 160px; }
-  .masonryView2 { --card-media-height: 140px; }
-  .masonryView3 { --card-media-height: 120px; }
-  .masonryView4 { --card-media-height: 110px; }
-  .masonryView5 { --card-media-height: 100px; }
+.masonry > * {
+  break-inside: avoid;
+  margin-bottom: 0.4rem;
 }
 
 .masonryView1 {
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: 0.5rem;
-}
-
-/* One column: let preview scale to show full image while scrolling */
-.masonryView1 .card {
-  max-width: 100%;
+  column-count: 1;
 }
 
 .masonryView2 {
-  --card-media-height: 260px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
+  column-count: 2;
 }
 
 .masonryView3 {
-  --card-media-height: 220px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.5rem;
+  column-count: 3;
 }
 
 .masonryView4 {
-  --card-media-height: 200px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.4rem;
+  column-count: 4;
 }
 
 .masonryView5 {
-  --card-media-height: 180px;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.4rem;
+  column-count: 5;
 }
 
 .more {

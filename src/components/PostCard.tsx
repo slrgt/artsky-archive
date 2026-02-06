@@ -390,11 +390,6 @@ export default function PostCard({ item }: Props) {
               {post.author.avatar && (
                 <img src={post.author.avatar} alt="" className={styles.authorAvatar} />
               )}
-              {isRepost && (
-                <span className={styles.repostBadge} title="Repost">
-                  <RepostIcon />
-                </span>
-              )}
               <Link
                 to={`/profile/${encodeURIComponent(handle)}`}
                 className={styles.handleLink}
@@ -480,6 +475,10 @@ export default function PostCard({ item }: Props) {
             </span>
             {repostedByHandle && (
               <span className={styles.repostedBy}>
+                <span className={styles.repostBadge} title="Repost" aria-hidden>
+                  <RepostIcon />
+                </span>
+                {' '}
                 Reposted by{' '}
                 <Link
                   to={`/profile/${encodeURIComponent(repostedByHandle)}`}

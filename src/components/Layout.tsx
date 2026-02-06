@@ -224,9 +224,13 @@ export default function Layout({ title, children, showNav }: Props) {
   }
 
   function cycleViewMode() {
-    const idx = viewOptions.indexOf(viewMode)
-    const next = (idx + 1) % viewOptions.length
-    setViewMode(viewOptions[next])
+    if (isDesktop) {
+      setViewMode(viewMode === '1' ? '2' : viewMode === '2' ? '3' : '1')
+    } else {
+      const idx = viewOptions.indexOf(viewMode)
+      const next = (idx + 1) % viewOptions.length
+      setViewMode(viewOptions[next])
+    }
   }
 
   function openAccountPanel() {
