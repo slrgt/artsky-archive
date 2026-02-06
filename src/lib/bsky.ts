@@ -365,6 +365,31 @@ export async function searchPostsByTag(tag: string, cursor?: string) {
   return { posts: res.data.posts, cursor: res.data.cursor }
 }
 
+/** Domain used for standard.site / long-form blog posts. */
+export const STANDARD_SITE_DOMAIN = 'standard.site'
+
+/** Search posts that link to a domain (e.g. standard.site). Works with publicAgent when logged out. */
+export async function searchPostsByDomain(
+  domain: string,
+  cursor?: string,
+  author?: string
+): Promise<{ posts: PostView[]; cursor: string | undefined }> {
+  const client = getSession() ? agent : publicAgent
+  try {
+    const res = await client.app.bsky.feed.searchPosts({
+      q: domain,
+      domain,
+      limit: 30,
+      cursor,
+      sort: 'latest',
+      ...(author ? { author } : {}),
+    })
+    return { posts: res.data.posts ?? [], cursor: res.data.cursor }
+  } catch {
+    return { posts: [], cursor: undefined }
+  }
+}
+
 /** Get the current account's saved/pinned feeds from preferences. Returns array of { id, type, value, pinned }. */
 export async function getSavedFeedsFromPreferences(): Promise<
   { id: string; type: string; value: string; pinned: boolean }[]

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { agent, publicAgent, getPostMediaInfo, getSession, type TimelineItem } from '../lib/bsky'
+import { agent, publicAgent, getPostMediaInfo, getSession, searchPostsByDomain, STANDARD_SITE_DOMAIN, type TimelineItem } from '../lib/bsky'
+import type { AppBskyFeedDefs } from '@atproto/api'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import PostCard from '../components/PostCard'
 import PostText from '../components/PostText'
@@ -12,9 +13,9 @@ import postBlockStyles from './PostDetailPage.module.css'
 const REASON_REPOST = 'app.bsky.feed.defs#reasonRepost'
 const REASON_PIN = 'app.bsky.feed.defs#reasonPin'
 
-type ProfileTab = 'posts' | 'reposts' | 'liked' | 'text' | 'feeds'
+type ProfileTab = 'posts' | 'reposts' | 'liked' | 'blog' | 'text' | 'feeds'
 
-const PROFILE_TABS: ProfileTab[] = ['posts', 'reposts', 'liked', 'text', 'feeds']
+const PROFILE_TABS: ProfileTab[] = ['posts', 'reposts', 'liked', 'blog', 'text', 'feeds']
 
 type ProfileState = {
   displayName?: string
@@ -35,6 +36,8 @@ export default function ProfilePage() {
   const [likedItems, setLikedItems] = useState<TimelineItem[]>([])
   const [likedCursor, setLikedCursor] = useState<string | undefined>()
   const [feeds, setFeeds] = useState<GeneratorView[]>([])
+  const [blogPosts, setBlogPosts] = useState<AppBskyFeedDefs.PostView[]>([])
+  const [blogCursor, setBlogCursor] = useState<string | undefined>()
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -131,6 +134,23 @@ export default function ProfilePage() {
     }
   }, [handle, readAgent])
 
+  const loadBlog = useCallback(async (nextCursor?: string) => {
+    if (!handle) return
+    try {
+      if (nextCursor) setLoadingMore(true)
+      else setLoading(true)
+      setError(null)
+      const { posts, cursor: next } = await searchPostsByDomain(STANDARD_SITE_DOMAIN, nextCursor, handle)
+      setBlogPosts((prev) => (nextCursor ? [...prev, ...posts] : posts))
+      setBlogCursor(next)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load blog')
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }, [handle])
+
   useEffect(() => {
     if (handle) {
       setProfile(null)
@@ -151,6 +171,10 @@ export default function ProfilePage() {
   useEffect(() => {
     if (tab === 'feeds') loadFeeds()
   }, [tab, loadFeeds])
+
+  useEffect(() => {
+    if (tab === 'blog') loadBlog()
+  }, [tab, loadBlog])
 
   useEffect(() => {
     const onScroll = () => {
@@ -398,6 +422,13 @@ export default function ProfilePage() {
           </button>
           <button
             type="button"
+            className={`${styles.tab} ${tab === 'blog' ? styles.tabActive : ''}`}
+            onClick={() => setTab('blog')}
+          >
+            Blog
+          </button>
+          <button
+            type="button"
             className={`${styles.tab} ${tab === 'text' ? styles.tabActive : ''}`}
             onClick={() => setTab('text')}
           >
@@ -420,6 +451,66 @@ export default function ProfilePage() {
         >
         {loading ? (
           <div className={styles.loading}>Loading…</div>
+        ) : tab === 'blog' ? (
+          blogPosts.length === 0 ? (
+            <div className={styles.empty}>No standard.site blog posts.</div>
+          ) : (
+            <>
+              <ul className={styles.textList}>
+                {blogPosts.map((p) => {
+                  const authorHandle = p.author.handle ?? p.author.did
+                  const text = (p.record as { text?: string })?.text?.trim() ?? ''
+                  const createdAt = (p.record as { createdAt?: string })?.createdAt
+                  const avatar = p.author.avatar
+                  return (
+                    <li key={p.uri}>
+                      <Link to={`/post/${encodeURIComponent(p.uri)}`} className={styles.textPostLink}>
+                        <article className={postBlockStyles.postBlock}>
+                          <div className={postBlockStyles.postBlockContent}>
+                            <div className={postBlockStyles.postHead}>
+                              {avatar && <img src={avatar} alt="" className={postBlockStyles.avatar} />}
+                              <div className={postBlockStyles.authorRow}>
+                                <Link
+                                  to={`/profile/${encodeURIComponent(authorHandle)}`}
+                                  className={`${postBlockStyles.handleLink} ${styles.textPostHandleLink}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  @{authorHandle}
+                                </Link>
+                                {createdAt && (
+                                  <span
+                                    className={postBlockStyles.postTimestamp}
+                                    title={formatExactDateTime(createdAt)}
+                                  >
+                                    {formatRelativeTime(createdAt)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {text ? (
+                              <p className={postBlockStyles.postText}>
+                                <PostText text={text} />
+                              </p>
+                            ) : null}
+                          </div>
+                        </article>
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+              {blogCursor && (
+                <button
+                  type="button"
+                  className={styles.more}
+                  onClick={() => loadBlog(blogCursor)}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? 'Loading…' : 'Load more'}
+                </button>
+              )}
+            </>
+          )
         ) : tab === 'text' ? (
           textItems.length === 0 ? (
             <div className={styles.empty}>No text-only posts (no media, no replies).</div>
