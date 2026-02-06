@@ -926,7 +926,16 @@ export default function PostDetailPage() {
       if (inCommentsSection && threadRepliesFlat.length > 0 && nextComment) {
         if (key === 'w') {
           if (focusedCommentIndex === 0) {
-            setPostSectionIndex(hasMediaSection ? 1 : 0)
+            e.preventDefault()
+            const nextSection = hasMediaSection ? 1 : 0
+            setPostSectionIndex(nextSection)
+            requestAnimationFrame(() => {
+              const desc = descriptionSectionRef.current
+              if (desc) {
+                desc.focus()
+                desc.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            })
           } else {
             setFocusedCommentIndex((i) => Math.max(0, i - 1))
           }
