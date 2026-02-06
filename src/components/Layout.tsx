@@ -248,8 +248,11 @@ export default function Layout({ title, children, showNav, showColumnView = true
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [composeOpen, setComposeOpen] = useState(false)
   const [composeText, setComposeText] = useState('')
+  const [composeImages, setComposeImages] = useState<File[]>([])
   const [composePosting, setComposePosting] = useState(false)
   const [composeError, setComposeError] = useState<string | null>(null)
+  const composeFileInputRef = useRef<HTMLInputElement>(null)
+  const composeFormRef = useRef<HTMLFormElement>(null)
   const [navVisible, setNavVisible] = useState(true)
   const [searchOverlayBottom, setSearchOverlayBottom] = useState(0)
   const lastScrollY = useRef(0)
@@ -396,16 +399,31 @@ export default function Layout({ title, children, showNav, showColumnView = true
   function closeCompose() {
     setComposeOpen(false)
     setComposeText('')
+    setComposeImages([])
     setComposeError(null)
+  }
+
+  const COMPOSE_IMAGE_MAX = 4
+  const COMPOSE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+
+  function addComposeImages(files: FileList | File[]) {
+    const list = Array.from(files).filter((f) => COMPOSE_IMAGE_TYPES.includes(f.type))
+    setComposeImages((prev) => [...prev, ...list].slice(0, COMPOSE_IMAGE_MAX))
+  }
+
+  function removeComposeImage(index: number) {
+    setComposeImages((prev) => prev.filter((_, i) => i !== index))
   }
 
   async function handleComposeSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!session || composePosting) return
+    const canSubmit = composeText.trim() || composeImages.length > 0
+    if (!canSubmit) return
     setComposeError(null)
     setComposePosting(true)
     try {
-      await createPost(composeText)
+      await createPost(composeText, composeImages.length > 0 ? composeImages : undefined)
       closeCompose()
       navigate('/feed')
     } catch (err) {
@@ -414,6 +432,34 @@ export default function Layout({ title, children, showNav, showColumnView = true
       setComposePosting(false)
     }
   }
+
+  function handleComposeKeyDown(e: React.KeyboardEvent, form: HTMLFormElement | null) {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault()
+      if (form && (composeText.trim() || composeImages.length > 0) && !composePosting) {
+        form.requestSubmit()
+      }
+    }
+  }
+
+  function handleComposeDrop(e: React.DragEvent) {
+    e.preventDefault()
+    if (!e.dataTransfer?.files?.length) return
+    addComposeImages(e.dataTransfer.files)
+  }
+
+  function handleComposeDragOver(e: React.DragEvent) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+  }
+
+  const composePreviewUrls = useMemo(
+    () => composeImages.map((f) => URL.createObjectURL(f)),
+    [composeImages],
+  )
+  useEffect(() => {
+    return () => composePreviewUrls.forEach((u) => URL.revokeObjectURL(u))
+  }, [composePreviewUrls])
 
   const navTrayItems = (
     <>
@@ -845,34 +891,92 @@ export default function Layout({ title, children, showNav, showColumnView = true
                 onClick={closeCompose}
                 aria-hidden
               />
-              <div className={styles.composeOverlay} role="dialog" aria-label="New post">
-                <div className={styles.composeCard}>
+              <div
+                className={styles.composeOverlay}
+                role="dialog"
+                aria-label="New post"
+                onClick={closeCompose}
+                onDragOver={handleComposeDragOver}
+                onDrop={handleComposeDrop}
+              >
+                <div className={styles.composeCard} onClick={(e) => e.stopPropagation()}>
                   <h2 className={styles.composeTitle}>New post</h2>
                   {!session ? (
                     <p className={styles.composeSignIn}>
                       <Link to="/login" onClick={closeCompose}>Sign in</Link> to post.
                     </p>
                   ) : (
-                    <form onSubmit={handleComposeSubmit}>
+                    <form ref={composeFormRef} onSubmit={handleComposeSubmit}>
                       <textarea
                         className={styles.composeTextarea}
                         value={composeText}
                         onChange={(e) => setComposeText(e.target.value.slice(0, POST_MAX_LENGTH))}
+                        onKeyDown={(e) => handleComposeKeyDown(e, composeFormRef.current)}
                         placeholder="What's on your mind?"
                         rows={4}
                         maxLength={POST_MAX_LENGTH}
                         disabled={composePosting}
                         autoFocus
                       />
+                      {composeImages.length > 0 && (
+                        <div className={styles.composePreviews}>
+                          {composeImages.map((_, i) => (
+                            <div key={i} className={styles.composePreviewWrap}>
+                              <img
+                                src={composePreviewUrls[i]}
+                                alt=""
+                                className={styles.composePreviewImg}
+                              />
+                              <button
+                                type="button"
+                                className={styles.composePreviewRemove}
+                                onClick={() => removeComposeImage(i)}
+                                aria-label="Remove image"
+                                disabled={composePosting}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <div className={styles.composeFooter}>
-                        <span className={styles.composeCount} aria-live="polite">
-                          {composeText.length}/{POST_MAX_LENGTH}
-                        </span>
+                        <div className={styles.composeFooterLeft}>
+                          <input
+                            ref={composeFileInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            multiple
+                            className={styles.composeFileInput}
+                            onChange={(e) => {
+                              if (e.target.files?.length) addComposeImages(e.target.files)
+                              e.target.value = ''
+                            }}
+                          />
+                          <button
+                            type="button"
+                            className={styles.composeAddMedia}
+                            onClick={() => composeFileInputRef.current?.click()}
+                            disabled={composePosting || composeImages.length >= COMPOSE_IMAGE_MAX}
+                            title="Add photo"
+                            aria-label="Add photo"
+                          >
+                            Add media
+                          </button>
+                          <span className={styles.composeCount} aria-live="polite">
+                            {composeText.length}/{POST_MAX_LENGTH}
+                          </span>
+                        </div>
                         <div className={styles.composeActions}>
+                          <span className={styles.composeHint}>⌘↵ to post</span>
                           <button type="button" className={styles.composeCancel} onClick={closeCompose} disabled={composePosting}>
                             Cancel
                           </button>
-                          <button type="submit" className={styles.composeSubmit} disabled={composePosting || !composeText.trim()}>
+                          <button
+                            type="submit"
+                            className={styles.composeSubmit}
+                            disabled={composePosting || (!composeText.trim() && composeImages.length === 0)}
+                          >
                             {composePosting ? 'Posting…' : 'Post'}
                           </button>
                         </div>

@@ -414,12 +414,30 @@ export async function getFeedDisplayName(uri: string): Promise<string> {
   return (res.data?.view as { displayName?: string })?.displayName ?? uri
 }
 
-/** Create a new post (no reply). */
-export async function createPost(text: string): Promise<{ uri: string; cid: string }> {
+const COMPOSE_IMAGE_MAX = 4
+const COMPOSE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+
+/** Create a new post (no reply). Optional image files (max 4, jpeg/png/gif/webp). */
+export async function createPost(
+  text: string,
+  imageFiles?: File[],
+): Promise<{ uri: string; cid: string }> {
   const t = text.trim()
-  if (!t) throw new Error('Post text is required')
+  const images = (imageFiles ?? []).filter((f) => COMPOSE_IMAGE_TYPES.includes(f.type)).slice(0, COMPOSE_IMAGE_MAX)
+  if (!t && images.length === 0) throw new Error('Post text or at least one image is required')
+  let embed: { $type: 'app.bsky.embed.images'; images: { image: unknown; alt: string }[] } | undefined
+  if (images.length > 0) {
+    const uploaded = await Promise.all(
+      images.map(async (file) => {
+        const { data } = await agent.uploadBlob(file, { encoding: file.type })
+        return { image: data.blob, alt: '' }
+      }),
+    )
+    embed = { $type: 'app.bsky.embed.images', images: uploaded }
+  }
   const res = await agent.post({
-    text: t,
+    text: t || '',
+    embed,
     createdAt: new Date().toISOString(),
   })
   return { uri: res.uri, cid: res.cid }
