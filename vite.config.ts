@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'ArtSky',
         short_name: 'ArtSky',
-        description: 'Pinterest-style Bluesky feed & artboards',
+        description: 'Bluesky feed & artboards',
         theme_color: '#1a1a2e',
         background_color: '#0f0f1a',
         display: 'standalone',
