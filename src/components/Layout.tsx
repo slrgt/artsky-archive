@@ -84,7 +84,6 @@ export default function Layout({ title, children, showNav }: Props) {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [viewMenuOpen, setViewMenuOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
-  const [keyboardOffset, setKeyboardOffset] = useState(0)
   const [navVisible, setNavVisible] = useState(true)
   const lastScrollY = useRef(0)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -96,19 +95,6 @@ export default function Layout({ title, children, showNav }: Props) {
   useEffect(() => {
     document.title = title ? `${title} · ArtSky` : 'ArtSky'
   }, [title])
-
-  useEffect(() => {
-    if (!mobileSearchOpen || typeof window === 'undefined' || !window.visualViewport) return
-    const vv = window.visualViewport
-    const update = () => setKeyboardOffset(Math.max(0, window.innerHeight - vv.height))
-    update()
-    vv.addEventListener('resize', update)
-    vv.addEventListener('scroll', update)
-    return () => {
-      vv.removeEventListener('resize', update)
-      vv.removeEventListener('scroll', update)
-    }
-  }, [mobileSearchOpen])
 
   useEffect(() => {
     if (!viewMenuOpen && !accountMenuOpen) return
@@ -377,13 +363,6 @@ export default function Layout({ title, children, showNav }: Props) {
           >
             {navItems}
           </nav>
-          {accountSheetOpen && (
-            <div
-              className={styles.sheetBackdrop}
-              onClick={() => setAccountSheetOpen(false)}
-              aria-hidden
-            />
-          )}
           {mobileSearchOpen && !isDesktop && (
             <>
               <div
@@ -391,87 +370,28 @@ export default function Layout({ title, children, showNav }: Props) {
                 onClick={closeMobileSearch}
                 aria-hidden
               />
-              <div
-                className={styles.searchOverlay}
-                role="dialog"
-                aria-label="Search"
-                style={{ '--keyboard-offset': `${keyboardOffset}px` } as React.CSSProperties}
-              >
-                <SearchBar inputRef={searchInputRef} onClose={closeMobileSearch} />
+              <div className={styles.searchOverlayCenter} role="dialog" aria-label="Search">
+                <div className={styles.searchOverlayCard}>
+                  <SearchBar inputRef={searchInputRef} onClose={closeMobileSearch} />
+                </div>
               </div>
             </>
           )}
-          <div className={`${styles.sheet} ${accountSheetOpen ? styles.sheetOpen : ''}`} role="dialog" aria-label="Account and settings">
-            <div className={styles.sheetHandle} />
-            <div className={styles.sheetContent}>
-              <h2 className={styles.sheetTitle}>Account</h2>
-
-              <section className={styles.sheetSection}>
-                <h3 className={styles.sheetSectionTitle}>Appearance</h3>
-                <div className={styles.sheetRow}>
-                  {(['light', 'dark', 'system'] as const).map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      className={theme === t ? styles.sheetOptionActive : styles.sheetOption}
-                      onClick={() => setTheme(t)}
-                    >
-                      {t === 'light' ? 'Light' : t === 'dark' ? 'Dark' : 'System'}
-                    </button>
-                  ))}
+          {accountSheetOpen && !isDesktop && (
+            <>
+              <div
+                className={styles.sheetBackdrop}
+                onClick={() => setAccountSheetOpen(false)}
+                aria-hidden
+              />
+              <div className={styles.accountPopup} role="dialog" aria-label="Account and settings">
+                <div className={styles.accountPopupContent}>
+                  <h2 className={styles.sheetTitle}>Account</h2>
+                  {accountPanelContent}
                 </div>
-              </section>
-
-              <section className={styles.sheetSection}>
-                <h3 className={styles.sheetSectionTitle}>Columns</h3>
-                <div className={styles.sheetRow}>
-                  {viewOptions.map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      className={viewMode === m ? styles.sheetOptionActive : styles.sheetOption}
-                      onClick={() => setViewMode(m)}
-                    >
-                      {VIEW_LABELS[m]}
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {session && (
-                <section className={styles.sheetSection}>
-                  <h3 className={styles.sheetSectionTitle}>Accounts</h3>
-                  {sessionsList.map((s) => (
-                    <button
-                      key={s.did}
-                      type="button"
-                      className={s.did === session?.did ? styles.sheetItemActive : styles.sheetItem}
-                      onClick={() => handleSelectAccount(s.did)}
-                    >
-                      @{s.handle}
-                      {s.did === session?.did && <span className={styles.sheetCheck} aria-hidden> ✓</span>}
-                    </button>
-                  ))}
-                  <div className={styles.sheetActions}>
-                    <button type="button" className={styles.sheetActionBtn} onClick={handleAddAccount}>
-                      Add account
-                    </button>
-                    <button type="button" className={styles.sheetActionSecondary} onClick={handleLogout}>
-                      Log out
-                    </button>
-                  </div>
-                </section>
-              )}
-
-              {!session && (
-                <section className={styles.sheetSection}>
-                  <button type="button" className={styles.sheetActionBtn} onClick={() => { setAccountSheetOpen(false); navigate('/login'); }}>
-                    Sign in
-                  </button>
-                </section>
-              )}
-            </div>
-          </div>
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
