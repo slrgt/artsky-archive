@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { agent, publicAgent, getPostMediaInfo, getSession, type TimelineItem } from '../lib/bsky'
 import PostCard from '../components/PostCard'
@@ -39,6 +39,8 @@ export default function ProfilePage() {
   const session = getSession()
   const { viewMode } = useViewMode()
   const readAgent = session ? agent : publicAgent
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
+  const loadingMoreRef = useRef(false)
 
   useEffect(() => {
     if (!handle) return
@@ -133,6 +135,27 @@ export default function ProfilePage() {
   useEffect(() => {
     if (tab === 'feeds') loadFeeds()
   }, [tab, loadFeeds])
+
+  // Infinite scroll: load more when sentinel enters view (posts, reposts, liked, text tabs)
+  loadingMoreRef.current = loadingMore
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current
+    if (!sentinel) return
+    const activeCursor = tab === 'liked' ? likedCursor : cursor
+    if (!activeCursor) return
+    const loadMore = tab === 'liked' ? () => loadLiked(likedCursor) : () => load(cursor)
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [e] = entries
+        if (!e?.isIntersecting || loadingMoreRef.current) return
+        loadingMoreRef.current = true
+        loadMore()
+      },
+      { rootMargin: '200px', threshold: 0 }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [tab, cursor, likedCursor, load, loadLiked])
 
   const followingUri = profile?.viewer?.following ?? followUriOverride
   const isFollowing = !!followingUri
@@ -290,16 +313,8 @@ export default function ProfilePage() {
                   </li>
                 ))}
               </ul>
-              {cursor && (
-                <button
-                  type="button"
-                  className={styles.more}
-                  onClick={() => load(cursor)}
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? 'Loading…' : 'Load more'}
-                </button>
-              )}
+              {cursor && <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />}
+              {loadingMore && <div className={styles.loadingMore}>Loading…</div>}
             </>
           )
         ) : tab === 'feeds' ? (
@@ -332,16 +347,8 @@ export default function ProfilePage() {
                   <PostCard key={item.post.uri} item={item} />
                 ))}
               </div>
-              {likedCursor && (
-                <button
-                  type="button"
-                  className={styles.more}
-                  onClick={() => loadLiked(likedCursor)}
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? 'Loading…' : 'Load more'}
-                </button>
-              )}
+              {likedCursor && <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />}
+              {loadingMore && <div className={styles.loadingMore}>Loading…</div>}
             </>
           )
         ) : mediaItems.length === 0 ? (
@@ -355,16 +362,8 @@ export default function ProfilePage() {
                 <PostCard key={item.post.uri} item={item} />
               ))}
             </div>
-            {cursor && (
-              <button
-                type="button"
-                className={styles.more}
-                onClick={() => load(cursor)}
-                disabled={loadingMore}
-              >
-                {loadingMore ? 'Loading…' : 'Load more'}
-              </button>
-            )}
+            {cursor && <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />}
+            {loadingMore && <div className={styles.loadingMore}>Loading…</div>}
           </>
         )}
       </div>

@@ -234,6 +234,20 @@
 .gridView4 { --card-media-height: 200px; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.4rem; }
 .gridView5 { --card-media-height: 180px; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.4rem; }
 
+.loadMoreSentinel {
+  height: 1px;
+  width: 100%;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.loadingMore {
+  text-align: center;
+  color: var(--muted);
+  padding: 1rem;
+  font-size: 0.9rem;
+}
+
 .more {
   display: block;
   width: 100%;
