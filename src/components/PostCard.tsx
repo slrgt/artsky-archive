@@ -412,14 +412,10 @@ export default function PostCard({ item }: Props) {
               </>
             ) : (
               <>
-                <div
-                  className={styles.mediaWrapGrid}
-                  style={{
-                    aspectRatio:
-                      mediaAspect != null ? String(mediaAspect) : undefined,
-                  }}
-                >
-                  <div className={styles.mediaGrid}>
+                {/* In-flow spacer so mediaWrap gets height when grid is absolute (fixes 1-col scaling) */}
+                <div className={styles.mediaWrapGridSpacer} aria-hidden />
+                <div className={styles.mediaWrapGrid}>
+                  <div className={styles.mediaGrid} style={{ minHeight: 0 }}>
                     {imageItems.map((imgItem, idx) => (
                       <div key={idx} className={styles.mediaGridCell}>
                         <img

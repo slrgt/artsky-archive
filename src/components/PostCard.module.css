@@ -205,6 +205,13 @@
   opacity: 1;
 }
 
+/* In-flow spacer so .mediaWrap gets height when multi-image grid (absolute) is only content */
+.mediaWrapGridSpacer {
+  width: 100%;
+  aspect-ratio: 1;
+  pointer-events: none;
+}
+
 /* Multi-image: grid of all images; arrows on hover to cycle */
 .mediaWrapGrid {
   position: absolute;
@@ -214,6 +221,7 @@
   grid-auto-rows: 1fr;
   gap: 2px;
   background: var(--bg);
+  min-height: 0;
 }
 
 .mediaGrid {
