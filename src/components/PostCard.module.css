@@ -240,9 +240,16 @@
   width: 100%;
 }
 
-.repostBadge {
+.repostIconLink {
   display: inline-flex;
+  align-items: center;
   color: var(--muted);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.repostIconLink:hover {
+  color: var(--accent);
 }
 
 .repostIcon {
@@ -319,19 +326,6 @@
 .longPressIcon {
   width: 1.1rem;
   height: 1.1rem;
-}
-
-.repostedBy {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  color: var(--muted);
-}
-
-.repostedBy .repostBadge {
-  display: inline-flex;
-  flex-shrink: 0;
 }
 
 .handle {

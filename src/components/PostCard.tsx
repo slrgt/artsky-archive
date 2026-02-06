@@ -396,6 +396,17 @@ export default function PostCard({ item }: Props) {
               >
                 @{handle}
               </Link>
+              {repostedByHandle && (
+                <Link
+                  to={`/profile/${encodeURIComponent(repostedByHandle)}`}
+                  className={styles.repostIconLink}
+                  onClick={(e) => e.stopPropagation()}
+                  title={`Reposted by @${repostedByHandle}`}
+                  aria-label={`Reposted by @${repostedByHandle}`}
+                >
+                  <RepostIcon />
+                </Link>
+              )}
               {isVideo && (
                 <span className={styles.mediaBadge} title="Video – hover to play, click to open post">
                   <VideoIcon />
@@ -472,22 +483,6 @@ export default function PostCard({ item }: Props) {
                 )}
               </div>
             </span>
-            {repostedByHandle && (
-              <span className={styles.repostedBy}>
-                <span className={styles.repostBadge} title="Repost" aria-hidden>
-                  <RepostIcon />
-                </span>
-                {' '}
-                Reposted by{' '}
-                <Link
-                  to={`/profile/${encodeURIComponent(repostedByHandle)}`}
-                  className={styles.handleLink}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  @{repostedByHandle}
-                </Link>
-              </span>
-            )}
           </div>
           {text ? (
             <p className={styles.text}>
