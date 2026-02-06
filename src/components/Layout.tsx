@@ -16,9 +16,20 @@ export default function Layout({ title, children, showNav }: Props) {
   const navigate = useNavigate()
   const { session, sessionsList, logout, switchAccount } = useSession()
   const path = loc.pathname
-  const { viewMode, toggleViewMode } = useViewMode()
+  const { viewMode, setViewMode, viewOptions } = useViewMode()
+  const [viewMenuOpen, setViewMenuOpen] = useState(false)
+  const viewMenuRef = useRef<HTMLDivElement>(null)
   const [accountOpen, setAccountOpen] = useState(false)
   const accountRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!viewMenuOpen) return
+    function onDocClick(e: MouseEvent) {
+      if (viewMenuRef.current && !viewMenuRef.current.contains(e.target as Node)) setViewMenuOpen(false)
+    }
+    document.addEventListener('click', onDocClick)
+    return () => document.removeEventListener('click', onDocClick)
+  }, [viewMenuOpen])
 
   useEffect(() => {
     if (!accountOpen) return
@@ -63,14 +74,32 @@ export default function Layout({ title, children, showNav }: Props) {
         )}
         <h1 className={styles.title}>{title}</h1>
         {showNav && (
-          <button
-            type="button"
-            className={styles.viewModeBtn}
-            onClick={toggleViewMode}
-            title={viewMode === 'compact' ? 'Switch to larger previews' : 'Switch to more columns'}
-          >
-            {viewMode === 'compact' ? 'Large view' : 'Compact view'}
-          </button>
+          <div className={styles.viewWrap} ref={viewMenuRef}>
+            <button
+              type="button"
+              className={styles.viewModeBtn}
+              onClick={() => setViewMenuOpen((o) => !o)}
+              aria-expanded={viewMenuOpen}
+              aria-haspopup="true"
+              title="View size"
+            >
+              View {viewMode} ▾
+            </button>
+            {viewMenuOpen && (
+              <div className={styles.viewDropdown}>
+                {viewOptions.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    className={m === viewMode ? styles.viewOptionActive : styles.viewOption}
+                    onClick={() => { setViewMode(m); setViewMenuOpen(false); }}
+                  >
+                    View {m} {m === '1' ? '(smallest)' : m === '5' ? '(largest)' : ''}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         )}
         {showNav && session && (
           <div className={styles.accountWrap} ref={accountRef}>

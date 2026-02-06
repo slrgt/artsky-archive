@@ -75,7 +75,7 @@ export default function FeedPage() {
           <div className={styles.empty}>No posts with images or videos in this feed.</div>
         ) : (
           <>
-            <div className={`${styles.masonry} ${viewMode === 'large' ? styles.masonryLarge : ''}`}>
+            <div className={`${styles.masonry} ${styles[`masonryView${viewMode}`]}`}>
               {mediaItems.map((item) => (
                 <PostCard key={item.post.uri} item={item} />
               ))}

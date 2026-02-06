@@ -17,50 +17,78 @@
   padding: 2rem 1rem;
 }
 
-/* Grid: items flow left-to-right, row by row. "Load more" adds new rows at the bottom. */
+/* Grid: items flow left-to-right, row by row. */
 .masonry {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
   grid-auto-rows: auto;
+}
+
+/* View 1: most columns, smallest previews */
+.masonryView1 {
+  --card-media-height: 200px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem;
+}
+@media (min-width: 600px) {
+  .masonryView1 { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 900px) {
+  .masonryView1 { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 1200px) {
+  .masonryView1 { grid-template-columns: repeat(5, 1fr); gap: 0.5rem; }
+}
+
+/* View 2: default */
+.masonryView2 {
+  --card-media-height: 260px;
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.5rem;
 }
-
 @media (min-width: 600px) {
-  .masonry {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  .masonryView2 { grid-template-columns: repeat(3, 1fr); }
 }
-
 @media (min-width: 900px) {
-  .masonry {
-    grid-template-columns: repeat(4, 1fr);
-  }
+  .masonryView2 { grid-template-columns: repeat(4, 1fr); }
 }
 
-/* Large view: fewer columns, bigger previews */
-.masonryLarge {
-  --card-media-height: 420px;
+/* View 3 */
+.masonryView3 {
+  --card-media-height: 320px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+}
+@media (min-width: 600px) {
+  .masonryView3 { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 900px) {
+  .masonryView3 { grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+}
+
+/* View 4 */
+.masonryView4 {
+  --card-media-height: 380px;
   grid-template-columns: 1fr;
   gap: 0.75rem;
 }
-
 @media (min-width: 500px) {
-  .masonryLarge {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  .masonryView4 { grid-template-columns: repeat(2, 1fr); }
 }
-
 @media (min-width: 900px) {
-  .masonryLarge {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
+  .masonryView4 { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
 }
 
+/* View 5: fewest columns, largest previews */
+.masonryView5 {
+  --card-media-height: 460px;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+@media (min-width: 600px) {
+  .masonryView5 { grid-template-columns: repeat(2, 1fr); }
+}
 @media (min-width: 1200px) {
-  .masonryLarge {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  .masonryView5 { grid-template-columns: repeat(2, 1fr); gap: 1.25rem; }
 }
 
 .more {

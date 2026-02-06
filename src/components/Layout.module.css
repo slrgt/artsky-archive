@@ -64,8 +64,12 @@
   white-space: nowrap;
 }
 
-.viewModeBtn {
+.viewWrap {
+  position: relative;
   flex-shrink: 0;
+}
+
+.viewModeBtn {
   padding: 0.4rem 0.6rem;
   font-size: 0.8rem;
   color: var(--muted);
@@ -77,6 +81,44 @@
 
 .viewModeBtn:hover {
   color: var(--text);
+}
+
+.viewDropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.25rem;
+  min-width: 160px;
+  padding: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.viewOption,
+.viewOptionActive {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+  text-align: left;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  border-radius: 0.35rem;
+  cursor: pointer;
+}
+
+.viewOption:hover {
+  background: var(--bg);
+}
+
+.viewOptionActive {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .accountWrap {

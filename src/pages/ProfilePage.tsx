@@ -320,7 +320,7 @@ export default function ProfilePage() {
             <div className={styles.empty}>No liked posts with images or videos.</div>
           ) : (
             <>
-              <div className={`${styles.grid} ${viewMode === 'large' ? styles.gridLarge : ''}`}>
+              <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
                 {likedMediaItems.map((item) => (
                   <PostCard key={item.post.uri} item={item} />
                 ))}
@@ -343,7 +343,7 @@ export default function ProfilePage() {
           </div>
         ) : (
           <>
-            <div className={`${styles.grid} ${viewMode === 'large' ? styles.gridLarge : ''}`}>
+            <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
               {mediaItems.map((item) => (
                 <PostCard key={item.post.uri} item={item} />
               ))}

@@ -74,7 +74,7 @@ export default function TagPage() {
           <div className={styles.empty}>No posts with images or videos for this tag.</div>
         ) : (
           <>
-            <div className={`${styles.grid} ${viewMode === 'large' ? styles.gridLarge : ''}`}>
+            <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
               {mediaItems.map((item) => (
                 <PostCard key={item.post.uri} item={item} />
               ))}

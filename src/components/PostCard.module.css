@@ -30,12 +30,16 @@
 
 .addWrap {
   position: relative;
-  padding: 0.35rem 0.6rem;
-  padding-top: 0.25rem;
-  border-top: 1px solid var(--border);
-  display: flex;
+  margin-left: auto;
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.card:hover .addWrap,
+.addWrapOpen {
+  opacity: 1;
 }
 
 .addToBoardBtn {
@@ -214,9 +218,10 @@
 }
 
 .handleRow {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 0.35rem;
+  width: 100%;
 }
 
 .repostBadge {

@@ -231,30 +231,26 @@
   }
 }
 
-.gridLarge {
-  --card-media-height: 420px;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
-}
+.gridView1 { --card-media-height: 200px; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
+@media (min-width: 600px) { .gridView1 { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .gridView1 { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 1200px) { .gridView1 { grid-template-columns: repeat(5, 1fr); gap: 0.5rem; } }
 
-@media (min-width: 500px) {
-  .gridLarge {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
+.gridView2 { --card-media-height: 260px; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+@media (min-width: 600px) { .gridView2 { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .gridView2 { grid-template-columns: repeat(4, 1fr); } }
 
-@media (min-width: 900px) {
-  .gridLarge {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-  }
-}
+.gridView3 { --card-media-height: 320px; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+@media (min-width: 600px) { .gridView3 { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .gridView3 { grid-template-columns: repeat(3, 1fr); gap: 0.75rem; } }
 
-@media (min-width: 1200px) {
-  .gridLarge {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
+.gridView4 { --card-media-height: 380px; grid-template-columns: 1fr; gap: 0.75rem; }
+@media (min-width: 500px) { .gridView4 { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 900px) { .gridView4 { grid-template-columns: repeat(2, 1fr); gap: 1rem; } }
+
+.gridView5 { --card-media-height: 460px; grid-template-columns: 1fr; gap: 1rem; }
+@media (min-width: 600px) { .gridView5 { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1200px) { .gridView5 { grid-template-columns: repeat(2, 1fr); gap: 1.25rem; } }
 
 .more {
   display: block;
