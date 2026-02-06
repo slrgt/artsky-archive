@@ -109,7 +109,6 @@ export default function FeedPage() {
   }, [load])
 
   const mediaItems = items.filter((item) => getPostMediaInfo(item.post))
-  const columnCount = Number(viewMode) || 1
 
   return (
     <Layout title="Feed" showNav>
@@ -172,10 +171,7 @@ export default function FeedPage() {
           <div className={styles.empty}>No posts with images or videos in this feed.</div>
         ) : (
           <>
-            <div
-              className={styles.masonryPage}
-              style={{ columnCount: columnCount }}
-            >
+            <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
               {mediaItems.map((item) => (
                 <PostCard key={item.post.uri} item={item} />
               ))}

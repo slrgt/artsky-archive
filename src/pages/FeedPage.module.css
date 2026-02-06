@@ -98,18 +98,21 @@
   font-weight: 600;
 }
 
-/* Each page uses column-count so the browser balances column heights; new page = new block below Load more */
-.masonryPage {
-  column-gap: 0.4rem;
+/* Grid layout so items stay in document order when loading more (like profile), without forcing same card dimensions */
+.grid {
+  display: grid;
+  grid-auto-rows: auto;
+  gap: 0.5rem;
   width: 100%;
   min-width: 0;
   margin-bottom: 0.5rem;
 }
 
-.masonryPage > * {
-  break-inside: avoid;
-  margin-bottom: 0.4rem;
-}
+.gridView1 { grid-template-columns: repeat(1, minmax(0, 1fr)); gap: 0.5rem; }
+.gridView2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+.gridView3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.gridView4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.4rem; }
+.gridView5 { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.4rem; }
 
 .more {
   display: block;
