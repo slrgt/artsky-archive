@@ -108,11 +108,14 @@
   margin-bottom: 0.5rem;
 }
 
-.gridView1 { grid-template-columns: repeat(1, minmax(0, 1fr)); gap: 0.5rem; }
+/* 1-column: constrain card media height so full preview fits in viewport when scrolling */
+.gridView1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 0.5rem;
+  --feed-card-media-max-height: min(calc(100vh - 10rem), 85vh);
+}
 .gridView2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
 .gridView3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
-.gridView4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.4rem; }
-.gridView5 { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.4rem; }
 
 /* Invisible sentinel for infinite scroll (IntersectionObserver target) */
 .loadMoreSentinel {

@@ -51,17 +51,6 @@ function AccountIcon() {
   )
 }
 
-function ViewIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="3" y="3" width="7" height="7" />
-      <rect x="14" y="3" width="7" height="7" />
-      <rect x="14" y="14" width="7" height="7" />
-      <rect x="3" y="14" width="7" height="7" />
-    </svg>
-  )
-}
-
 function EyeIcon({ off }: { off?: boolean }) {
   if (off) {
     return (
@@ -102,13 +91,27 @@ function SystemIcon() {
     </svg>
   )
 }
-function GridSmallIcon() {
+function Column1Icon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="3" y="3" width="7" height="7" />
-      <rect x="14" y="3" width="7" height="7" />
-      <rect x="14" y="14" width="7" height="7" />
-      <rect x="3" y="14" width="7" height="7" />
+      <rect x="7" y="3" width="10" height="18" rx="1" />
+    </svg>
+  )
+}
+function Column2Icon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="3" width="8" height="18" rx="1" />
+      <rect x="13" y="3" width="8" height="18" rx="1" />
+    </svg>
+  )
+}
+function Column3Icon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="2" y="3" width="5" height="18" rx="1" />
+      <rect x="9.5" y="3" width="5" height="18" rx="1" />
+      <rect x="17" y="3" width="5" height="18" rx="1" />
     </svg>
   )
 }
@@ -381,10 +384,9 @@ export default function Layout({ title, children, showNav }: Props) {
               title={VIEW_LABELS[m]}
               aria-label={VIEW_LABELS[m]}
             >
-              <span className={styles.menuIconWithNum}>
-                <GridSmallIcon />
-                <span className={styles.menuColNum}>{m}</span>
-              </span>
+              {m === '1' && <Column1Icon />}
+              {m === '2' && <Column2Icon />}
+              {m === '3' && <Column3Icon />}
             </button>
           ))}
         </div>
@@ -465,10 +467,9 @@ export default function Layout({ title, children, showNav }: Props) {
             title={VIEW_LABELS[m]}
             aria-label={VIEW_LABELS[m]}
           >
-            <span className={styles.menuCompactColWrap}>
-              <GridSmallIcon />
-              <span className={styles.menuCompactNum}>{m}</span>
-            </span>
+            {m === '1' && <Column1Icon />}
+            {m === '2' && <Column2Icon />}
+            {m === '3' && <Column3Icon />}
           </button>
         ))}
       </div>
@@ -513,7 +514,9 @@ export default function Layout({ title, children, showNav }: Props) {
                 aria-label={`View: ${VIEW_LABELS[viewMode]}. Click to cycle.`}
                 title={VIEW_LABELS[viewMode]}
               >
-                <ViewIcon />
+                {viewMode === '1' && <Column1Icon />}
+                {viewMode === '2' && <Column2Icon />}
+                {viewMode === '3' && <Column3Icon />}
               </button>
               {!isDesktop && (
                 <button

@@ -171,6 +171,7 @@
   width: 100%;
   aspect-ratio: 3 / 4; /* fallback until image loads */
   min-height: 100px;
+  max-height: var(--feed-card-media-max-height, none); /* 1-col feed: fit viewport */
   overflow: hidden;
   background: var(--bg);
   display: flex;

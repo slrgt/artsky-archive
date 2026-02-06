@@ -1,17 +1,15 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 
 const STORAGE_KEY = 'artsky-view-mode'
-export type ViewMode = '1' | '2' | '3' | '4' | '5'
+export type ViewMode = '1' | '2' | '3'
 
-const VIEW_OPTIONS: ViewMode[] = ['1', '2', '3', '4', '5']
+const VIEW_OPTIONS: ViewMode[] = ['1', '2', '3']
 
 /** Human-readable labels: view N = N columns */
 export const VIEW_LABELS: Record<ViewMode, string> = {
   '1': '1 column',
   '2': '2 columns',
   '3': '3 columns',
-  '4': '4 columns',
-  '5': '5 columns',
 }
 
 type ViewModeContextValue = {
@@ -25,7 +23,8 @@ const ViewModeContext = createContext<ViewModeContextValue | null>(null)
 function getStored(): ViewMode {
   try {
     const v = localStorage.getItem(STORAGE_KEY)
-    if (v === '1' || v === '2' || v === '3' || v === '4' || v === '5') return v
+    if (v === '1' || v === '2' || v === '3') return v
+    if (v === '4' || v === '5') return '3' /* migrate old 4/5 column preference to 3 */
   } catch {
     // ignore
   }
