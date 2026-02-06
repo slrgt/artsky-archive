@@ -110,11 +110,6 @@
   letter-spacing: -0.02em;
 }
 
-/* Desktop: View + Account in top right; search centered */
-.headerRight {
-  display: none;
-}
-
 @media (min-width: 768px) {
   .headerBtnActive {
     color: var(--accent);
