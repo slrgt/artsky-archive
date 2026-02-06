@@ -777,6 +777,7 @@
   border-radius: 0.5rem;
   border: 1px solid var(--border);
   background: var(--glass-highlight);
+  cursor: default;
 }
 
 .replyAsUserChip:hover {
@@ -801,7 +802,7 @@
 }
 
 .replyAsHandleBtn:hover {
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 .replyAsHandleBtn:focus-visible {
