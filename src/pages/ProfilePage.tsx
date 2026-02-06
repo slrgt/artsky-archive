@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { agent, publicAgent, getPostMediaInfo, getSession, type TimelineItem } from '../lib/bsky'
+import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import PostCard from '../components/PostCard'
 import PostText from '../components/PostText'
 import Layout from '../components/Layout'
 import { useViewMode } from '../context/ViewModeContext'
 import styles from './ProfilePage.module.css'
+import postBlockStyles from './PostDetailPage.module.css'
 
 const REASON_REPOST = 'app.bsky.feed.defs#reasonRepost'
 
@@ -345,13 +347,48 @@ export default function ProfilePage() {
           ) : (
             <>
               <ul className={styles.textList}>
-                {textItems.map((item) => (
-                  <li key={item.post.uri}>
-                    <Link to={`/post/${encodeURIComponent(item.post.uri)}`} className={styles.textLink}>
-                      <span className={styles.textSnippet}>{postText(item.post).slice(0, 200)}{postText(item.post).length > 200 ? '…' : ''}</span>
-                    </Link>
-                  </li>
-                ))}
+                {textItems.map((item) => {
+                  const p = item.post
+                  const handle = p.author.handle ?? p.author.did
+                  const text = postText(p)
+                  const createdAt = (p.record as { createdAt?: string })?.createdAt
+                  const avatar = p.author.avatar
+                  return (
+                    <li key={p.uri}>
+                      <Link to={`/post/${encodeURIComponent(p.uri)}`} className={styles.textPostLink}>
+                        <article className={postBlockStyles.postBlock}>
+                          <div className={postBlockStyles.postBlockContent}>
+                            <div className={postBlockStyles.postHead}>
+                              {avatar && <img src={avatar} alt="" className={postBlockStyles.avatar} />}
+                              <div className={postBlockStyles.authorRow}>
+                                <Link
+                                  to={`/profile/${encodeURIComponent(handle)}`}
+                                  className={postBlockStyles.handleLink}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  @{handle}
+                                </Link>
+                                {createdAt && (
+                                  <span
+                                    className={postBlockStyles.postTimestamp}
+                                    title={formatExactDateTime(createdAt)}
+                                  >
+                                    {formatRelativeTime(createdAt)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {text ? (
+                              <p className={postBlockStyles.postText}>
+                                <PostText text={text} />
+                              </p>
+                            ) : null}
+                          </div>
+                        </article>
+                      </Link>
+                    </li>
+                  )
+                })}
               </ul>
               {cursor && <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />}
               {loadingMore && <div className={styles.loadingMore}>Loading…</div>}
