@@ -76,6 +76,10 @@ export default function PostCard({ item, showRepostGlow = false }: Props) {
   const handle = post.author.handle ?? post.author.did
   const repostedByHandle = reason?.by ? (reason.by.handle ?? reason.by.did) : null
   const createdAt = (post.record as { createdAt?: string })?.createdAt
+  const authorViewer = (post.author as { viewer?: { following?: string } }).viewer
+  const isFollowingAuthor = !!authorViewer?.following
+  const isOwnPost = session?.did === post.author.did
+  const showNotFollowingGreen = !!session && !isOwnPost && !isFollowingAuthor
 
   const [imageIndex, setImageIndex] = useState(0)
   const [mediaAspect, setMediaAspect] = useState<number | null>(null)
@@ -403,7 +407,7 @@ export default function PostCard({ item, showRepostGlow = false }: Props) {
               {post.author.avatar && (
                 <img src={post.author.avatar} alt="" className={styles.authorAvatar} loading="lazy" />
               )}
-              <span className={repostedByHandle && showRepostGlow ? styles.handleLinkWrapRepost : styles.handleLinkWrap}>
+              <span className={showNotFollowingGreen ? styles.handleLinkWrapNotFollowing : repostedByHandle && showRepostGlow ? styles.handleLinkWrapRepost : styles.handleLinkWrap}>
                 <Link
                   to={`/profile/${encodeURIComponent(handle)}`}
                   className={styles.handleLink}
