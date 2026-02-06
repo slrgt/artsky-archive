@@ -34,6 +34,11 @@ function save(boards: Artboard[]) {
   }
 }
 
+/** Replace all artboards (e.g. after syncing from PDS). */
+export function replaceAllArtboards(boards: Artboard[]): void {
+  save(boards)
+}
+
 export function getArtboards(): Artboard[] {
   return load()
 }

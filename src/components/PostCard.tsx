@@ -2,7 +2,9 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Hls from 'hls.js'
 import { getPostMediaInfo, getPostAllMedia, getPostMediaUrl, agent, type TimelineItem } from '../lib/bsky'
-import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard } from '../lib/artboards'
+import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard, getArtboard } from '../lib/artboards'
+import { putArtboardOnPds } from '../lib/artboardsPds'
+import { useSession } from '../context/SessionContext'
 import PostText from './PostText'
 import styles from './PostCard.module.css'
 
@@ -58,6 +60,7 @@ function isHlsUrl(url: string): boolean {
 
 export default function PostCard({ item }: Props) {
   const navigate = useNavigate()
+  const { session } = useSession()
   const videoRef = useRef<HTMLVideoElement>(null)
   const hlsRef = useRef<Hls | null>(null)
   const { post, reason } = item as { post: typeof item.post; reason?: { $type?: string; by?: { handle?: string; did?: string } } }
@@ -141,7 +144,7 @@ export default function PostCard({ item }: Props) {
     })
   }
 
-  function handleAddToArtboard() {
+  async function handleAddToArtboard() {
     const hasSelection = addToBoardIds.size > 0 || newBoardName.trim().length > 0
     if (!hasSelection) return
     const mediaUrl = getPostMediaUrl(post)
@@ -152,14 +155,31 @@ export default function PostCard({ item }: Props) {
       text: (post.record as { text?: string })?.text?.slice(0, 200),
       thumb: mediaUrl?.url,
     }
+    const modifiedIds: string[] = []
     if (newBoardName.trim()) {
       const board = createArtboard(newBoardName.trim())
       addPostToArtboard(board.id, payload)
+      modifiedIds.push(board.id)
       setNewBoardName('')
     }
-    addToBoardIds.forEach((id) => addPostToArtboard(id, payload))
+    addToBoardIds.forEach((id) => {
+      addPostToArtboard(id, payload)
+      modifiedIds.push(id)
+    })
     setAddToBoardIds(new Set())
     setAddOpen(false)
+    if (session?.did && modifiedIds.length > 0) {
+      for (const boardId of modifiedIds) {
+        const board = getArtboard(boardId)
+        if (board) {
+          try {
+            await putArtboardOnPds(agent, session.did, board)
+          } catch {
+            // leave local as is
+          }
+        }
+      }
+    }
   }
 
   const isVideo = media.type === 'video' && media.videoPlaylist

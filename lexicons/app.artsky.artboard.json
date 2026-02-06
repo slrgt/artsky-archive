@@ -1,0 +1,33 @@
+{
+  "lexicon": 1,
+  "id": "app.artsky.artboard",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "An artboard (collection of saved posts) stored on the user's PDS.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["name", "posts", "createdAt"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 256 },
+          "posts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["uri", "cid"],
+              "properties": {
+                "uri": { "type": "string", "format": "uri" },
+                "cid": { "type": "string" },
+                "authorHandle": { "type": "string", "maxLength": 256 },
+                "text": { "type": "string", "maxLength": 2000 },
+                "thumb": { "type": "string", "format": "uri", "maxLength": 2000 }
+              }
+            }
+          },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}

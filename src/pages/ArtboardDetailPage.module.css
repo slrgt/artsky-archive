@@ -1,91 +1,156 @@
 .wrap {
-  padding: 1rem;
+  padding: 0.5rem;
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+  padding-right: max(0.5rem, env(safe-area-inset-right));
   padding-bottom: 5rem;
 }
 
 .count {
   color: var(--muted);
-  font-size: 0.9rem;
-  margin: 0 0 1rem;
+  font-size: clamp(0.85rem, 2.2vw, 0.95rem);
+  margin: 0 0 0.75rem;
+  padding: 0 0.25rem;
 }
 
 .empty {
   color: var(--muted);
   padding: 2rem 0;
   margin: 0;
+  font-size: clamp(0.95rem, 2.5vw, 1rem);
 }
 
+/* Bento grid: first item hero (2×2), rest fill — focus on media */
 .grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
+  grid-auto-rows: minmax(160px, 1fr);
+  gap: 0.5rem;
 }
 
-@media (min-width: 600px) {
+@media (min-width: 500px) {
   .grid {
-    grid-template-columns: repeat(3, 1fr);
+    gap: 0.65rem;
+    grid-auto-rows: minmax(200px, 1fr);
   }
 }
 
+@media (min-width: 900px) {
+  .grid {
+    gap: 0.75rem;
+    grid-auto-rows: minmax(240px, 1fr);
+  }
+}
+
+/* First card spans 2 cols × 2 rows (hero) */
+.card:first-child {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
+  position: relative;
+  background: var(--bg);
+  border-radius: var(--glass-radius);
   overflow: hidden;
+  border: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .link {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   text-decoration: none;
   color: inherit;
-  padding: 0.5rem;
+  padding: 0;
 }
 
-.thumb {
-  width: 100%;
-  max-height: 280px;
-  object-fit: contain;
-  border-radius: 0.5rem;
-  display: block;
-  background: var(--bg);
-}
-
-.placeholder {
-  width: 100%;
-  height: 160px;
+/* Media fills cell; scaled up, bento-style */
+.mediaWrap {
+  flex: 1;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--bg);
-  border-radius: 0.5rem;
-  font-size: 2rem;
+}
+
+.thumb {
+  width: 100%;
+  height: 100%;
+  min-height: 140px;
+  object-fit: cover;
+  display: block;
+}
+
+.card:first-child .thumb {
+  min-height: 200px;
+}
+
+@media (min-width: 500px) {
+  .thumb { min-height: 180px; }
+  .card:first-child .thumb { min-height: 280px; }
+}
+
+@media (min-width: 900px) {
+  .thumb { min-height: 220px; }
+  .card:first-child .thumb { min-height: 360px; }
+}
+
+.placeholder {
+  width: 100%;
+  height: 100%;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--glass-highlight);
+  font-size: clamp(1.5rem, 6vw, 2.5rem);
+}
+
+.card:first-child .placeholder {
+  min-height: 200px;
+}
+
+/* Text secondary: compact, below media */
+.meta {
+  padding: 0.4rem 0.5rem;
+  flex-shrink: 0;
+  background: var(--glass-bg);
+  border-top: 1px solid var(--glass-border);
 }
 
 .handle {
   display: block;
-  font-size: 0.8rem;
+  font-size: clamp(0.75rem, 2vw, 0.8rem);
   color: var(--muted);
-  margin-top: 0.25rem;
+  line-height: 1.3;
 }
 
 .text {
-  font-size: 0.8rem;
-  margin: 0.25rem 0 0;
+  font-size: clamp(0.7rem, 1.8vw, 0.8rem);
+  margin: 0.15rem 0 0;
+  color: var(--muted);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  line-height: 1.35;
 }
 
+/* Remove: subtle, doesn’t compete with media */
 .remove {
   display: block;
   width: 100%;
-  padding: 0.4rem;
+  padding: 0.35rem 0.5rem;
   background: transparent;
   border: none;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--glass-border);
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: clamp(0.7rem, 1.8vw, 0.75rem);
   cursor: pointer;
 }
 

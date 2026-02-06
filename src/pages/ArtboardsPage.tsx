@@ -1,38 +1,81 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   getArtboards,
   createArtboard,
   deleteArtboard,
   updateArtboardName,
+  getArtboard,
+  replaceAllArtboards,
   type Artboard,
 } from '../lib/artboards'
+import {
+  listArtboardsFromPds,
+  createArtboardOnPds,
+  deleteArtboardFromPds,
+  putArtboardOnPds,
+} from '../lib/artboardsPds'
+import { agent } from '../lib/bsky'
+import { useSession } from '../context/SessionContext'
 import Layout from '../components/Layout'
 import styles from './ArtboardsPage.module.css'
 
 export default function ArtboardsPage() {
+  const { session } = useSession()
   const [boards, setBoards] = useState<Artboard[]>(() => getArtboards())
   const [newName, setNewName] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
+  const [syncing, setSyncing] = useState(false)
+  const [pdsError, setPdsError] = useState<string | null>(null)
 
   function refresh() {
     setBoards(getArtboards())
   }
 
-  function handleCreate(e: React.FormEvent) {
+  useEffect(() => {
+    if (!session?.did) return
+    setSyncing(true)
+    setPdsError(null)
+    listArtboardsFromPds(agent, session.did)
+      .then((pdsBoards) => {
+        replaceAllArtboards(pdsBoards)
+        refresh()
+      })
+      .catch((err) => {
+        setPdsError(err instanceof Error ? err.message : 'Failed to sync artboards')
+      })
+      .finally(() => setSyncing(false))
+  }, [session?.did])
+
+  async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     const name = newName.trim() || 'Untitled'
-    createArtboard(name)
+    const board = createArtboard(name)
     setNewName('')
     refresh()
+    if (session?.did) {
+      try {
+        await createArtboardOnPds(agent, session.did, name, board.id)
+      } catch (err) {
+        deleteArtboard(board.id)
+        refresh()
+        setPdsError(err instanceof Error ? err.message : 'Failed to create on server')
+      }
+    }
   }
 
-  function handleDelete(id: string) {
-    if (confirm('Delete this artboard?')) {
-      deleteArtboard(id)
-      refresh()
+  async function handleDelete(id: string) {
+    if (!confirm('Delete this artboard?')) return
+    if (session?.did) {
+      try {
+        await deleteArtboardFromPds(agent, session.did, id)
+      } catch {
+        // still delete locally
+      }
     }
+    deleteArtboard(id)
+    refresh()
   }
 
   function startEdit(board: Artboard) {
@@ -40,17 +83,26 @@ export default function ArtboardsPage() {
     setEditName(board.name)
   }
 
-  function saveEdit() {
-    if (editingId) {
-      updateArtboardName(editingId, editName)
-      refresh()
-      setEditingId(null)
+  async function saveEdit() {
+    if (!editingId) return
+    updateArtboardName(editingId, editName)
+    const board = getArtboard(editingId)
+    setEditingId(null)
+    refresh()
+    if (session?.did && board) {
+      try {
+        await putArtboardOnPds(agent, session.did, board)
+      } catch {
+        setPdsError('Failed to sync rename')
+      }
     }
   }
 
   return (
     <Layout title="Artboards" showNav>
       <div className={styles.wrap}>
+        {syncing && <p className={styles.syncing}>Syncing artboards…</p>}
+        {pdsError && <p className={styles.pdsError}>{pdsError}</p>}
         <form onSubmit={handleCreate} className={styles.createForm}>
           <input
             type="text"

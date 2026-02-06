@@ -1,5 +1,7 @@
 .wrap {
-  padding: 1rem;
+  padding: 0.75rem;
+  padding-left: max(0.75rem, env(safe-area-inset-left));
+  padding-right: max(0.75rem, env(safe-area-inset-right));
   padding-bottom: 5rem;
 }
 
@@ -11,20 +13,22 @@
 
 .input {
   flex: 1;
+  min-height: var(--touch-min);
   padding: 0.75rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  background: var(--bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  background: var(--glass-highlight);
   color: var(--text);
-  font-size: 1rem;
+  font-size: 16px;
 }
 
 .createBtn {
+  min-height: var(--touch-min);
   padding: 0.75rem 1rem;
   background: var(--accent);
   color: white;
   border: none;
-  border-radius: 0.5rem;
+  border-radius: var(--glass-radius-sm);
   font-weight: 600;
   cursor: pointer;
 }
@@ -33,19 +37,57 @@
   color: var(--muted);
   padding: 2rem 0;
   margin: 0;
+  font-size: clamp(0.95rem, 2.5vw, 1rem);
+  line-height: 1.5;
 }
 
+.syncing {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+}
+
+.pdsError {
+  color: var(--error);
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+}
+
+/* Responsive bento grid: scale well on mobile, legible text */
 .bento {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 380px) {
+  .bento {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+}
+
+@media (min-width: 600px) {
+  .bento {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .bento {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+  }
 }
 
 .bentoCard {
   position: relative;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -69,16 +111,23 @@
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(2, 1fr);
   gap: 0.35rem;
-  min-height: 140px;
-  height: 180px;
+  min-height: 100px;
+  height: clamp(120px, 28vw, 200px);
   padding: 0.5rem;
   flex-shrink: 0;
+}
+
+@media (min-width: 600px) {
+  .bentoThumbs {
+    min-height: 140px;
+    height: clamp(160px, 22vw, 220px);
+  }
 }
 
 .bentoThumb {
   min-height: 0;
   min-width: 0;
-  border-radius: 0.4rem;
+  border-radius: 0.5rem;
   overflow: hidden;
   background: var(--bg);
   display: flex;
@@ -94,36 +143,39 @@
 }
 
 .bentoEmpty {
-  min-height: 140px;
-  height: 180px;
+  min-height: 100px;
+  height: clamp(120px, 28vw, 200px);
   padding: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.9rem;
+  font-size: clamp(0.85rem, 2.2vw, 0.95rem);
   color: var(--muted);
   flex-shrink: 0;
 }
 
 .bentoInfo {
-  padding: 0.5rem 0.75rem;
+  padding: 0.6rem 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.2rem;
   flex-shrink: 0;
 }
 
 .bentoName {
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: clamp(0.95rem, 2.5vw, 1.05rem);
+  line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text);
 }
 
 .bentoCount {
-  font-size: 0.8rem;
+  font-size: clamp(0.8rem, 2vw, 0.875rem);
   color: var(--muted);
+  line-height: 1.3;
 }
 
 .bentoActions {
@@ -132,28 +184,29 @@
   left: 0;
   right: 0;
   display: flex;
-  gap: 0.25rem;
-  padding: 0.35rem 0.5rem;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
+  gap: 0.35rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--glass-bg-strong);
+  border-top: 1px solid var(--glass-border);
   z-index: 1;
 }
 
 .bentoActions .editInput {
   flex: 1;
   min-width: 0;
-  padding: 0.35rem 0.5rem;
-  font-size: 0.85rem;
+  padding: 0.4rem 0.6rem;
+  font-size: clamp(0.85rem, 2.2vw, 0.95rem);
 }
 
 .smallBtn,
 .smallBtnDanger {
-  padding: 0.35rem 0.6rem;
-  border-radius: 0.4rem;
-  font-size: 0.85rem;
+  padding: 0.4rem 0.65rem;
+  min-height: var(--touch-min);
+  border-radius: var(--glass-radius-sm);
+  font-size: clamp(0.8rem, 2vw, 0.875rem);
   cursor: pointer;
-  border: 1px solid var(--border);
-  background: var(--bg);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-highlight);
   color: var(--text);
 }
 
@@ -164,13 +217,13 @@
 
 .editInput {
   flex: 1;
-  min-width: 120px;
-  padding: 0.5rem;
+  min-width: 80px;
+  padding: 0.5rem 0.6rem;
   border: 1px solid var(--accent);
-  border-radius: 0.4rem;
+  border-radius: var(--glass-radius-sm);
   background: var(--bg);
   color: var(--text);
-  font-size: 1rem;
+  font-size: 16px;
 }
 
 .thumbs {

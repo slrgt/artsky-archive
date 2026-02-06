@@ -2,11 +2,15 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Link } from 'react-router-dom'
 import { getArtboard, removePostFromArtboard } from '../lib/artboards'
+import { putArtboardOnPds } from '../lib/artboardsPds'
+import { agent } from '../lib/bsky'
+import { useSession } from '../context/SessionContext'
 import Layout from '../components/Layout'
 import styles from './ArtboardDetailPage.module.css'
 
 export default function ArtboardDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const { session } = useSession()
   const [, setTick] = useState(0)
   const board = id ? getArtboard(id) : undefined
 
@@ -30,10 +34,19 @@ export default function ArtboardDetailPage() {
   }
 
   const boardId = board.id
-  function handleRemove(postUri: string) {
-    if (confirm('Remove this post from the artboard?')) {
-      removePostFromArtboard(boardId, postUri)
-      setTick((t) => t + 1)
+  async function handleRemove(postUri: string) {
+    if (!confirm('Remove this post from the artboard?')) return
+    removePostFromArtboard(boardId, postUri)
+    setTick((t) => t + 1)
+    if (session?.did) {
+      const updated = getArtboard(boardId)
+      if (updated) {
+        try {
+          await putArtboardOnPds(agent, session.did, updated)
+        } catch {
+          // leave local state as is
+        }
+      }
     }
   }
 
@@ -48,13 +61,17 @@ export default function ArtboardDetailPage() {
             {board.posts.map((p) => (
               <div key={p.uri} className={styles.card}>
                 <Link to={`/post/${encodeURIComponent(p.uri)}`} className={styles.link}>
-                  {p.thumb ? (
-                    <img src={p.thumb} alt="" className={styles.thumb} />
-                  ) : (
-                    <div className={styles.placeholder}>📌</div>
-                  )}
-                  <span className={styles.handle}>@{p.authorHandle ?? 'unknown'}</span>
-                  {p.text ? <p className={styles.text}>{p.text.slice(0, 60)}…</p> : null}
+                  <div className={styles.mediaWrap}>
+                    {p.thumb ? (
+                      <img src={p.thumb} alt="" className={styles.thumb} />
+                    ) : (
+                      <div className={styles.placeholder}>📌</div>
+                    )}
+                  </div>
+                  <div className={styles.meta}>
+                    <span className={styles.handle}>@{p.authorHandle ?? 'unknown'}</span>
+                    {p.text ? <p className={styles.text}>{p.text.slice(0, 80)}{p.text.length > 80 ? '…' : ''}</p> : null}
+                  </div>
                 </Link>
                 <button
                   type="button"
