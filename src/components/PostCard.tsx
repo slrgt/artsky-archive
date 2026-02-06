@@ -215,10 +215,7 @@ export default function PostCard({ item }: Props) {
     }
   }, [])
 
-  useEffect(() => {
-    setMediaAspect(null)
-  }, [currentImageUrl])
-
+  /* Keep previous aspect when switching images so the container doesn't flash to 3/4 and back */
   useEffect(() => {
     if (isVideo) setMediaAspect(null)
   }, [isVideo, media.videoPlaylist])

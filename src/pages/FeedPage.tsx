@@ -110,13 +110,6 @@ export default function FeedPage() {
 
   const mediaItems = items.filter((item) => getPostMediaInfo(item.post))
   const columnCount = Number(viewMode) || 1
-  const PAGE_SIZE = 30
-  const firstPage = mediaItems.slice(0, PAGE_SIZE)
-  const restItems = mediaItems.slice(PAGE_SIZE)
-  const restPages = Array.from(
-    { length: Math.ceil(restItems.length / PAGE_SIZE) },
-    (_, i) => restItems.slice(i * PAGE_SIZE, (i + 1) * PAGE_SIZE)
-  )
 
   return (
     <Layout title="Feed" showNav>
@@ -179,16 +172,14 @@ export default function FeedPage() {
           <div className={styles.empty}>No posts with images or videos in this feed.</div>
         ) : (
           <>
-            {firstPage.length > 0 && (
-              <div
-                className={styles.masonryPage}
-                style={{ columnCount: columnCount }}
-              >
-                {firstPage.map((item) => (
-                  <PostCard key={item.post.uri} item={item} />
-                ))}
-              </div>
-            )}
+            <div
+              className={styles.masonryPage}
+              style={{ columnCount: columnCount }}
+            >
+              {mediaItems.map((item) => (
+                <PostCard key={item.post.uri} item={item} />
+              ))}
+            </div>
             {cursor && (
               <button
                 type="button"
@@ -199,17 +190,6 @@ export default function FeedPage() {
                 {loadingMore ? 'Loading…' : 'Load more'}
               </button>
             )}
-            {restPages.map((pageItems, pageIndex) => (
-              <div
-                key={pageIndex}
-                className={styles.masonryPage}
-                style={{ columnCount: columnCount }}
-              >
-                {pageItems.map((item) => (
-                  <PostCard key={item.post.uri} item={item} />
-                ))}
-              </div>
-            ))}
           </>
         )}
       </div>
