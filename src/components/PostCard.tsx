@@ -80,7 +80,6 @@ export default function PostCard({ item }: Props) {
   const [addToBoardIds, setAddToBoardIds] = useState<Set<string>>(new Set())
   const [newBoardName, setNewBoardName] = useState('')
   const [showLongPressMenu, setShowLongPressMenu] = useState(false)
-  const [longPressPosition, setLongPressPosition] = useState({ x: 0, y: 0 })
   const [longPressViewport, setLongPressViewport] = useState({ x: 0, y: 0 })
   const addRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -115,7 +114,6 @@ export default function PostCard({ item }: Props) {
     longPressTimerRef.current = setTimeout(() => {
       longPressTimerRef.current = null
       didLongPressRef.current = true
-      setLongPressPosition(longPressPositionRef.current)
       setLongPressViewport(longPressViewportRef.current)
       setShowLongPressMenu(true)
     }, delay)
@@ -319,7 +317,7 @@ export default function PostCard({ item }: Props) {
         onMouseLeave={clearLongPressTimer}
         onTouchStart={(e) => startLongPressTimer(e)}
         onTouchMove={checkTouchMove}
-        onTouchEnd={(e) => {
+        onTouchEnd={() => {
           clearLongPressTimer()
           if (didLongPressRef.current) return
           const now = Date.now()
