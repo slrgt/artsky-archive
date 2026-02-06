@@ -836,152 +836,85 @@ export default function PostDetailPage() {
       }
 
       if (key !== 'w' && key !== 'a' && key !== 's') return
-      if (postSectionCount <= 1 && key !== 'w') return
 
-      if (key === 'w') {
-        if (commentFormFocused) {
-          e.preventDefault()
-          setCommentFormFocused(false)
-          setFocusedCommentIndex(threadRepliesFlat.length - 1)
-          return
-        }
-        if (inDescriptionSection && hasMediaSection && rootMediaForNav.length > 0) {
-          e.preventDefault()
-          setPostSectionIndex(0)
-          const mediaSection = mediaSectionRef.current
-          const items = mediaSection?.querySelectorAll<HTMLElement>('[data-media-item]')
-          const last = items?.[rootMediaForNav.length - 1]
-          if (last) {
-            requestAnimationFrame(() => {
-              last.focus()
-              last.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            })
-          }
-          return
-        }
-        if (inMediaSection && rootMediaForNav.length > 0) {
-          const mediaSection = mediaSectionRef.current
-          const items = mediaSection?.querySelectorAll<HTMLElement>('[data-media-item]')
+      const mediaCount = rootMediaForNav.length
+      const commentCount = threadRepliesFlat.length
+      const totalItems = mediaCount + 1 + commentCount + 1
+
+      const getCurrentFocusIndex = (): number => {
+        if (commentFormWrapRef.current?.contains(target)) return totalItems - 1
+        if (inMediaSection && mediaCount > 0) {
           let el: HTMLElement | null = target
-          let currentIndex = -1
-          while (el && el !== mediaSection) {
+          while (el && el !== mediaSectionRef.current) {
             const idx = el.getAttribute?.('data-media-item')
-            if (idx != null) {
-              currentIndex = parseInt(idx, 10)
-              break
-            }
+            if (idx != null) return parseInt(idx, 10)
             el = el.parentElement
           }
-          if (currentIndex >= 0) {
-            e.preventDefault()
-            if (currentIndex > 0) {
-              const prev = items?.[currentIndex - 1]
-              if (prev) {
-                requestAnimationFrame(() => {
-                  prev.focus()
-                  prev.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                })
-              }
-            } else {
-              setPostSectionIndex(1)
-              requestAnimationFrame(() => descriptionSectionRef.current?.focus())
+        }
+        if (inDescriptionSection) return mediaCount
+        if (focusInComments && commentsSectionRef.current) {
+          const commentEl = target.closest?.('[data-comment-uri]') as HTMLElement | null
+          if (commentEl) {
+            const uri = commentEl.getAttribute('data-comment-uri')
+            if (uri) {
+              const idx = threadRepliesFlat.findIndex((f) => f.uri === uri)
+              if (idx >= 0) return mediaCount + 1 + idx
             }
-            return
           }
         }
+        return -1
       }
 
-      if (key === 's' || key === 'a') {
-        if (inDescriptionSection && hasRepliesSection) {
-          e.preventDefault()
-          setPostSectionIndex(postSectionCount - 1)
+      const focusItemAtIndex = (idx: number) => {
+        setCommentFormFocused(idx === totalItems - 1)
+        if (idx < mediaCount) {
+          setPostSectionIndex(0)
+          setFocusedCommentIndex(0)
+          const items = mediaSectionRef.current?.querySelectorAll<HTMLElement>('[data-media-item]')
+          const el = items?.[idx]
+          if (el) {
+            requestAnimationFrame(() => {
+              el.focus()
+              el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            })
+          }
+        } else if (idx === mediaCount) {
+          setPostSectionIndex(hasMediaSection ? 1 : 0)
           setFocusedCommentIndex(0)
           requestAnimationFrame(() => {
+            descriptionSectionRef.current?.focus()
+            descriptionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          })
+        } else if (idx < mediaCount + 1 + commentCount) {
+          const commentIdx = idx - (mediaCount + 1)
+          setPostSectionIndex(postSectionCount - 1)
+          setFocusedCommentIndex(commentIdx)
+          requestAnimationFrame(() => {
             const commentsSection = commentsSectionRef.current
-            const firstComment = commentsSection?.querySelector<HTMLElement>('[data-comment-uri]')
-            if (firstComment) {
-              (firstComment as HTMLElement).focus()
-              firstComment.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+            const commentEls = commentsSection?.querySelectorAll<HTMLElement>('[data-comment-uri]')
+            const el = commentEls?.[commentIdx]
+            if (el) {
+              el.focus()
+              el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
             }
           })
-          return
-        }
-        if (inMediaSection && rootMediaForNav.length > 0) {
-          const mediaSection = mediaSectionRef.current
-          const items = mediaSection?.querySelectorAll<HTMLElement>('[data-media-item]')
-          let el: HTMLElement | null = target
-          let currentIndex = -1
-          while (el && el !== mediaSection) {
-            const idx = el.getAttribute?.('data-media-item')
-            if (idx != null) {
-              currentIndex = parseInt(idx, 10)
-              break
-            }
-            el = el.parentElement
-          }
-          if (currentIndex >= 0 && currentIndex < rootMediaForNav.length - 1) {
-            e.preventDefault()
-            const next = items?.[currentIndex + 1]
-            if (next) {
-              requestAnimationFrame(() => {
-                next.focus()
-                next.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              })
-            }
-            return
-          }
-          if (currentIndex === rootMediaForNav.length - 1) {
-            e.preventDefault()
-            setPostSectionIndex(1)
-            requestAnimationFrame(() => {
-              descriptionSectionRef.current?.focus()
-              descriptionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            })
-            return
-          }
-        }
-      }
-
-      if (postSectionCount <= 1) return
-      e.preventDefault()
-
-      const nextComment = key === 'w' || key === 's' || key === 'a'
-      if (inCommentsSection && threadRepliesFlat.length > 0 && nextComment) {
-        if (key === 'w') {
-          if (effectiveFocusedCommentIndex === 0) {
-            e.preventDefault()
-            const nextSection = hasMediaSection ? 1 : 0
-            setPostSectionIndex(nextSection)
-            setFocusedCommentIndex(0)
-            requestAnimationFrame(() => {
-              const desc = descriptionSectionRef.current
-              if (desc) {
-                desc.focus()
-                desc.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }
-            })
-          } else {
-            const nextIdx = Math.max(0, effectiveFocusedCommentIndex - 1)
-            setFocusedCommentIndex(nextIdx)
-          }
-        } else if (key === 's') {
-          if (effectiveFocusedCommentIndex === threadRepliesFlat.length - 1) {
-            e.preventDefault()
-            setCommentFormFocused(true)
-            requestAnimationFrame(() => commentFormWrapRef.current?.focus())
-          } else {
-            setFocusedCommentIndex(Math.min(threadRepliesFlat.length - 1, effectiveFocusedCommentIndex + 1))
-          }
         } else {
-          setFocusedCommentIndex(Math.min(threadRepliesFlat.length - 1, effectiveFocusedCommentIndex + 1))
+          setPostSectionIndex(postSectionCount - 1)
+          setFocusedCommentIndex(commentCount - 1)
+          requestAnimationFrame(() => {
+            commentFormWrapRef.current?.focus()
+            commentFormWrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+          })
         }
-        return
       }
 
-      if (key === 'w') {
-        setPostSectionIndex((i) => Math.max(0, i - 1))
-      } else {
-        setPostSectionIndex((i) => Math.min(postSectionCount - 1, i + 1))
+      if (key === 'w' || key === 's' || key === 'a') {
+        const current = getCurrentFocusIndex()
+        if (current < 0) return
+        e.preventDefault()
+        const next = key === 'w' ? Math.max(0, current - 1) : Math.min(totalItems - 1, current + 1)
+        if (next !== current) focusItemAtIndex(next)
+        return
       }
     }
     window.addEventListener('keydown', onKeyDown)
