@@ -29,10 +29,13 @@
 }
 
 .addWrap {
-  position: absolute;
-  top: 0.35rem;
-  right: 0.35rem;
-  z-index: 2;
+  position: relative;
+  padding: 0.35rem 0.6rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 .addToBoardBtn {
@@ -45,16 +48,16 @@
   font-size: 1.1rem;
   line-height: 1;
   font-weight: 600;
-  color: var(--text);
-  background: rgba(0, 0, 0, 0.6);
+  color: var(--muted);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: 50%;
   cursor: pointer;
 }
 
 .addToBoardBtn:hover {
-  background: rgba(0, 0, 0, 0.8);
   color: var(--accent);
+  border-color: var(--accent);
 }
 
 .addDropdown {

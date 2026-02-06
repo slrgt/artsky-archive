@@ -14,7 +14,7 @@ interface Props {
 export default function Layout({ title, children, showNav }: Props) {
   const loc = useLocation()
   const navigate = useNavigate()
-  const { session, logout } = useSession()
+  const { session, sessionsList, logout, switchAccount } = useSession()
   const path = loc.pathname
   const { viewMode, toggleViewMode } = useViewMode()
   const [accountOpen, setAccountOpen] = useState(false)
@@ -31,11 +31,20 @@ export default function Layout({ title, children, showNav }: Props) {
     return () => document.removeEventListener('click', onDocClick)
   }, [accountOpen])
 
-  function handleSwitchAccount() {
+  async function handleSelectAccount(did: string) {
+    const ok = await switchAccount(did)
+    if (ok) setAccountOpen(false)
+  }
+
+  function handleAddAccount() {
+    setAccountOpen(false)
+    navigate('/login', { replace: true })
+  }
+
+  function handleLogout() {
     setAccountOpen(false)
     logout()
     navigate('/login', { replace: true })
-    window.location.reload()
   }
 
   return (
@@ -77,10 +86,26 @@ export default function Layout({ title, children, showNav }: Props) {
             </button>
             {accountOpen && (
               <div className={styles.accountDropdown}>
-                <p className={styles.accountUser}>@{session.handle}</p>
-                <button type="button" className={styles.accountSwitch} onClick={handleSwitchAccount}>
-                  Switch account
-                </button>
+                <p className={styles.accountDropdownTitle}>Accounts</p>
+                {sessionsList.map((s) => (
+                  <button
+                    key={s.did}
+                    type="button"
+                    className={s.did === session?.did ? styles.accountItemActive : styles.accountItem}
+                    onClick={() => handleSelectAccount(s.did)}
+                  >
+                    @{s.handle}
+                    {s.did === session?.did && <span className={styles.accountCheck} aria-hidden> ✓</span>}
+                  </button>
+                ))}
+                <div className={styles.accountDropdownActions}>
+                  <button type="button" className={styles.accountAdd} onClick={handleAddAccount}>
+                    Add account
+                  </button>
+                  <button type="button" className={styles.accountSwitch} onClick={handleLogout}>
+                    Log out
+                  </button>
+                </div>
               </div>
             )}
           </div>

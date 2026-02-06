@@ -4,9 +4,11 @@ import * as bsky from '../lib/bsky'
 
 interface SessionContextValue {
   session: AtpSessionData | null
+  sessionsList: AtpSessionData[]
   loading: boolean
   login: (identifier: string, password: string) => Promise<void>
   logout: () => void
+  switchAccount: (did: string) => Promise<boolean>
   refreshSession: () => void
 }
 
@@ -34,19 +36,29 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const logout = useCallback(() => {
-    bsky.logout()
-    setSession(null)
+    const stillLoggedIn = bsky.logoutCurrentAccount()
+    setSession(stillLoggedIn ? bsky.getSession() : null)
+  }, [])
+
+  const switchAccount = useCallback(async (did: string) => {
+    const ok = await bsky.switchAccount(did)
+    if (ok) setSession(bsky.getSession())
+    return ok
   }, [])
 
   const refreshSession = useCallback(() => {
     setSession(bsky.getSession())
   }, [])
 
+  const sessionsList = bsky.getSessionsList()
+
   const value: SessionContextValue = {
     session,
+    sessionsList,
     loading,
     login,
     logout,
+    switchAccount,
     refreshSession,
   }
 

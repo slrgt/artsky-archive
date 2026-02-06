@@ -2,17 +2,53 @@ import { AtpAgent, type AtpSessionData, type AtpSessionEvent } from '@atproto/ap
 
 const BSKY_SERVICE = 'https://bsky.social'
 const SESSION_KEY = 'artsky-bsky-session'
+const ACCOUNTS_KEY = 'artsky-accounts'
+
+type AccountsStore = { activeDid: string | null; sessions: Record<string, AtpSessionData> }
+
+function getAccounts(): AccountsStore {
+  try {
+    const raw = localStorage.getItem(ACCOUNTS_KEY)
+    if (!raw) return { activeDid: null, sessions: {} }
+    const parsed = JSON.parse(raw) as AccountsStore
+    return { activeDid: parsed.activeDid ?? null, sessions: parsed.sessions ?? {} }
+  } catch {
+    return { activeDid: null, sessions: {} }
+  }
+}
+
+function saveAccounts(accounts: AccountsStore) {
+  try {
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts))
+  } catch {
+    // ignore
+  }
+}
 
 function persistSession(_evt: AtpSessionEvent, session: AtpSessionData | undefined) {
+  const accounts = getAccounts()
   if (session) {
+    accounts.sessions[session.did] = session
+    accounts.activeDid = session.did
+    saveAccounts(accounts)
     try {
       localStorage.setItem(SESSION_KEY, JSON.stringify(session))
     } catch {
       // ignore
     }
   } else {
+    if (accounts.activeDid) {
+      delete accounts.sessions[accounts.activeDid]
+      const remaining = Object.keys(accounts.sessions)
+      accounts.activeDid = remaining[0] ?? null
+      saveAccounts(accounts)
+    }
     try {
-      localStorage.removeItem(SESSION_KEY)
+      if (accounts.activeDid) {
+        localStorage.setItem(SESSION_KEY, JSON.stringify(accounts.sessions[accounts.activeDid]))
+      } else {
+        localStorage.removeItem(SESSION_KEY)
+      }
     } catch {
       // ignore
     }
@@ -20,12 +56,51 @@ function persistSession(_evt: AtpSessionEvent, session: AtpSessionData | undefin
 }
 
 function getStoredSession(): AtpSessionData | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY)
-    if (!raw) return null
-    return JSON.parse(raw) as AtpSessionData
-  } catch {
+  let accounts = getAccounts()
+  if (!accounts.activeDid) {
+    try {
+      const raw = localStorage.getItem(SESSION_KEY)
+      if (raw) {
+        const session = JSON.parse(raw) as AtpSessionData
+        if (session?.did) {
+          accounts = { activeDid: session.did, sessions: { [session.did]: session } }
+          saveAccounts(accounts)
+          return session
+        }
+        return session
+      }
+    } catch {
+      // ignore
+    }
     return null
+  }
+  return accounts.sessions[accounts.activeDid] ?? null
+}
+
+/** All stored sessions (for account switcher). */
+export function getSessionsList(): AtpSessionData[] {
+  const accounts = getAccounts()
+  if (Object.keys(accounts.sessions).length === 0) {
+    const single = getStoredSession()
+    if (single) return [single]
+    return []
+  }
+  return Object.values(accounts.sessions)
+}
+
+/** Switch active account to the given did; resumes that session on the agent. */
+export async function switchAccount(did: string): Promise<boolean> {
+  const accounts = getAccounts()
+  const session = accounts.sessions[did]
+  if (!session?.accessJwt) return false
+  try {
+    accounts.activeDid = did
+    saveAccounts(accounts)
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+    await agent.resumeSession(session)
+    return true
+  } catch {
+    return false
   }
 }
 
@@ -68,13 +143,37 @@ export async function createAccount(opts: {
   return res
 }
 
-export function logout() {
+/** Remove current account from the list. If another account exists, switch to it. Returns true if still logged in (switched to another). */
+export function logoutCurrentAccount(): boolean {
+  const accounts = getAccounts()
+  if (accounts.activeDid) {
+    delete accounts.sessions[accounts.activeDid]
+    const remaining = Object.keys(accounts.sessions)
+    accounts.activeDid = remaining[0] ?? null
+    saveAccounts(accounts)
+    if (accounts.activeDid) {
+      const next = accounts.sessions[accounts.activeDid]
+      try {
+        localStorage.setItem(SESSION_KEY, JSON.stringify(next))
+        agent.resumeSession(next)
+        return true
+      } catch {
+        return false
+      }
+    }
+  }
   try {
     localStorage.removeItem(SESSION_KEY)
   } catch {
     // ignore
   }
-  // Session is cleared from storage; agent will have no session on next use
+  return false
+}
+
+export function logout() {
+  if (!logoutCurrentAccount()) {
+    // No other account; storage already cleared
+  }
 }
 
 export function getSession() {
