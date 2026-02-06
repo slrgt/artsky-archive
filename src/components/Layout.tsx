@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect, useSyncExternalStore } from 'react'
+import { useState, useRef, useEffect, useMemo, useSyncExternalStore } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../context/SessionContext'
 import { useTheme } from '../context/ThemeContext'
 import { useViewMode, VIEW_LABELS } from '../context/ViewModeContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
+import { publicAgent } from '../lib/bsky'
 import SearchBar from './SearchBar'
 import styles from './Layout.module.css'
 
@@ -177,6 +178,24 @@ export default function Layout({ title, children, showNav, showColumnView = true
   const loc = useLocation()
   const navigate = useNavigate()
   const { session, sessionsList, logout, switchAccount } = useSession()
+  const [accountProfiles, setAccountProfiles] = useState<Record<string, { avatar?: string; handle?: string }>>({})
+  const sessionsDidKey = useMemo(() => sessionsList.map((s) => s.did).sort().join(','), [sessionsList])
+
+  useEffect(() => {
+    if (sessionsList.length === 0) {
+      setAccountProfiles({})
+      return
+    }
+    let cancelled = false
+    sessionsList.forEach((s) => {
+      publicAgent.getProfile({ actor: s.did }).then((res) => {
+        if (cancelled) return
+        const data = res.data as { avatar?: string; handle?: string }
+        setAccountProfiles((prev) => ({ ...prev, [s.did]: { avatar: data.avatar, handle: data.handle } }))
+      }).catch(() => {})
+    })
+    return () => { cancelled = true }
+  }, [sessionsDidKey, sessionsList])
   const { theme, setTheme } = useTheme()
   const { viewMode, setViewMode, viewOptions } = useViewMode()
   const { artOnly, toggleArtOnly } = useArtOnly()
@@ -321,17 +340,26 @@ export default function Layout({ title, children, showNav, showColumnView = true
       {session && (
         <section className={styles.menuSection}>
           <span className={styles.menuSectionTitle}>Accounts</span>
-          {sessionsList.map((s) => (
-            <button
-              key={s.did}
-              type="button"
-              className={s.did === session?.did ? styles.menuItemActive : styles.menuItem}
-              onClick={() => handleSelectAccount(s.did)}
-            >
-              @{s.handle}
-              {s.did === session?.did && <span className={styles.sheetCheck} aria-hidden> ✓</span>}
-            </button>
-          ))}
+          {sessionsList.map((s) => {
+            const profile = accountProfiles[s.did]
+            const handle = profile?.handle ?? (s as { handle?: string }).handle ?? s.did
+            return (
+              <button
+                key={s.did}
+                type="button"
+                className={s.did === session?.did ? styles.menuItemActive : styles.menuItem}
+                onClick={() => handleSelectAccount(s.did)}
+              >
+                {profile?.avatar ? (
+                  <img src={profile.avatar} alt="" className={styles.accountMenuAvatar} />
+                ) : (
+                  <span className={styles.accountMenuAvatarPlaceholder} aria-hidden>{(handle || s.did).slice(0, 1).toUpperCase()}</span>
+                )}
+                <span>@{handle}</span>
+                {s.did === session?.did && <span className={styles.sheetCheck} aria-hidden> ✓</span>}
+              </button>
+            )
+          })}
           <div className={styles.menuActions}>
             <button type="button" className={styles.menuActionBtn} onClick={handleAddAccount}>
               Add account
@@ -401,18 +429,26 @@ export default function Layout({ title, children, showNav, showColumnView = true
       {session && (
         <>
           <div className={styles.menuCompactAccounts}>
-            {sessionsList.map((s) => (
-              <button
-                key={s.did}
-                type="button"
-                className={s.did === session?.did ? styles.menuCompactItemActive : styles.menuCompactItem}
-                onClick={() => handleSelectAccount(s.did)}
-                title={`@${s.handle}`}
-              >
-                <PersonIcon />
-                <span className={styles.menuCompactHandle}>@{s.handle}</span>
-              </button>
-            ))}
+            {sessionsList.map((s) => {
+              const profile = accountProfiles[s.did]
+              const handle = profile?.handle ?? (s as { handle?: string }).handle ?? s.did
+              return (
+                <button
+                  key={s.did}
+                  type="button"
+                  className={s.did === session?.did ? styles.menuCompactItemActive : styles.menuCompactItem}
+                  onClick={() => handleSelectAccount(s.did)}
+                  title={`@${handle}`}
+                >
+                  {profile?.avatar ? (
+                    <img src={profile.avatar} alt="" className={styles.accountMenuAvatar} />
+                  ) : (
+                    <span className={styles.accountMenuAvatarPlaceholder} aria-hidden>{(handle || s.did).slice(0, 1).toUpperCase()}</span>
+                  )}
+                  <span className={styles.menuCompactHandle}>@{handle}</span>
+                </button>
+              )
+            })}
           </div>
           <div className={styles.menuCompactActions}>
             <button type="button" className={styles.menuCompactActionBtn} onClick={handleAddAccount} title="Add account" aria-label="Add account">
