@@ -728,9 +728,18 @@ export default function Layout({ title, children, showNav, showColumnView = true
                 <span className={styles.logoText}>ArtSky</span>
               </Link>
               {isDesktop && (
-                <Link to="/artboards" className={styles.headerArtboardsLink} aria-label="Artboards">
-                  Artboards
-                </Link>
+                <>
+                  <Link to="/artboards" className={styles.headerArtboardsLink} aria-label="Artboards">
+                    Artboards
+                  </Link>
+                  <Link
+                    to="/forum"
+                    className={styles.headerArtboardsLink}
+                    aria-label="Forum"
+                  >
+                    Forum
+                  </Link>
+                </>
               )}
             </div>
             <div className={styles.headerCenter}>
@@ -739,25 +748,43 @@ export default function Layout({ title, children, showNav, showColumnView = true
             <div className={styles.headerRight}>
               {!session ? (
                 <>
-                  {showColumnView && (
-                    <button
-                      type="button"
-                      className={styles.headerBtn}
-                      onClick={cycleViewMode}
-                      aria-label={`View: ${VIEW_LABELS[viewMode]}. Click to cycle.`}
-                      title={VIEW_LABELS[viewMode]}
-                    >
-                      {viewMode === '1' && <Column1Icon />}
-                      {viewMode === '2' && <Column2Icon />}
-                      {viewMode === '3' && <Column3Icon />}
-                    </button>
+                  {isDesktop && (
+                    <>
+                      {showColumnView && (
+                        <button
+                          type="button"
+                          className={styles.headerBtn}
+                          onClick={cycleViewMode}
+                          aria-label={`View: ${VIEW_LABELS[viewMode]}. Click to cycle.`}
+                          title={VIEW_LABELS[viewMode]}
+                        >
+                          {viewMode === '1' && <Column1Icon />}
+                          {viewMode === '2' && <Column2Icon />}
+                          {viewMode === '3' && <Column3Icon />}
+                        </button>
+                      )}
+                      <Link to="/login" className={styles.headerAuthLink}>
+                        Log in
+                      </Link>
+                      <Link to="/login" state={{ mode: 'create' }} className={styles.headerAuthLinkPrimary}>
+                        Create account
+                      </Link>
+                    </>
                   )}
-                  <Link to="/login" className={styles.headerAuthLink}>
-                    Log in
-                  </Link>
-                  <Link to="/login" state={{ mode: 'create' }} className={styles.headerAuthLinkPrimary}>
-                    Create account
-                  </Link>
+                  {!isDesktop && (
+                    <div className={styles.headerBtnWrap}>
+                      <button
+                        ref={accountBtnRef}
+                        type="button"
+                        className={styles.headerBtn}
+                        onClick={() => openAccountPanel()}
+                        aria-label="Accounts and settings"
+                        aria-expanded={accountSheetOpen}
+                      >
+                        <AccountIcon />
+                      </button>
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -773,7 +800,7 @@ export default function Layout({ title, children, showNav, showColumnView = true
                   <span className={styles.headerBtnLabel}>New</span>
                 </button>
               )}
-              {showColumnView && (
+              {showColumnView && isDesktop && (
                 <button
                   type="button"
                   className={styles.headerBtn}
