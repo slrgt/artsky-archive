@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { SessionProvider, useSession } from './context/SessionContext'
+import { SessionProvider } from './context/SessionContext'
+import { ThemeProvider } from './context/ThemeContext'
 import { ViewModeProvider } from './context/ViewModeContext'
 import LoginPage from './pages/LoginPage'
 import FeedPage from './pages/FeedPage'
@@ -47,73 +48,16 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   }
 }
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useSession()
-  if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <span style={{ color: 'var(--muted)' }}>Loading…</span>
-      </div>
-    )
-  }
-  if (!session) {
-    return <Navigate to="/login" replace />
-  }
-  return <>{children}</>
-}
-
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route
-        path="/feed"
-        element={
-          <ProtectedRoute>
-            <FeedPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/artboards"
-        element={
-          <ProtectedRoute>
-            <ArtboardsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/artboard/:id"
-        element={
-          <ProtectedRoute>
-            <ArtboardDetailPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/post/:uri"
-        element={
-          <ProtectedRoute>
-            <PostDetailPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/profile/:handle"
-        element={
-          <ProtectedRoute>
-            <ProfilePage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/tag/:tag"
-        element={
-          <ProtectedRoute>
-            <TagPage />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/feed" element={<FeedPage />} />
+      <Route path="/artboards" element={<ArtboardsPage />} />
+      <Route path="/artboard/:id" element={<ArtboardDetailPage />} />
+      <Route path="/post/:uri" element={<PostDetailPage />} />
+      <Route path="/profile/:handle" element={<ProfilePage />} />
+      <Route path="/tag/:tag" element={<TagPage />} />
       <Route path="/" element={<Navigate to="/feed" replace />} />
       <Route path="*" element={<Navigate to="/feed" replace />} />
     </Routes>
@@ -124,11 +68,13 @@ export default function App() {
   return (
     <ErrorBoundary>
       <HashRouter>
-        <ViewModeProvider>
-          <SessionProvider>
-            <AppRoutes />
-          </SessionProvider>
-        </ViewModeProvider>
+        <ThemeProvider>
+          <ViewModeProvider>
+            <SessionProvider>
+              <AppRoutes />
+            </SessionProvider>
+          </ViewModeProvider>
+        </ThemeProvider>
       </HashRouter>
     </ErrorBoundary>
   )

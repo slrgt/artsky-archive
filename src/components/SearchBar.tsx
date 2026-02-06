@@ -19,9 +19,11 @@ function FilterIcon() {
 
 interface Props {
   onSelectFeed?: (source: FeedSource) => void
+  /** Optional ref so parent can focus the search input (e.g. from bottom bar) */
+  inputRef?: React.RefObject<HTMLInputElement | null>
 }
 
-export default function SearchBar({ onSelectFeed }: Props) {
+export default function SearchBar({ onSelectFeed, inputRef: externalInputRef }: Props) {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<SearchFilter>('all')
@@ -32,7 +34,8 @@ export default function SearchBar({ onSelectFeed }: Props) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [filterOpen, setFilterOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const internalInputRef = useRef<HTMLInputElement>(null)
+  const inputRef = externalInputRef ?? internalInputRef
 
   const trimmed = query.trim()
   const isHashtag = trimmed.startsWith('#')
@@ -154,7 +157,10 @@ export default function SearchBar({ onSelectFeed }: Props) {
           <FilterIcon />
         </button>
         <input
-          ref={inputRef}
+          ref={(el) => {
+            (internalInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el
+            if (externalInputRef) (externalInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el
+          }}
           type="search"
           placeholder={placeholder}
           value={query}

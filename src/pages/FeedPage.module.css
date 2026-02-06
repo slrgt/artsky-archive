@@ -20,7 +20,13 @@
   padding: 2rem 1rem;
 }
 
-/* Grid: items flow left-to-right, row by row. */
+.guestHint {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0 0 0.75rem;
+}
+
 .masonry {
   display: grid;
   grid-auto-rows: auto;
@@ -28,89 +34,43 @@
   min-width: 0;
 }
 
-/* Narrow screens (iPhone): 2 columns, consistent row heights so two rows display well */
+/* View N = N columns. On mobile use smaller preview heights so columns fit. */
 @media (max-width: 599px) {
-  .masonryView1,
-  .masonryView2,
-  .masonryView3,
-  .masonryView4,
-  .masonryView5 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.5rem;
-  }
-  .masonryView1 { --card-media-height: 200px; }
-  .masonryView2 { --card-media-height: 240px; }
-  .masonryView3 { --card-media-height: 280px; }
-  .masonryView4 { --card-media-height: 320px; }
-  .masonryView5 { --card-media-height: 360px; }
+  .masonryView1 { --card-media-height: 160px; }
+  .masonryView2 { --card-media-height: 140px; }
+  .masonryView3 { --card-media-height: 120px; }
+  .masonryView4 { --card-media-height: 110px; }
+  .masonryView5 { --card-media-height: 100px; }
 }
 
-/* Compact: most columns, smallest previews */
 .masonryView1 {
-  --card-media-height: 200px;
-  grid-template-columns: repeat(2, minmax(140px, 1fr));
-  gap: 0.4rem;
-}
-@media (min-width: 600px) {
-  .masonryView1 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (min-width: 900px) {
-  .masonryView1 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
-@media (min-width: 1200px) {
-  .masonryView1 { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.5rem; }
-}
-
-/* Small: default */
-.masonryView2 {
-  --card-media-height: 260px;
-  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  --card-media-height: 280px;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
   gap: 0.5rem;
 }
-@media (min-width: 600px) {
-  .masonryView2 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (min-width: 900px) {
-  .masonryView2 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.masonryView2 {
+  --card-media-height: 260px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
 }
 
-/* Medium */
 .masonryView3 {
-  --card-media-height: 320px;
-  grid-template-columns: repeat(2, minmax(160px, 1fr));
-  gap: 0.6rem;
-}
-@media (min-width: 600px) {
-  .masonryView3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (min-width: 900px) {
-  .masonryView3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+  --card-media-height: 220px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
 }
 
-/* Large */
 .masonryView4 {
-  --card-media-height: 380px;
-  grid-template-columns: repeat(2, minmax(180px, 1fr));
-  gap: 0.75rem;
-}
-@media (min-width: 500px) {
-  .masonryView4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (min-width: 900px) {
-  .masonryView4 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  --card-media-height: 200px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
 }
 
-/* Wide: fewest columns, largest previews */
 .masonryView5 {
-  --card-media-height: 460px;
-  grid-template-columns: repeat(2, minmax(200px, 1fr));
-  gap: 1rem;
-}
-@media (min-width: 600px) {
-  .masonryView5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (min-width: 1200px) {
-  .masonryView5 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
+  --card-media-height: 180px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.4rem;
 }
 
 .more {

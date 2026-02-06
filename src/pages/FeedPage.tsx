@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { agent, getPostMediaInfo, type TimelineItem } from '../lib/bsky'
+import { agent, getPostMediaInfo, getGuestFeed, type TimelineItem } from '../lib/bsky'
 import type { FeedSource } from '../types'
 import FeedSelector from '../components/FeedSelector'
 import PostCard from '../components/PostCard'
 import Layout from '../components/Layout'
+import { useSession } from '../context/SessionContext'
 import { useViewMode } from '../context/ViewModeContext'
 import styles from './FeedPage.module.css'
 
@@ -15,6 +16,7 @@ const DEFAULT_SOURCES: FeedSource[] = [
 export default function FeedPage() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { session } = useSession()
   const { viewMode } = useViewMode()
   const [source, setSource] = useState<FeedSource>(DEFAULT_SOURCES[0])
   const [items, setItems] = useState<TimelineItem[]>([])
@@ -36,7 +38,11 @@ export default function FeedPage() {
       if (nextCursor) setLoadingMore(true)
       else setLoading(true)
       setError(null)
-      if (source.kind === 'timeline') {
+      if (!session) {
+        const { feed, cursor: next } = await getGuestFeed(30, nextCursor)
+        setItems((prev) => (nextCursor ? [...prev, ...feed] : feed))
+        setCursor(next)
+      } else if (source.kind === 'timeline') {
         const res = await agent.getTimeline({ limit: 30, cursor: nextCursor })
         setItems((prev) => (nextCursor ? [...prev, ...res.data.feed] : res.data.feed))
         setCursor(res.data.cursor ?? undefined)
@@ -52,7 +58,7 @@ export default function FeedPage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [source])
+  }, [source, session])
 
   useEffect(() => {
     load()
@@ -63,11 +69,16 @@ export default function FeedPage() {
   return (
     <Layout title="Feed" showNav>
       <div className={styles.wrap}>
-        <FeedSelector
-          value={source}
-          onChange={setSource}
-          onAddCustom={(uri) => setSource({ kind: 'custom', label: 'Custom', uri })}
-        />
+        {session && (
+          <FeedSelector
+            value={source}
+            onChange={setSource}
+            onAddCustom={(uri) => setSource({ kind: 'custom', label: 'Custom', uri })}
+          />
+        )}
+        {!session && (
+          <p className={styles.guestHint}>Showing posts from Blender, Godot Engine &amp; NASA. Sign in to see your feed.</p>
+        )}
         {error && <p className={styles.error}>{error}</p>}
         {loading ? (
           <div className={styles.loading}>Loading…</div>

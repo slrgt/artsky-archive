@@ -5,13 +5,13 @@ export type ViewMode = '1' | '2' | '3' | '4' | '5'
 
 const VIEW_OPTIONS: ViewMode[] = ['1', '2', '3', '4', '5']
 
-/** Human-readable labels for the view size dropdown */
+/** Human-readable labels: view N = N columns */
 export const VIEW_LABELS: Record<ViewMode, string> = {
-  '1': 'Compact',
-  '2': 'Small',
-  '3': 'Medium',
-  '4': 'Large',
-  '5': 'Wide',
+  '1': '1 column',
+  '2': '2 columns',
+  '3': '3 columns',
+  '4': '4 columns',
+  '5': '5 columns',
 }
 
 type ViewModeContextValue = {

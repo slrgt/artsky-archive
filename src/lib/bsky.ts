@@ -109,6 +109,39 @@ export const agent = new AtpAgent({
   persistSession,
 })
 
+/** Handles shown in the guest feed when not logged in */
+export const GUEST_FEED_HANDLES = ['studio.blender.org', 'godotengine.org', 'stsci.edu']
+
+/** Fetch and merge author feeds for guest (no login). cursor = offset as string. */
+export async function getGuestFeed(
+  limit: number,
+  cursor?: string,
+): Promise<{ feed: TimelineItem[]; cursor: string | undefined }> {
+  const offset = cursor ? parseInt(cursor, 10) || 0 : 0
+  const need = offset + limit
+  const perHandle = Math.ceil(need / GUEST_FEED_HANDLES.length) + 5
+  const results = await Promise.all(
+    GUEST_FEED_HANDLES.map((actor) =>
+      agent.getAuthorFeed({ actor, limit: perHandle }).catch(() => ({ data: { feed: [] } })),
+    ),
+  )
+  const all = results.flatMap((r) => (r.data.feed || []) as TimelineItem[])
+  const seen = new Set<string>()
+  const deduped = all.filter((item) => {
+    if (seen.has(item.post.uri)) return false
+    seen.add(item.post.uri)
+    return true
+  })
+  deduped.sort((a, b) => {
+    const ta = new Date((a.post.record as { createdAt?: string })?.createdAt ?? 0).getTime()
+    const tb = new Date((b.post.record as { createdAt?: string })?.createdAt ?? 0).getTime()
+    return tb - ta
+  })
+  const feed = deduped.slice(offset, offset + limit)
+  const nextCursor = deduped.length >= offset + limit ? String(offset + limit) : undefined
+  return { feed, cursor: nextCursor }
+}
+
 export async function resumeSession(): Promise<boolean> {
   const session = getStoredSession()
   if (!session?.accessJwt) return false

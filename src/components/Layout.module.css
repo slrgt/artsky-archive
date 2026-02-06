@@ -71,180 +71,6 @@
   white-space: nowrap;
 }
 
-.viewWrap {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.viewModeBtn {
-  padding: 0.5rem 0.75rem;
-  min-height: var(--touch-min);
-  font-size: 0.85rem;
-  color: var(--muted);
-  background: var(--glass-highlight);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--glass-radius-sm);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.viewModeBtn:hover {
-  color: var(--text);
-}
-
-.viewDropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 0.25rem;
-  min-width: 160px;
-  padding: 0.35rem;
-  background: var(--glass-bg-strong);
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
-  backdrop-filter: blur(var(--glass-blur-strong));
-  border: 1px solid var(--glass-border);
-  border-radius: var(--glass-radius-sm);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.viewOption,
-.viewOptionActive {
-  padding: 0.35rem 0.5rem;
-  font-size: 0.85rem;
-  text-align: left;
-  color: var(--text);
-  background: transparent;
-  border: none;
-  border-radius: 0.35rem;
-  cursor: pointer;
-}
-
-.viewOption:hover {
-  background: var(--bg);
-}
-
-.viewOptionActive {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.accountWrap {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.accountBtn {
-  padding: 0.5rem 0.75rem;
-  min-height: var(--touch-min);
-  font-size: 0.85rem;
-  color: var(--muted);
-  background: var(--glass-highlight);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--glass-radius-sm);
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.accountBtn:hover {
-  color: var(--text);
-}
-
-.accountDropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 0.25rem;
-  min-width: 200px;
-  max-height: 60vh;
-  overflow-y: auto;
-  padding: 0.5rem;
-  background: var(--glass-bg-strong);
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
-  backdrop-filter: blur(var(--glass-blur-strong));
-  border: 1px solid var(--glass-border);
-  border-radius: var(--glass-radius-sm);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-  z-index: 20;
-}
-
-.accountDropdownTitle {
-  margin: 0 0 0.35rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.accountItem,
-.accountItemActive {
-  display: block;
-  width: 100%;
-  padding: 0.4rem 0.6rem;
-  margin: 0.15rem 0 0;
-  font-size: 0.9rem;
-  text-align: left;
-  color: var(--text);
-  background: transparent;
-  border: none;
-  border-radius: 0.35rem;
-  cursor: pointer;
-}
-
-.accountItem:hover {
-  background: var(--bg);
-}
-
-.accountItemActive {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.accountCheck {
-  margin-left: 0.25rem;
-}
-
-.accountDropdownActions {
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.accountAdd {
-  padding: 0.4rem 0.6rem;
-  font-size: 0.85rem;
-  color: var(--accent);
-  background: transparent;
-  border: 1px solid var(--accent);
-  border-radius: 0.4rem;
-  cursor: pointer;
-}
-
-.accountAdd:hover {
-  background: rgba(124, 58, 237, 0.12);
-}
-
-.accountSwitch {
-  padding: 0.4rem 0.6rem;
-  font-size: 0.85rem;
-  color: var(--muted);
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 0.4rem;
-  cursor: pointer;
-}
-
-.accountSwitch:hover {
-  color: var(--text);
-}
-
 .main {
   max-width: 1200px;
   margin: 0 auto;
@@ -252,46 +78,239 @@
   padding-right: env(safe-area-inset-right);
 }
 
-/* Liquid glass tab bar (iOS-style) */
+/* iOS-style tab bar with icons; hides on scroll down */
 .nav {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  padding-left: max(1rem, env(safe-area-inset-left));
-  padding-right: max(1rem, env(safe-area-inset-right));
-  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  align-items: center;
+  justify-content: space-around;
+  padding: 0.35rem 0.5rem;
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+  padding-right: max(0.5rem, env(safe-area-inset-right));
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   background: var(--glass-bg);
   -webkit-backdrop-filter: blur(var(--glass-blur));
   backdrop-filter: blur(var(--glass-blur));
   border-top: 1px solid var(--glass-border);
   z-index: 20;
+  transition: transform 0.25s ease;
 }
 
-.nav a {
-  padding: 0.6rem 1.25rem;
-  min-height: var(--touch-min);
-  display: inline-flex;
+.navHidden {
+  transform: translateY(100%);
+}
+
+.nav a,
+.navBtn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: var(--glass-radius-sm);
+  gap: 0.2rem;
+  padding: 0.4rem 0.25rem;
+  min-height: var(--touch-min);
   color: var(--muted);
   text-decoration: none;
   font-weight: 500;
-  font-size: clamp(0.9rem, 2.2vw, 1rem);
+  font-size: 0.65rem;
   -webkit-tap-highlight-color: transparent;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
 }
 
-.nav a:hover {
+.nav a:hover,
+.navBtn:hover {
   color: var(--text);
-  background: var(--glass-highlight);
 }
 
 .nav a.navActive {
   color: var(--accent);
+}
+
+.navIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.navLabel {
+  white-space: nowrap;
+}
+
+/* Account sheet (bottom sheet) */
+.sheetBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 24;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 75vh;
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+  backdrop-filter: blur(var(--glass-blur-strong));
+  border-top-left-radius: var(--glass-radius);
+  border-top-right-radius: var(--glass-radius);
+  border: 1px solid var(--glass-border);
+  border-bottom: none;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.25);
+  z-index: 25;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.sheetOpen {
+  transform: translateY(0);
+}
+
+.sheetHandle {
+  width: 36px;
+  height: 4px;
+  margin: 0.5rem auto;
+  background: var(--muted);
+  border-radius: 2px;
+  opacity: 0.6;
+}
+
+.sheetContent {
+  overflow-y: auto;
+  max-height: calc(75vh - 3rem);
+  padding: 0 1rem 1rem;
+}
+
+.sheetTitle {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.sheetSection {
+  margin-bottom: 1.25rem;
+}
+
+.sheetSectionTitle {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sheetRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.sheetOption,
+.sheetOptionActive {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  border-radius: var(--glass-radius-sm);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-highlight);
+  color: var(--text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sheetOption:hover {
+  border-color: var(--muted);
+}
+
+.sheetOptionActive {
+  border-color: var(--accent);
   background: rgba(124, 58, 237, 0.18);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sheetItem,
+.sheetItemActive {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.25rem;
+  font-size: 0.95rem;
+  text-align: left;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  border-radius: var(--glass-radius-sm);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sheetItem:hover {
+  background: var(--glass-highlight);
+}
+
+.sheetItemActive {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sheetCheck {
+  margin-left: 0.25rem;
+}
+
+.sheetActions {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sheetActionBtn {
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: white;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--glass-radius-sm);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sheetActionBtn:hover {
+  opacity: 0.95;
+}
+
+.sheetActionSecondary {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  cursor: pointer;
+}
+
+.sheetActionSecondary:hover {
+  color: var(--text);
 }

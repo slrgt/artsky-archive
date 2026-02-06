@@ -29,8 +29,9 @@
   --touch-min: 44px; /* iOS HIG minimum touch target */
 }
 
+/* Light theme (system or user override) */
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme]) {
     --bg: #f2f2f7;
     --surface: #ffffff;
     --border: #e5e5ea;
@@ -41,6 +42,30 @@
     --glass-border: rgba(0, 0, 0, 0.06);
     --glass-highlight: rgba(255, 255, 255, 0.8);
   }
+}
+
+html[data-theme="light"] :root {
+  --bg: #f2f2f7;
+  --surface: #ffffff;
+  --border: #e5e5ea;
+  --text: #1c1c1e;
+  --muted: #8e8e93;
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-strong: rgba(255, 255, 255, 0.92);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-highlight: rgba(255, 255, 255, 0.8);
+}
+
+html[data-theme="dark"] :root {
+  --bg: #0f0f1a;
+  --surface: #1a1a2e;
+  --border: #2d2d44;
+  --text: #e8e8f0;
+  --muted: #8888a0;
+  --glass-bg: rgba(26, 26, 46, 0.72);
+  --glass-bg-strong: rgba(26, 26, 46, 0.88);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.06);
 }
 
 * {
