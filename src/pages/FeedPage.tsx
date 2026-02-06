@@ -26,20 +26,48 @@ export default function FeedPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [guestProfiles, setGuestProfiles] = useState<Record<string, { avatar?: string; displayName?: string }>>({})
+  const [followedGuestHandles, setFollowedGuestHandles] = useState<string[]>([])
 
+  // When logged in, see which guest accounts the user follows (so we can show the preview section for those).
   useEffect(() => {
     if (!session) {
-      GUEST_FEED_ACCOUNTS.forEach((a) => {
-        publicAgent.getProfile({ actor: a.handle }).then((res) => {
-          const d = res.data
-          setGuestProfiles((prev) => ({
-            ...prev,
-            [a.handle]: { avatar: d.avatar, displayName: d.displayName },
-          }))
-        }).catch(() => {})
-      })
+      setFollowedGuestHandles([])
+      return
     }
+    const followed: string[] = []
+    let done = 0
+    GUEST_FEED_ACCOUNTS.forEach((a) => {
+      agent.getProfile({ actor: a.handle }).then((res) => {
+        const v = (res.data as { viewer?: { following?: string } }).viewer
+        if (v?.following) followed.push(a.handle)
+        done += 1
+        if (done === GUEST_FEED_ACCOUNTS.length) setFollowedGuestHandles(followed)
+      }).catch(() => {
+        done += 1
+        if (done === GUEST_FEED_ACCOUNTS.length) setFollowedGuestHandles(followed)
+      })
+    })
   }, [session])
+
+  const showGuestSection =
+    (!session && GUEST_FEED_ACCOUNTS.length > 0) ||
+    (!!session && followedGuestHandles.length > 0)
+  const guestHandlesToShow = !session
+    ? GUEST_FEED_ACCOUNTS.map((a) => a.handle)
+    : followedGuestHandles
+
+  useEffect(() => {
+    if (!showGuestSection || guestHandlesToShow.length === 0) return
+    guestHandlesToShow.forEach((handle) => {
+      publicAgent.getProfile({ actor: handle }).then((res) => {
+        const d = res.data
+        setGuestProfiles((prev) => ({
+          ...prev,
+          [handle]: { avatar: d.avatar, displayName: d.displayName },
+        }))
+      }).catch(() => {})
+    })
+  }, [showGuestSection, guestHandlesToShow.join(',')])
 
   useEffect(() => {
     const stateSource = (location.state as { feedSource?: FeedSource })?.feedSource
@@ -92,22 +120,30 @@ export default function FeedPage() {
             onAddCustom={(uri) => setSource({ kind: 'custom', label: 'Custom', uri })}
           />
         )}
-        {!session && (
-          <section className={styles.guestSection} aria-label="Guest feed">
+        {showGuestSection && (
+          <section className={styles.guestSection} aria-label={session ? 'Accounts you follow' : 'Guest feed'}>
             <p className={styles.guestHint}>
-              Showing posts from{' '}
-              {GUEST_FEED_ACCOUNTS.map((a, i) => (
-                <span key={a.handle}>
-                  {i > 0 && i === GUEST_FEED_ACCOUNTS.length - 1 ? ' & ' : i > 0 ? ', ' : ''}
-                  <Link to={`/profile/${encodeURIComponent(a.handle)}`} className={styles.guestLink}>
-                    {a.label}
-                  </Link>
-                </span>
-              ))}
-              . Sign in to see your feed.
+              {session ? (
+                <>Quick access to accounts you follow:</>
+              ) : (
+                <>
+                  Showing posts from{' '}
+                  {GUEST_FEED_ACCOUNTS.map((a, i) => (
+                    <span key={a.handle}>
+                      {i > 0 && i === GUEST_FEED_ACCOUNTS.length - 1 ? ' & ' : i > 0 ? ', ' : ''}
+                      <Link to={`/profile/${encodeURIComponent(a.handle)}`} className={styles.guestLink}>
+                        {a.label}
+                      </Link>
+                    </span>
+                  ))}
+                  . Sign in to see your feed.
+                </>
+              )}
             </p>
             <div className={styles.guestPreview}>
-              {GUEST_FEED_ACCOUNTS.map((a) => {
+              {guestHandlesToShow.map((handle) => {
+                const a = GUEST_FEED_ACCOUNTS.find((x) => x.handle === handle)
+                if (!a) return null
                 const profile = guestProfiles[a.handle]
                 return (
                   <Link
