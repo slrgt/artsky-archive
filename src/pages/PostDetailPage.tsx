@@ -965,6 +965,7 @@ export default function PostDetailPage() {
               )}
               <div
                 ref={descriptionSectionRef}
+                className={styles.rootPostDescription}
                 tabIndex={-1}
                 onFocus={() => setKeyboardFocusIndex(rootMediaForNav.length)}
               >

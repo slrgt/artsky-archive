@@ -29,6 +29,11 @@
   flex-direction: column;
 }
 
+/* Description block is focusable for W/S nav; hide default focus ring */
+.rootPostDescription:focus {
+  outline: none;
+}
+
 .collapseColumn {
   display: flex;
   flex-direction: column;
