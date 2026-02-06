@@ -50,6 +50,42 @@ function getForumPostUriFromPathname(pathname: string): string {
   }
 }
 
+type ReplyTreeNode = { reply: ForumReplyView; children: ReplyTreeNode[] }
+
+function buildReplyTree(replies: ForumReplyView[], documentUri: string): ReplyTreeNode[] {
+  const byParent = new Map<string, ForumReplyView[]>()
+  for (const r of replies) {
+    const parent = r.replyTo ?? documentUri
+    if (!byParent.has(parent)) byParent.set(parent, [])
+    byParent.get(parent)!.push(r)
+  }
+  const sortByTime = (a: ForumReplyView, b: ForumReplyView) =>
+    new Date(a.record?.createdAt ?? 0).getTime() - new Date(b.record?.createdAt ?? 0).getTime()
+
+  function buildNodes(parentKey: string): ReplyTreeNode[] {
+    const list = (byParent.get(parentKey) ?? []).slice().sort(sortByTime)
+    return list.map((reply) => ({
+      reply,
+      children: buildNodes(reply.uri),
+    }))
+  }
+  return buildNodes(documentUri)
+}
+
+function flattenReplyTree(nodes: ReplyTreeNode[]): { reply: ForumReplyView; depth: number }[] {
+  const out: { reply: ForumReplyView; depth: number }[] = []
+  function walk(nodes: ReplyTreeNode[], depth: number) {
+    for (const n of nodes) {
+      out.push({ reply: n.reply, depth })
+      walk(n.children, depth + 1)
+    }
+  }
+  walk(nodes, 0)
+  return out
+}
+
+const REPLY_THREAD_INDENT = 20
+
 export default function ForumPostDetailPage() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
@@ -153,6 +189,11 @@ export default function ForumPostDetailPage() {
     }
   }, [decodedUri, domain, docUrl])
 
+  const replyTreeFlat = useMemo(
+    () => (doc ? flattenReplyTree(buildReplyTree(replyPosts, doc.uri)) : []),
+    [replyPosts, doc?.uri]
+  )
+
   useEffect(() => {
     setDoc(null)
     loadDoc()
@@ -171,7 +212,7 @@ export default function ForumPostDetailPage() {
     if (doc) loadReplies()
   }, [doc, loadReplies])
 
-  const forumFocusTotal = 1 + replyPosts.length + (session ? 1 : 0)
+  const forumFocusTotal = 1 + replyTreeFlat.length + (session ? 1 : 0)
   keyboardFocusIndexRef.current = keyboardFocusIndex
   useEffect(() => {
     if (doc) setKeyboardFocusIndex(0)
@@ -198,7 +239,7 @@ export default function ForumPostDetailPage() {
             docSectionRef.current?.focus()
             docSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
           })
-        } else if (idx <= replyPosts.length) {
+        } else if (idx <= replyTreeFlat.length) {
           const replyIdx = idx - 1
           const replyEl = repliesSectionRef.current?.querySelectorAll<HTMLElement>('[data-forum-reply-index]')?.[replyIdx]
           if (replyEl) {
@@ -225,14 +266,14 @@ export default function ForumPostDetailPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [pathname, doc, forumFocusTotal, replyPosts.length])
+  }, [pathname, doc, forumFocusTotal, replyTreeFlat.length])
 
   async function handleReplySubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!session || !doc || !replyText.trim() || posting) return
     setPosting(true)
     try {
-      await createStandardSiteComment(doc.uri, replyText.trim())
+      await createStandardSiteComment(doc.uri, replyText.trim(), replyingTo?.uri)
       setReplyText('')
       setReplyingTo(null)
       await loadReplies()
@@ -539,11 +580,11 @@ export default function ForumPostDetailPage() {
               <h2 className={styles.replySectionTitle}>Replies & discussion</h2>
               {replyLoading ? (
                 <p className={styles.muted}>Loading…</p>
-              ) : replyPosts.length === 0 ? (
+              ) : replyTreeFlat.length === 0 ? (
                 <p className={styles.muted}>No replies yet. Post a reply above or share this post.</p>
               ) : (
                 <ul ref={repliesSectionRef} className={styles.replyList}>
-                  {replyPosts.map((p, replyIndex) => {
+                  {replyTreeFlat.map(({ reply: p, depth }, replyIndex) => {
                     const likedUri = likeUriOverrideMap[p.uri] ?? p.viewer?.like
                     const isLiked = !!likedUri
                     const likeLoading = likeLoadingMap[p.uri]
@@ -552,10 +593,11 @@ export default function ForumPostDetailPage() {
                     return (
                       <li
                         key={p.uri}
-                        className={styles.replyItem}
+                        className={depth > 0 ? `${styles.replyItem} ${styles.replyItemNested}` : styles.replyItem}
                         data-forum-reply-index={replyIndex}
                         tabIndex={-1}
                         onFocus={() => setKeyboardFocusIndex(1 + replyIndex)}
+                        style={{ marginLeft: depth * REPLY_THREAD_INDENT }}
                       >
                         <div className={postBlockStyles.postHead}>
                           {p.author.avatar ? (

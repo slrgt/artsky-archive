@@ -566,6 +566,8 @@ export async function updateStandardSiteDocument(
 /** Standard.site comment record (comments on documents; interoperable with leaflet.pub etc.). */
 export type StandardSiteCommentRecord = {
   subject: string // AT-URI of the document
+  /** Optional AT-URI of the parent comment when this is a reply to a reply. */
+  replyTo?: string
   text: string
   createdAt: string
   [k: string]: unknown
@@ -578,8 +580,12 @@ function generateRecordRkey(): string {
   return `${t}-${r}`
 }
 
-/** Create a standard.site comment on a document. Requires session. */
-export async function createStandardSiteComment(documentUri: string, text: string): Promise<{ uri: string; cid: string }> {
+/** Create a standard.site comment on a document. Optionally a reply to another comment (threading). Requires session. */
+export async function createStandardSiteComment(
+  documentUri: string,
+  text: string,
+  replyToUri?: string
+): Promise<{ uri: string; cid: string }> {
   const session = getSession()
   if (!session?.did) throw new Error('Not logged in')
   const parsed = parseAtUri(documentUri)
@@ -588,6 +594,7 @@ export async function createStandardSiteComment(documentUri: string, text: strin
   if (!t) throw new Error('Comment text is required')
   const record: StandardSiteCommentRecord = {
     subject: documentUri,
+    ...(replyToUri ? { replyTo: replyToUri } : {}),
     text: t,
     createdAt: new Date().toISOString(),
   }
@@ -629,6 +636,8 @@ export async function listStandardSiteComments(
 export type ForumReplyView = {
   uri: string
   cid: string
+  /** When set, this reply is a direct reply to another comment (for threading). */
+  replyTo?: string
   author: { did: string; handle?: string; avatar?: string; displayName?: string }
   record: { text?: string; createdAt?: string; facets?: unknown[] }
   likeCount?: number
@@ -658,6 +667,7 @@ async function commentRecordsToViews(
     out.push({
       uri: r.uri,
       cid: r.cid,
+      replyTo: r.value.replyTo,
       author: { did, handle, avatar },
       record: { text: r.value.text, createdAt: r.value.createdAt },
       isComment: true,
@@ -829,6 +839,7 @@ export async function listStandardSiteDocumentsFromDiscovery(
             rkey: r.uri.split('/').pop() ?? '',
             path,
             title: r.value.title,
+            body: r.value.body,
             createdAt: r.value.createdAt,
             baseUrl: baseUrl ?? undefined,
             authorHandle: handle,
@@ -891,6 +902,7 @@ export async function listStandardSiteDocumentsForForum(): Promise<StandardSiteD
               rkey: r.uri.split('/').pop() ?? '',
               path,
               title: r.value.title,
+              body: r.value.body,
               createdAt: r.value.createdAt,
               baseUrl: baseUrl ?? undefined,
               authorHandle: handle,

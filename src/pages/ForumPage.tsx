@@ -18,9 +18,19 @@ function matchesSearch(doc: StandardSiteDocumentView, q: string): boolean {
   if (!q.trim()) return true
   const lower = q.toLowerCase().trim()
   const title = (doc.title ?? '').toLowerCase()
+  const body = (doc.body ?? '').toLowerCase()
   const handle = (doc.authorHandle ?? '').toLowerCase()
   const path = (doc.path ?? '').toLowerCase()
-  return title.includes(lower) || handle.includes(lower) || path.includes(lower)
+  return title.includes(lower) || body.includes(lower) || handle.includes(lower) || path.includes(lower)
+}
+
+const BODY_PREVIEW_LENGTH = 140
+
+function bodyPreview(body: string | undefined): string {
+  if (!body?.trim()) return ''
+  const oneLine = body.replace(/\s+/g, ' ').trim()
+  if (oneLine.length <= BODY_PREVIEW_LENGTH) return oneLine
+  return oneLine.slice(0, BODY_PREVIEW_LENGTH).trim() + '…'
 }
 
 type ForumTab = 'all' | 'followed' | 'mine'
@@ -216,6 +226,9 @@ export default function ForumPage() {
                       <div className={postBlockStyles.postBlockContent}>
                         {head}
                         <p className={postBlockStyles.postText}>{title}</p>
+                        {bodyPreview(doc.body) && (
+                          <p className={styles.bodyPreview}>{bodyPreview(doc.body)}</p>
+                        )}
                         {!url && <p className={styles.noUrl}>No publication URL</p>}
                       </div>
                     </article>

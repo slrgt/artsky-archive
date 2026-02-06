@@ -135,6 +135,13 @@
   flex-shrink: 0;
 }
 
+.bodyPreview {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 .noUrl {
   margin: 0;
   font-size: 0.85rem;
