@@ -27,33 +27,39 @@
   --glass-radius: 16px;
   --glass-radius-sm: 12px;
   --touch-min: 44px; /* iOS HIG minimum touch target */
+  --shadow-subtle: none;
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Light theme (system or user override) */
+/* Light theme (system or user override) – soft off-whites to reduce eye strain */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
-    --bg: #f2f2f7;
-    --surface: #ffffff;
-    --border: #e5e5ea;
-    --text: #1c1c1e;
-    --muted: #8e8e93;
-    --glass-bg: rgba(255, 255, 255, 0.72);
-    --glass-bg-strong: rgba(255, 255, 255, 0.92);
-    --glass-border: rgba(0, 0, 0, 0.06);
-    --glass-highlight: rgba(255, 255, 255, 0.8);
+    --bg: #f0f0eb;
+    --surface: #f7f7f2;
+    --border: #e2e2dc;
+    --text: #1a1a1c;
+    --muted: #6e6e73;
+    --glass-bg: rgba(247, 247, 242, 0.82);
+    --glass-bg-strong: rgba(250, 250, 245, 0.95);
+    --glass-border: rgba(0, 0, 0, 0.07);
+    --glass-highlight: rgba(0, 0, 0, 0.04);
+    --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.06);
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
   }
 }
 
 html[data-theme="light"] :root {
-  --bg: #f2f2f7;
-  --surface: #ffffff;
-  --border: #e5e5ea;
-  --text: #1c1c1e;
-  --muted: #8e8e93;
-  --glass-bg: rgba(255, 255, 255, 0.72);
-  --glass-bg-strong: rgba(255, 255, 255, 0.92);
-  --glass-border: rgba(0, 0, 0, 0.06);
-  --glass-highlight: rgba(255, 255, 255, 0.8);
+  --bg: #f0f0eb;
+  --surface: #f7f7f2;
+  --border: #e2e2dc;
+  --text: #1a1a1c;
+  --muted: #6e6e73;
+  --glass-bg: rgba(247, 247, 242, 0.82);
+  --glass-bg-strong: rgba(250, 250, 245, 0.95);
+  --glass-border: rgba(0, 0, 0, 0.07);
+  --glass-highlight: rgba(0, 0, 0, 0.04);
+  --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 html[data-theme="dark"] :root {

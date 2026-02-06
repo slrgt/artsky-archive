@@ -89,13 +89,17 @@ function MoonIcon() {
 function SystemIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      {/* Left: moon crescent (scaled/translated) */}
-      <g transform="translate(2 2) scale(0.55)">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-      </g>
-      {/* Right: sun (circle + rays) */}
-      <circle cx="17" cy="12" r="2.5" />
-      <path d="M17 7v1M17 16v1M21 12h-1M14 12h-1M19.5 8.5l-.7.7M14.8 13.2l-.7.7M19.5 15.5l-.7-.7M14.8 10.8l-.7-.7" />
+      {/* Sun (top) */}
+      <circle cx="12" cy="6" r="2" />
+      <path d="M12 3.5v1M12 8.5v1M9.5 6h1M13.5 6h1" />
+      {/* Moon (bottom) */}
+      <path d="M12 19a3.5 3.5 0 0 1 0-7 3 3 0 0 0 0 7Z" />
+      {/* Curved arrow: sun → moon (right side, clockwise) */}
+      <path d="M14.5 8 Q18 12 14.5 16" />
+      <path d="M13.2 14.8l1.8-1.2-1.2-1.8" />
+      {/* Curved arrow: moon → sun (left side, counter) */}
+      <path d="M9.5 16 Q6 12 9.5 8" />
+      <path d="M10.8 9.2L9 10.4l1.8 1.2" />
     </svg>
   )
 }
