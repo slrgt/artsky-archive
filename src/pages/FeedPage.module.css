@@ -20,6 +20,8 @@
 .masonry {
   column-count: 2;
   column-gap: 0.5rem;
+  /* Fill columns top-to-bottom so "Load more" appends below existing posts */
+  column-fill: auto;
 }
 
 @media (min-width: 600px) {
