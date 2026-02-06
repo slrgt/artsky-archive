@@ -266,8 +266,52 @@
   display: block;
 }
 
-.replies {
+.repliesContainer {
   margin-top: 0.75rem;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.repliesBar {
+  width: 14px;
+  min-width: 14px;
+  flex-shrink: 0;
+  background: var(--border);
+  border: none;
+  border-radius: 3px 0 0 3px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.repliesBar:hover {
+  background: var(--accent);
+  opacity: 0.8;
+}
+
+.repliesBar:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.repliesCollapsed {
+  padding: 0.35rem 0.5rem;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-align: left;
+  flex: 1;
+}
+
+.repliesCollapsed:hover {
+  color: var(--accent);
+}
+
+.replies {
+  flex: 1;
+  min-width: 0;
   padding-left: 0.5rem;
   border-left: 2px solid var(--border);
 }

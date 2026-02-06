@@ -141,9 +141,13 @@ function MediaGallery({
 function PostBlock({
   node,
   depth = 0,
+  collapsedThreads,
+  onToggleCollapse,
 }: {
   node: AppBskyFeedDefs.ThreadViewPost | AppBskyFeedDefs.NotFoundPost | AppBskyFeedDefs.BlockedPost | { $type: string }
   depth?: number
+  collapsedThreads?: Set<string>
+  onToggleCollapse?: (uri: string) => void
 }) {
   if (!isThreadViewPost(node)) return null
   const { post } = node
@@ -151,6 +155,10 @@ function PostBlock({
   const text = (post.record as { text?: string })?.text ?? ''
   const handle = post.author.handle ?? post.author.did
   const avatar = post.author.avatar ?? undefined
+  const replies = 'replies' in node && Array.isArray(node.replies) ? (node.replies as (typeof node)[]) : []
+  const hasReplies = replies.length > 0
+  const isCollapsed = hasReplies && collapsedThreads?.has(post.uri)
+  const canCollapse = hasReplies && onToggleCollapse
 
   return (
     <article className={styles.postBlock} style={{ marginLeft: depth * 12 }}>
@@ -165,15 +173,36 @@ function PostBlock({
       </div>
       {text && <p className={styles.postText}>{text}</p>}
       {allMedia.length > 0 && <MediaGallery items={allMedia} />}
-      {'replies' in node && Array.isArray(node.replies) && node.replies.length > 0 && (
-        <div className={styles.replies}>
-          {(node.replies as (typeof node)[]).map((r) => (
-            <PostBlock
-              key={isThreadViewPost(r) ? r.post.uri : Math.random()}
-              node={r}
-              depth={depth + 1}
-            />
-          ))}
+      {hasReplies && (
+        <div className={styles.repliesContainer}>
+          <button
+            type="button"
+            className={styles.repliesBar}
+            onClick={() => canCollapse && onToggleCollapse(post.uri)}
+            aria-label={isCollapsed ? 'Expand replies' : 'Collapse replies'}
+            title={isCollapsed ? 'Expand replies' : 'Collapse replies'}
+          />
+          {isCollapsed ? (
+            <button
+              type="button"
+              className={styles.repliesCollapsed}
+              onClick={() => onToggleCollapse?.(post.uri)}
+            >
+              {replies.length} reply{replies.length !== 1 ? 's' : ''}
+            </button>
+          ) : (
+            <div className={styles.replies}>
+              {replies.map((r) => (
+                <PostBlock
+                  key={isThreadViewPost(r) ? r.post.uri : Math.random()}
+                  node={r}
+                  depth={depth + 1}
+                  collapsedThreads={collapsedThreads}
+                  onToggleCollapse={onToggleCollapse}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </article>
@@ -193,7 +222,17 @@ export default function PostDetailPage() {
   const [posting, setPosting] = useState(false)
   const [addToBoardId, setAddToBoardId] = useState<string | null>(null)
   const [addedToBoard, setAddedToBoard] = useState<string | null>(null)
+  const [collapsedThreads, setCollapsedThreads] = useState<Set<string>>(() => new Set())
   const boards = getArtboards()
+
+  function toggleCollapse(uri: string) {
+    setCollapsedThreads((prev) => {
+      const next = new Set(prev)
+      if (next.has(uri)) next.delete(uri)
+      else next.add(uri)
+      return next
+    })
+  }
 
   const load = useCallback(async () => {
     if (!decodedUri) return
@@ -314,6 +353,8 @@ export default function PostDetailPage() {
                     key={isThreadViewPost(r) ? r.post.uri : Math.random()}
                     node={r}
                     depth={0}
+                    collapsedThreads={collapsedThreads}
+                    onToggleCollapse={toggleCollapse}
                   />
                 ))}
               </div>

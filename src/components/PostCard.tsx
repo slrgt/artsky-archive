@@ -11,7 +11,8 @@ interface Props {
 function VideoIcon() {
   return (
     <svg className={styles.mediaIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M18 4H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-1 10.5l-4-2.5v5l4-2.5z" />
+      {/* Play triangle in rounded rectangle – common “video” symbol */}
+      <path d="M5 4h14v16H5V4zm9 5l5 3-5 3V9z" />
     </svg>
   )
 }
