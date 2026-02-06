@@ -251,8 +251,10 @@ export default function FeedPage() {
                       ) : (
                         <span className={styles.guestPreviewAvatarPlaceholder} aria-hidden>@{a.handle.slice(0, 1)}</span>
                       )}
-                      <span className={styles.guestPreviewLabel}>@{a.handle}</span>
-                      <span className={styles.guestPreviewName}>{profile?.displayName ?? a.label}</span>
+                      <div className={styles.guestPreviewText}>
+                        <span className={styles.guestPreviewLabel}>@{a.handle}</span>
+                        <span className={styles.guestPreviewName}>{profile?.displayName ?? a.label}</span>
+                      </div>
                     </Link>
                   )
                 })}
