@@ -425,6 +425,29 @@ export async function createPost(text: string): Promise<{ uri: string; cid: stri
   return { uri: res.uri, cid: res.cid }
 }
 
+/** List notifications for the current account. */
+export async function getNotifications(limit = 30, cursor?: string): Promise<{
+  notifications: { uri: string; author: { handle?: string; did: string; avatar?: string; displayName?: string }; reason: string; reasonSubject?: string; isRead: boolean; indexedAt: string }[]
+  cursor?: string
+}> {
+  const res = await agent.listNotifications({ limit, cursor })
+  const notifications = (res.data.notifications || []).map((n) => ({
+    uri: n.uri,
+    author: n.author as { handle?: string; did: string; avatar?: string; displayName?: string },
+    reason: n.reason,
+    reasonSubject: (n as { reasonSubject?: string }).reasonSubject,
+    isRead: n.isRead,
+    indexedAt: n.indexedAt,
+  }))
+  return { notifications, cursor: res.data.cursor }
+}
+
+/** Get unread notification count. */
+export async function getUnreadNotificationCount(): Promise<number> {
+  const res = await agent.countUnreadNotifications()
+  return res.data.count ?? 0
+}
+
 /** Post a reply to a post. For top-level reply use same uri/cid for root and parent. */
 export async function postReply(
   rootUri: string,

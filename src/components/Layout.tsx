@@ -4,7 +4,7 @@ import { useSession } from '../context/SessionContext'
 import { useTheme } from '../context/ThemeContext'
 import { useViewMode, VIEW_LABELS } from '../context/ViewModeContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
-import { publicAgent, createPost } from '../lib/bsky'
+import { publicAgent, createPost, getNotifications } from '../lib/bsky'
 import SearchBar from './SearchBar'
 import styles from './Layout.module.css'
 
@@ -50,6 +50,15 @@ function AccountIcon() {
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
       <circle cx="12" cy="7" r="4" />
+    </svg>
+  )
+}
+
+function BellIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
     </svg>
   )
 }
@@ -214,6 +223,9 @@ export default function Layout({ title, children, showNav, showColumnView = true
   const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
   const [accountSheetOpen, setAccountSheetOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [notifications, setNotifications] = useState<{ uri: string; author: { handle?: string; did: string; avatar?: string; displayName?: string }; reason: string; reasonSubject?: string; isRead: boolean; indexedAt: string }[]>([])
+  const [notificationsLoading, setNotificationsLoading] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
   const [composeOpen, setComposeOpen] = useState(false)
   const [composeText, setComposeText] = useState('')
@@ -225,6 +237,8 @@ export default function Layout({ title, children, showNav, showColumnView = true
   const searchInputRef = useRef<HTMLInputElement>(null)
   const accountBtnRef = useRef<HTMLButtonElement>(null)
   const accountMenuRef = useRef<HTMLDivElement>(null)
+  const notificationsMenuRef = useRef<HTMLDivElement>(null)
+  const notificationsBtnRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     document.title = title ? `${title} · ArtSky` : 'ArtSky'
@@ -240,6 +254,26 @@ export default function Layout({ title, children, showNav, showColumnView = true
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [accountMenuOpen])
+
+  useEffect(() => {
+    if (!notificationsOpen) return
+    const onDocClick = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (notificationsMenuRef.current?.contains(t) || notificationsBtnRef.current?.contains(t)) return
+      setNotificationsOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [notificationsOpen])
+
+  useEffect(() => {
+    if (!notificationsOpen || !session) return
+    setNotificationsLoading(true)
+    getNotifications(30)
+      .then(({ notifications: list }) => setNotifications(list))
+      .catch(() => setNotifications([]))
+      .finally(() => setNotificationsLoading(false))
+  }, [notificationsOpen, session])
 
   const scrollThreshold = 8
   useEffect(() => {
@@ -781,6 +815,65 @@ export default function Layout({ title, children, showNav, showColumnView = true
                 >
                   <EyeIcon off={artOnly} />
                 </button>
+              )}
+              {session && (
+                <div className={styles.headerBtnWrap}>
+                  <button
+                    ref={notificationsBtnRef}
+                    type="button"
+                    className={styles.headerBtn}
+                    onClick={() => setNotificationsOpen((o) => !o)}
+                    aria-label="Notifications"
+                    aria-expanded={notificationsOpen}
+                    title="Notifications"
+                  >
+                    <BellIcon />
+                  </button>
+                  {notificationsOpen && (
+                    <div ref={notificationsMenuRef} className={styles.notificationsMenu} role="dialog" aria-label="Notifications">
+                      <h2 className={styles.menuTitle}>Notifications</h2>
+                      {notificationsLoading ? (
+                        <p className={styles.notificationsLoading}>Loading…</p>
+                      ) : notifications.length === 0 ? (
+                        <p className={styles.notificationsEmpty}>No notifications yet.</p>
+                      ) : (
+                        <ul className={styles.notificationsList}>
+                          {notifications.map((n) => {
+                            const handle = n.author.handle ?? n.author.did
+                            const isFollow = n.reason === 'follow'
+                            const href = isFollow ? `/profile/${encodeURIComponent(handle)}` : `/post/${encodeURIComponent(n.reasonSubject ?? n.uri)}`
+                            const reasonLabel =
+                              n.reason === 'like' ? 'liked your post' :
+                              n.reason === 'repost' ? 'reposted your post' :
+                              n.reason === 'follow' ? 'followed you' :
+                              n.reason === 'mention' ? 'mentioned you' :
+                              n.reason === 'reply' ? 'replied to you' :
+                              n.reason === 'quote' ? 'quoted your post' :
+                              n.reason
+                            return (
+                              <li key={n.uri}>
+                                <Link
+                                  to={href}
+                                  className={styles.notificationItem}
+                                  onClick={() => setNotificationsOpen(false)}
+                                >
+                                  {n.author.avatar ? (
+                                    <img src={n.author.avatar} alt="" className={styles.notificationAvatar} />
+                                  ) : (
+                                    <span className={styles.notificationAvatarPlaceholder} aria-hidden>{handle.slice(0, 1).toUpperCase()}</span>
+                                  )}
+                                  <span className={styles.notificationText}>
+                                    <strong>@{handle}</strong> {reasonLabel}
+                                  </span>
+                                </Link>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
               <div className={styles.headerBtnWrap}>
                 <button
