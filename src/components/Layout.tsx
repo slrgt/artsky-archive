@@ -757,6 +757,19 @@ export default function Layout({ title, children, showNav }: Props) {
                 <>
                   {isDesktop && (
                     <>
+                      <div className={styles.headerBtnWrap}>
+                        <button
+                          ref={accountBtnRef}
+                          type="button"
+                          className={styles.headerBtn}
+                          onClick={() => openAccountPanel()}
+                          aria-label="Accounts and settings"
+                          aria-expanded={accountMenuOpen}
+                        >
+                          <AccountIcon />
+                          <span className={styles.navLabel}>Accounts</span>
+                        </button>
+                      </div>
                       <Link to="/login" className={styles.headerAuthLink}>
                         Log in
                       </Link>

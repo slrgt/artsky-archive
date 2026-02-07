@@ -1,6 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
+import { useSession } from './SessionContext'
 
 const STORAGE_KEY = 'artsky-view-mode'
+const DESKTOP_BREAKPOINT = 768
+
 export type ViewMode = '1' | '2' | '3'
 
 const VIEW_OPTIONS: ViewMode[] = ['1', '2', '3']
@@ -20,7 +24,7 @@ type ViewModeContextValue = {
 
 const ViewModeContext = createContext<ViewModeContextValue | null>(null)
 
-function getStored(): ViewMode {
+function getStored(): ViewMode | null {
   try {
     const v = localStorage.getItem(STORAGE_KEY)
     if (v === '1' || v === '2' || v === '3') return v
@@ -28,22 +32,39 @@ function getStored(): ViewMode {
   } catch {
     // ignore
   }
-  return '2'
+  return null
+}
+
+function getDesktopSnapshot() {
+  return typeof window !== 'undefined' ? window.innerWidth >= DESKTOP_BREAKPOINT : false
+}
+function subscribeDesktop(cb: () => void) {
+  if (typeof window === 'undefined') return () => {}
+  const mq = window.matchMedia(`(min-width: ${DESKTOP_BREAKPOINT}px)`)
+  mq.addEventListener('change', cb)
+  return () => mq.removeEventListener('change', cb)
 }
 
 export function ViewModeProvider({ children }: { children: React.ReactNode }) {
-  const [viewMode, setViewModeState] = useState<ViewMode>(getStored)
+  const { session } = useSession()
+  const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
+  const stored = getStored()
+  const defaultMode: ViewMode = !session && isDesktop ? '3' : '2'
+  const [viewMode, setViewModeState] = useState<ViewMode>(() => stored ?? defaultMode)
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, viewMode)
-    } catch {
-      // ignore
-    }
-  }, [viewMode])
+    if (getStored() !== null) return
+    const nextDefault: ViewMode = !session && isDesktop ? '3' : '2'
+    setViewModeState((prev) => (prev === nextDefault ? prev : nextDefault))
+  }, [session, isDesktop])
 
   const setViewMode = useCallback((mode: ViewMode) => {
     setViewModeState(mode)
+    try {
+      localStorage.setItem(STORAGE_KEY, mode)
+    } catch {
+      // ignore
+    }
   }, [])
 
   const value: ViewModeContextValue = {

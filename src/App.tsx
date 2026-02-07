@@ -148,13 +148,13 @@ export default function App() {
       <HashRouter>
         <ScrollRestoration />
         <ThemeProvider>
-          <ViewModeProvider>
-            <ArtOnlyProvider>
-              <SessionProvider>
+          <SessionProvider>
+            <ViewModeProvider>
+              <ArtOnlyProvider>
                 <AppRoutes />
-              </SessionProvider>
-            </ArtOnlyProvider>
-          </ViewModeProvider>
+              </ArtOnlyProvider>
+            </ViewModeProvider>
+          </SessionProvider>
         </ThemeProvider>
       </HashRouter>
     </ErrorBoundary>
