@@ -5,8 +5,8 @@ import { useTheme } from '../context/ThemeContext'
 import { useViewMode, VIEW_LABELS } from '../context/ViewModeContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
 import { useProfileModal } from '../context/ProfileModalContext'
+import { useEditProfile } from '../context/EditProfileContext'
 import { publicAgent, createPost, getNotifications } from '../lib/bsky'
-import EditProfileModal from './EditProfileModal'
 import SearchBar from './SearchBar'
 import styles from './Layout.module.css'
 
@@ -205,11 +205,17 @@ export default function Layout({ title, children, showNav }: Props) {
   const loc = useLocation()
   const navigate = useNavigate()
   const { openProfileModal } = useProfileModal()
+  const editProfile = useEditProfile()
+  const openEditProfile = editProfile?.openEditProfile ?? (() => {})
   const { session, sessionsList, logout, switchAccount } = useSession()
   const [accountProfiles, setAccountProfiles] = useState<Record<string, { avatar?: string; handle?: string }>>({})
   const [accountProfilesVersion, setAccountProfilesVersion] = useState(0)
   const sessionsDidKey = useMemo(() => sessionsList.map((s) => s.did).sort().join(','), [sessionsList])
   const currentAccountAvatar = session ? accountProfiles[session.did]?.avatar : null
+
+  useEffect(() => {
+    editProfile?.registerOnSaved(() => setAccountProfilesVersion((v) => v + 1))
+  }, [editProfile?.registerOnSaved])
 
   useEffect(() => {
     if (sessionsList.length === 0) {
@@ -267,7 +273,6 @@ export default function Layout({ title, children, showNav }: Props) {
   const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
   const [accountSheetOpen, setAccountSheetOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
-  const [editProfileOpen, setEditProfileOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'reply' | 'follow' | 'like'>('all')
   const [notifications, setNotifications] = useState<{ uri: string; author: { handle?: string; did: string; avatar?: string; displayName?: string }; reason: string; reasonSubject?: string; isRead: boolean; indexedAt: string; replyPreview?: string }[]>([])
@@ -640,7 +645,7 @@ export default function Layout({ title, children, showNav }: Props) {
               onClick={() => {
                 setAccountMenuOpen(false)
                 setAccountSheetOpen(false)
-                setEditProfileOpen(true)
+                openEditProfile()
               }}
             >
               Edit profile
@@ -707,7 +712,7 @@ export default function Layout({ title, children, showNav }: Props) {
             })}
           </div>
           <div className={styles.menuCompactActions}>
-            <button type="button" className={styles.menuCompactActionBtn} onClick={() => { setAccountSheetOpen(false); setEditProfileOpen(true) }} title="Edit profile" aria-label="Edit profile">
+            <button type="button" className={styles.menuCompactActionBtn} onClick={() => { setAccountSheetOpen(false); openEditProfile() }} title="Edit profile" aria-label="Edit profile">
               <PencilIcon />
             </button>
             <button type="button" className={styles.menuCompactActionBtn} onClick={handleAddAccount} title="Add account" aria-label="Add account">
@@ -1090,12 +1095,6 @@ export default function Layout({ title, children, showNav }: Props) {
                 </div>
               </div>
             </>
-          )}
-          {editProfileOpen && (
-            <EditProfileModal
-              onClose={() => setEditProfileOpen(false)}
-              onSaved={() => setAccountProfilesVersion((v) => v + 1)}
-            />
           )}
         </>
       )}

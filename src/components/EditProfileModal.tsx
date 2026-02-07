@@ -10,11 +10,17 @@ interface EditProfileModalProps {
   onSaved?: () => void
 }
 
+const AVATAR_ACCEPT = 'image/jpeg,image/png,image/gif,image/webp'
+const AVATAR_MAX_MB = 1
+
 export default function EditProfileModal({ onClose, onSaved }: EditProfileModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [displayName, setDisplayName] = useState('')
   const [handle, setHandle] = useState('')
   const [description, setDescription] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -32,10 +38,11 @@ export default function EditProfileModal({ onClose, onSaved }: EditProfileModalP
       .getProfile({ actor: session.did })
       .then((res) => {
         if (cancelled) return
-        const d = res.data as { displayName?: string; handle?: string; description?: string }
+        const d = res.data as { displayName?: string; handle?: string; description?: string; avatar?: string }
         setDisplayName(d.displayName ?? '')
         setHandle(d.handle ?? '')
         setDescription(d.description ?? '')
+        setAvatarUrl(d.avatar ?? null)
       })
       .catch(() => {
         if (!cancelled) setError('Failed to load profile')
@@ -58,8 +65,41 @@ export default function EditProfileModal({ onClose, onSaved }: EditProfileModalP
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [onClose])
 
+  useEffect(() => {
+    return () => {
+      if (avatarUrl?.startsWith('blob:')) URL.revokeObjectURL(avatarUrl)
+    }
+  }, [avatarUrl])
+
   function handleBackdropClick(e: React.MouseEvent) {
     if (e.target === overlayRef.current) onClose()
+  }
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!AVATAR_ACCEPT.split(',').map((t) => t.trim()).includes(file.type)) {
+      setError('Please choose a JPEG, PNG, GIF, or WebP image.')
+      return
+    }
+    if (file.size > AVATAR_MAX_MB * 1024 * 1024) {
+      setError(`Image must be under ${AVATAR_MAX_MB} MB.`)
+      return
+    }
+    setError(null)
+    setAvatarFile(file)
+    setAvatarUrl(URL.createObjectURL(file))
+  }
+
+  function clearAvatar() {
+    if (avatarFile) {
+      if (avatarUrl && avatarUrl.startsWith('blob:')) URL.revokeObjectURL(avatarUrl)
+      setAvatarFile(null)
+      setAvatarUrl(null)
+    } else {
+      setAvatarUrl(null)
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -76,11 +116,22 @@ export default function EditProfileModal({ onClose, onSaved }: EditProfileModalP
       if (newHandle && newHandle !== (currentProfile.handle ?? '')) {
         await agent.updateHandle({ handle: newHandle })
       }
-      await agent.upsertProfile((existing) => ({
-        ...existing,
-        displayName: newDisplayName,
-        description: newDescription,
-      }))
+      let newAvatar: unknown
+      if (avatarFile) {
+        const { data } = await agent.uploadBlob(avatarFile, { encoding: avatarFile.type })
+        newAvatar = data.blob
+      }
+      await agent.upsertProfile((existing) => {
+        const out: Record<string, unknown> = {
+          ...existing,
+          displayName: newDisplayName,
+          description: newDescription,
+        }
+        if (newAvatar) out.avatar = newAvatar
+        else if (avatarUrl === null && !avatarFile) out.avatar = undefined
+        return out
+      })
+      if (avatarUrl?.startsWith('blob:')) URL.revokeObjectURL(avatarUrl)
       onSaved?.()
       onClose()
     } catch (err: unknown) {
@@ -113,6 +164,41 @@ export default function EditProfileModal({ onClose, onSaved }: EditProfileModalP
           ) : (
             <form onSubmit={handleSubmit} className={styles.form}>
               {error && <p className={styles.error} role="alert">{error}</p>}
+              <div className={styles.avatarSection}>
+                <div className={styles.avatarWrap}>
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className={styles.avatarImg} />
+                  ) : (
+                    <div className={styles.avatarPlaceholder} aria-hidden />
+                  )}
+                </div>
+                <div className={styles.avatarActions}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={AVATAR_ACCEPT}
+                    className={styles.avatarInput}
+                    onChange={handleAvatarChange}
+                    aria-label="Change profile picture"
+                  />
+                  <button
+                    type="button"
+                    className={styles.avatarBtn}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Change photo
+                  </button>
+                  {(avatarUrl || avatarFile) && (
+                    <button
+                      type="button"
+                      className={styles.avatarBtnSecondary}
+                      onClick={clearAvatar}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
               <label className={styles.label}>
                 Display name
                 <input

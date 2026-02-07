@@ -61,7 +61,8 @@ export default function FeedPage() {
   const [blockConfirm, setBlockConfirm] = useState<{ did: string; handle: string; avatar?: string } | null>(null)
   const blockCancelRef = useRef<HTMLButtonElement>(null)
   const blockConfirmRef = useRef<HTMLButtonElement>(null)
-  const [actionsMenuTrigger, setActionsMenuTrigger] = useState(0)
+  const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null)
+  const [aspectRatios, setAspectRatios] = useState<(number | null)[]>([])
 
   const allSources = [...PRESET_SOURCES, ...savedFeedSources]
 
@@ -146,20 +147,18 @@ export default function FeedPage() {
 
   const {
     entries: mixEntries,
-    enabled: mixEnabled,
-    setEnabled: setMixEnabled,
     setEntryPercent,
-    addEntry,
-    removeEntry,
+    toggleSource,
     totalPercent: mixTotalPercent,
   } = useFeedMix()
-  const [mixEditorOpen, setMixEditorOpen] = useState(false)
   const feedLabel =
-    mixEnabled && mixEntries.length > 0
+    mixEntries.length >= 2
       ? 'Feed mix'
-      : source.kind === 'timeline'
-        ? 'Following'
-        : source.label ?? undefined
+      : mixEntries.length === 1
+        ? mixEntries[0].source.label
+        : source.kind === 'timeline'
+          ? 'Following'
+          : source.label ?? undefined
 
   const load = useCallback(async (nextCursor?: string) => {
     try {
@@ -170,7 +169,7 @@ export default function FeedPage() {
         const { feed, cursor: next } = await getGuestFeed(30, nextCursor)
         setItems((prev) => (nextCursor ? [...prev, ...feed] : feed))
         setCursor(next)
-      } else if (mixEnabled && mixEntries.length > 0 && mixTotalPercent >= 99) {
+      } else if (mixEntries.length >= 2 && mixTotalPercent >= 99) {
         const isLoadMore = !!nextCursor
         let cursorsToUse: Record<string, string> | undefined
         if (isLoadMore && nextCursor) {
@@ -187,6 +186,17 @@ export default function FeedPage() {
         )
         setItems((prev) => (isLoadMore ? [...prev, ...feed] : feed))
         setCursor(Object.keys(nextCursors).length > 0 ? JSON.stringify(nextCursors) : undefined)
+      } else if (mixEntries.length === 1) {
+        const single = mixEntries[0].source
+        if (single.kind === 'timeline') {
+          const res = await agent.getTimeline({ limit: 30, cursor: nextCursor })
+          setItems((prev) => (nextCursor ? [...prev, ...res.data.feed] : res.data.feed))
+          setCursor(res.data.cursor ?? undefined)
+        } else if (single.uri) {
+          const res = await agent.app.bsky.feed.getFeed({ feed: single.uri, limit: 30, cursor: nextCursor })
+          setItems((prev) => (nextCursor ? [...prev, ...res.data.feed] : res.data.feed))
+          setCursor(res.data.cursor ?? undefined)
+        }
       } else if (source.kind === 'timeline') {
         const res = await agent.getTimeline({ limit: 30, cursor: nextCursor })
         setItems((prev) => (nextCursor ? [...prev, ...res.data.feed] : res.data.feed))
@@ -203,7 +213,7 @@ export default function FeedPage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [source, session, mixEnabled, mixEntries, mixTotalPercent])
+  }, [source, session, mixEntries, mixTotalPercent])
 
   useEffect(() => {
     load()
@@ -239,6 +249,28 @@ export default function FeedPage() {
   useEffect(() => {
     setKeyboardFocusIndex((i) => (displayItems.length ? Math.min(i, displayItems.length - 1) : 0))
   }, [displayItems.length])
+
+  useEffect(() => {
+    setAspectRatios((prev) => {
+      if (prev.length === displayItems.length) return prev
+      if (displayItems.length < prev.length) return prev.slice(0, displayItems.length)
+      return [...prev, ...Array(displayItems.length - prev.length).fill(null)]
+    })
+  }, [displayItems.length])
+
+  const setAspectRatio = useCallback((index: number, aspect: number) => {
+    setAspectRatios((prev) => {
+      if (prev[index] === aspect) return prev
+      const next = [...prev]
+      next[index] = aspect
+      return next
+    })
+  }, [])
+
+  // When focus moves (keyboard or hover) and a menu is open, open the menu on the newly focused card
+  useEffect(() => {
+    if (openMenuIndex !== null) setOpenMenuIndex(keyboardFocusIndex)
+  }, [keyboardFocusIndex])
 
   // Scroll focused card into view only when focus was changed by keyboard (W/S/A/D), not on mouse hover
   useEffect(() => {
@@ -277,7 +309,9 @@ export default function FeedPage() {
         }
         return // let Tab/Enter reach the dialog buttons
       }
-      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'r' || key === 'f' || key === 'c' || key === 'h' || key === 'b' || key === 'm') e.preventDefault()
+      // When ... menu is open, let the menu handle W/S/E/Q (navigate and activate)
+      if (openMenuIndex !== null && (key === 'w' || key === 's' || key === 'e' || key === 'q')) return
+      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'r' || key === 'f' || key === 'c' || key === 'h' || key === 'b' || key === 'm' || key === '`' || key === '4') e.preventDefault()
 
       if (key === 'h') {
         const item = items[i]
@@ -341,13 +375,25 @@ export default function FeedPage() {
         setKeyboardAddOpen(true)
         return
       }
-      if (key === 'm') {
-        setActionsMenuTrigger((t) => t + 1)
+      if (key === 'm' || key === '`') {
+        if (openMenuIndex === i) {
+          setOpenMenuIndex(null)
+        } else {
+          setOpenMenuIndex(i)
+        }
+        return
+      }
+      if (key === '4') {
+        const item = items[i]
+        const author = item?.post?.author as { did: string; viewer?: { following?: string } } | undefined
+        if (author && session?.did && session.did !== author.did && !author.viewer?.following) {
+          agent.follow(author.did).catch(() => {})
+        }
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [location.pathname, cols, isModalOpen, openPostModal, blockConfirm, addHidden, session])
+  }, [location.pathname, cols, isModalOpen, openPostModal, blockConfirm, addHidden, session, openMenuIndex])
 
   useEffect(() => {
     if (blockConfirm) blockCancelRef.current?.focus()
@@ -360,8 +406,11 @@ export default function FeedPage() {
         {session && (
           <FeedSelector
             sources={allSources}
-            value={source}
-            onChange={setSource}
+            fallbackSource={source}
+            mixEntries={mixEntries}
+            mixTotalPercent={mixTotalPercent}
+            onToggle={toggleSource}
+            setEntryPercent={setEntryPercent}
             onAddCustom={async (input) => {
               setError(null)
               try {
@@ -369,7 +418,7 @@ export default function FeedPage() {
                 await addSavedFeed(uri)
                 await loadSavedFeeds()
                 const label = await getFeedDisplayName(uri)
-                setSource({ kind: 'custom', label, uri })
+                toggleSource({ kind: 'custom', label, uri })
               } catch (err) {
                 setError(err instanceof Error ? err.message : 'Could not add feed')
               }
@@ -387,63 +436,6 @@ export default function FeedPage() {
             {mediaOnly ? 'Include text-only posts' : 'Showing all posts'}
           </button>
         </div>
-        {session && (
-          <div className={styles.feedMixSection}>
-            <button
-              type="button"
-              className={styles.feedMixToggle}
-              onClick={() => setMixEditorOpen((o) => !o)}
-              aria-expanded={mixEditorOpen}
-            >
-              {mixEnabled ? `Feed mix: ${mixEntries.map((e) => `${e.source.label} ${e.percent}%`).join(', ')}` : 'Set feed mix (e.g. 50% Following, 40% For You)'}
-            </button>
-            {mixEditorOpen && (
-              <div className={styles.feedMixEditor}>
-                <div className={styles.feedMixAddRow}>
-                  <span className={styles.feedMixAddLabel}>Add feed:</span>
-                  {allSources.filter((s) => !mixEntries.some((e) => (e.source.uri ?? e.source.label) === (s.uri ?? s.label))).length > 0 ? (
-                    allSources
-                      .filter((s) => !mixEntries.some((e) => (e.source.uri ?? e.source.label) === (s.uri ?? s.label)))
-                      .map((s) => (
-                        <button key={s.uri ?? s.label} type="button" className={styles.feedMixAddBtn} onClick={() => addEntry(s)}>
-                          + {s.label}
-                        </button>
-                      ))
-                  ) : (
-                    <span className={styles.feedMixAddMuted}>All feeds added</span>
-                  )}
-                </div>
-                <p className={styles.feedMixHint}>Percents are split equally when you add feeds. Adjust below if you like (total must be 100%).</p>
-                {mixEntries.map((entry, idx) => (
-                  <div key={idx} className={styles.feedMixRow}>
-                    <span className={styles.feedMixLabel}>{entry.source.label}</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={entry.percent}
-                      onChange={(e) => setEntryPercent(idx, e.target.valueAsNumber || 0)}
-                      className={styles.feedMixInput}
-                    />
-                    <span className={styles.feedMixPct}>%</span>
-                    <button type="button" className={styles.feedMixRemove} onClick={() => removeEntry(idx)} aria-label="Remove">×</button>
-                  </div>
-                ))}
-                <div className={styles.feedMixTotal}>
-                  Total: {mixTotalPercent}% {mixTotalPercent !== 100 && mixEntries.length > 0 && '(must be 100% to use mix)'}
-                </div>
-                <label className={styles.feedMixUseLabel}>
-                  <input
-                    type="checkbox"
-                    checked={mixEnabled}
-                    onChange={(e) => setMixEnabled(e.target.checked)}
-                  />
-                  Use feed mix
-                </label>
-              </div>
-            )}
-          </div>
-        )}
         {showGuestSection && (
           <section className={styles.guestSection} aria-label={session ? 'Accounts you follow' : 'Guest feed'}>
             {session ? (
@@ -521,23 +513,32 @@ export default function FeedPage() {
         ) : (
           <>
             <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
-              {displayItems.map((item, index) => (
-                <div
-                  key={item.post.uri}
-                  onMouseEnter={() => setKeyboardFocusIndex(index)}
-                >
-                  <PostCard
-                    item={item}
-                    isSelected={index === keyboardFocusIndex}
-                    cardRef={(el) => { cardRefsRef.current[index] = el }}
-                    openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
-                    onAddClose={() => setKeyboardAddOpen(false)}
-                    onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
-                    feedLabel={feedLabel}
-                    openActionsMenuTrigger={actionsMenuTrigger}
-                  />
-                </div>
-              ))}
+              {displayItems.map((item, index) => {
+                const ar = aspectRatios[index]
+                const isPortrait = ar != null && ar < 0.85
+                const bentoSpan = cols >= 2 ? (isPortrait ? styles.bentoSpan2 : styles.bentoSpan1) : ''
+                return (
+                  <div
+                    key={item.post.uri}
+                    className={cols >= 2 ? `${styles.bentoItem} ${bentoSpan}` : ''}
+                    onMouseEnter={() => setKeyboardFocusIndex(index)}
+                  >
+                    <PostCard
+                      item={item}
+                      isSelected={index === keyboardFocusIndex}
+                      cardRef={(el) => { cardRefsRef.current[index] = el }}
+                      openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
+                      onAddClose={() => setKeyboardAddOpen(false)}
+                      onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
+                      feedLabel={(item as { _feedSource?: { label?: string } })._feedSource?.label ?? feedLabel}
+                      openActionsMenu={openMenuIndex === index}
+                      onActionsMenuClose={() => setOpenMenuIndex(null)}
+                      onAspectRatio={cols >= 2 ? (aspect) => setAspectRatio(index, aspect) : undefined}
+                      fillCell={cols >= 2}
+                    />
+                  </div>
+                )
+              })}
             </div>
             {cursor && (
               <>

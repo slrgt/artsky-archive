@@ -263,15 +263,17 @@ export async function getMixedFeed(
     const pct = entries[i]?.percent ?? 0
     return Math.round((limit * pct) / totalPercent)
   })
-  const combined: TimelineItem[] = []
+  type FeedSourceTag = { kind: string; label?: string; uri?: string }
+  const combined: (TimelineItem & { _feedSource?: FeedSourceTag })[] = []
   const seen = new Set<string>()
   results.forEach((r, i) => {
     const take = takePerEntry[i] ?? 0
+    const sourceTag = entries[i]?.source as FeedSourceTag | undefined
     for (let j = 0; j < take && j < r.feed.length; j++) {
       const item = r.feed[j]
       if (item?.post?.uri && !seen.has(item.post.uri)) {
         seen.add(item.post.uri)
-        combined.push(item)
+        combined.push(sourceTag ? { ...item, _feedSource: sourceTag } : item)
       }
     }
   })
@@ -561,6 +563,20 @@ export async function getStandardSiteDocument(uri: string): Promise<StandardSite
   } catch {
     return null
   }
+}
+
+/** Delete a feed post. Requires session; only the author can delete. */
+export async function deletePost(uri: string): Promise<void> {
+  const session = getSession()
+  if (!session?.did) throw new Error('Not logged in')
+  const parsed = parseAtUri(uri)
+  if (!parsed || parsed.collection !== 'app.bsky.feed.post') throw new Error('Invalid post URI')
+  if (parsed.did !== session.did) throw new Error('You can only delete your own posts')
+  await agent.com.atproto.repo.deleteRecord({
+    repo: session.did,
+    collection: 'app.bsky.feed.post',
+    rkey: parsed.rkey,
+  })
 }
 
 /** Delete a standard.site document. Requires session; only the author can delete. */

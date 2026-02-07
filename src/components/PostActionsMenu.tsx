@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
-import { blockAccount, reportPost, muteThread } from '../lib/bsky'
+import { blockAccount, reportPost, muteThread, deletePost } from '../lib/bsky'
 import { getSession } from '../lib/bsky'
 import { useHiddenPosts } from '../context/HiddenPostsContext'
 import styles from './PostActionsMenu.module.css'
@@ -22,8 +22,12 @@ interface PostActionsMenuProps {
   compact?: boolean
   /** When set, show "From: {feedLabel}" at top of menu (e.g. feed name) */
   feedLabel?: string
-  /** When this number changes, open the menu (e.g. from M key) */
+  /** When this number changes, open the menu (e.g. from M key). Ignored when open/onOpenChange are used. */
   openTrigger?: number
+  /** Controlled open state (when set, menu open is controlled by parent) */
+  open?: boolean
+  /** Called when menu should close (escape, click outside) or open (trigger click); use with open for controlled mode */
+  onOpenChange?: (open: boolean) => void
 }
 
 export default function PostActionsMenu({
@@ -37,25 +41,35 @@ export default function PostActionsMenu({
   compact,
   feedLabel,
   openTrigger,
+  open: openControlled,
+  onOpenChange,
 }: PostActionsMenuProps) {
   const session = getSession()
   const { addHidden } = useHiddenPosts()
-  const [open, setOpen] = useState(false)
+  const [openUncontrolled, setOpenUncontrolled] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const lastOpenTriggerRef = useRef<number>(0)
+
+  const isControlled = openControlled !== undefined && onOpenChange !== undefined
+  const open = isControlled ? openControlled : openUncontrolled
+  function setOpen(value: boolean) {
+    if (isControlled) onOpenChange?.(value)
+    else setOpenUncontrolled(value)
+  }
 
   useEffect(() => {
     if (!open) triggerRef.current?.blur()
   }, [open])
 
   useEffect(() => {
-    if (openTrigger != null && openTrigger !== lastOpenTriggerRef.current) {
+    if (!isControlled && openTrigger != null && openTrigger !== lastOpenTriggerRef.current) {
       lastOpenTriggerRef.current = openTrigger
-      setOpen(true)
+      setOpenUncontrolled(true)
     }
-  }, [openTrigger])
+  }, [openTrigger, isControlled])
 
   useEffect(() => {
     if (!open) return
@@ -69,11 +83,51 @@ export default function PostActionsMenu({
 
   useEffect(() => {
     if (!open) return
-    const onEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
+    const dropdown = dropdownRef.current
+    if (dropdown) {
+      const items = dropdown.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]')
+      const first = items[0]
+      if (first) first.focus()
     }
-    window.addEventListener('keydown', onEscape)
-    return () => window.removeEventListener('keydown', onEscape)
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase()
+      if (key === 'escape' || key === 'q') {
+        e.preventDefault()
+        setOpen(false)
+        return
+      }
+      if (key === 'w' || key === 's' || key === 'e') {
+        const dropdown = dropdownRef.current
+        if (!dropdown) return
+        const items = Array.from(dropdown.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]'))
+        if (items.length === 0) return
+        const current = document.activeElement as HTMLButtonElement | null
+        const idx = current && items.includes(current) ? items.indexOf(current) : -1
+        if (key === 'e') {
+          e.preventDefault()
+          if (idx >= 0 && !items[idx].disabled) items[idx].click()
+          return
+        }
+        if (key === 'w') {
+          e.preventDefault()
+          const nextIdx = idx <= 0 ? items.length - 1 : idx - 1
+          items[nextIdx].focus()
+          return
+        }
+        if (key === 's') {
+          e.preventDefault()
+          const nextIdx = idx < 0 || idx >= items.length - 1 ? 0 : idx + 1
+          items[nextIdx].focus()
+          return
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
   async function handleBlock() {
@@ -121,6 +175,21 @@ export default function PostActionsMenu({
     onHidden?.()
   }
 
+  async function handleDelete() {
+    if (!session?.did || !isOwnPost) return
+    setLoading('delete')
+    try {
+      await deletePost(postUri)
+      addHidden(postUri)
+      setOpen(false)
+      onHidden?.()
+    } catch {
+      // leave menu open; user can retry
+    } finally {
+      setLoading(null)
+    }
+  }
+
   if (!session?.did) return null
 
   return (
@@ -132,7 +201,7 @@ export default function PostActionsMenu({
         onClick={(e) => {
           e.preventDefault()
           e.stopPropagation()
-          setOpen((o) => !o)
+          setOpen(!open)
         }}
         aria-expanded={open}
         aria-haspopup="true"
@@ -142,10 +211,21 @@ export default function PostActionsMenu({
         ⋯
       </button>
       {open && (
-        <div className={styles.dropdown} role="menu">
+        <div ref={dropdownRef} className={styles.dropdown} role="menu">
           {feedLabel ? (
             <div className={styles.feedLabel} role="presentation">From: {feedLabel}</div>
           ) : null}
+          {isOwnPost && (
+            <button
+              type="button"
+              className={styles.item}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete() }}
+              disabled={loading === 'delete'}
+              role="menuitem"
+            >
+              {loading === 'delete' ? '…' : 'Delete post'}
+            </button>
+          )}
           {!isOwnPost && (
             <button
               type="button"

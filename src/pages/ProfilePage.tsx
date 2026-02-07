@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useProfileModal } from '../context/ProfileModalContext'
+import { useEditProfile } from '../context/EditProfileContext'
 import { agent, publicAgent, getPostMediaInfo, getSession, listStandardSiteDocumentsForAuthor, type TimelineItem, type StandardSiteDocumentView } from '../lib/bsky'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import PostCard from '../components/PostCard'
@@ -60,6 +61,9 @@ export function ProfileContent({
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
   const [keyboardAddOpen, setKeyboardAddOpen] = useState(false)
   const { openPostModal, isModalOpen } = useProfileModal()
+  const editProfileCtx = useEditProfile()
+  const openEditProfile = editProfileCtx?.openEditProfile ?? (() => {})
+  const editSavedVersion = editProfileCtx?.editSavedVersion ?? 0
   const lastScrollYRef = useRef(0)
   const touchStartXRef = useRef(0)
   const cardRefsRef = useRef<(HTMLDivElement | null)[]>([])
@@ -85,7 +89,7 @@ export function ProfileContent({
         })
       })
       .catch(() => {})
-  }, [handle, readAgent])
+  }, [handle, readAgent, editSavedVersion])
 
   const load = useCallback(async (nextCursor?: string) => {
     if (!handle) return
@@ -381,6 +385,16 @@ export function ProfileContent({
             )}
             <div className={styles.handleRow}>
               <p className={styles.handle}>@{handle}</p>
+              {isOwnProfile && (
+                <button
+                  type="button"
+                  className={styles.followBtn}
+                  onClick={openEditProfile}
+                  title="Edit profile"
+                >
+                  Edit profile
+                </button>
+              )}
               {showFollowButton &&
                 (isFollowing ? (
                   <button

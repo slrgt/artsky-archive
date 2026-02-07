@@ -32,8 +32,16 @@ interface Props {
   onPostClick?: (uri: string, options?: { openReply?: boolean }) => void
   /** Feed name to show in ... menu (e.g. "Following", feed label) */
   feedLabel?: string
-  /** When this changes, open the ... menu (e.g. M key) */
+  /** When this changes, open the ... menu (e.g. M key). Unused if openActionsMenu is provided. */
   openActionsMenuTrigger?: number
+  /** Controlled: when true, menu is open; use with onActionsMenuClose */
+  openActionsMenu?: boolean
+  /** Called when the ... menu closes (so parent can clear open state) */
+  onActionsMenuClose?: () => void
+  /** Called when media aspect ratio is known (for bento layout) */
+  onAspectRatio?: (aspect: number) => void
+  /** When true, card fills grid cell height and media uses object-fit: cover (bento mode) */
+  fillCell?: boolean
 }
 
 function RepostIcon() {
@@ -64,7 +72,7 @@ function isHlsUrl(url: string): boolean {
   return /\.m3u8(\?|$)/i.test(url) || url.includes('m3u8')
 }
 
-export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, feedLabel, openActionsMenuTrigger }: Props) {
+export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, feedLabel, openActionsMenuTrigger, openActionsMenu, onActionsMenuClose, onAspectRatio, fillCell }: Props) {
   const navigate = useNavigate()
   const { session } = useSession()
   const { artOnly } = useArtOnly()
@@ -287,6 +295,10 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   }, [isVideo, media?.videoPlaylist])
 
   useEffect(() => {
+    if (mediaAspect != null && onAspectRatio) onAspectRatio(mediaAspect)
+  }, [mediaAspect, onAspectRatio])
+
+  useEffect(() => {
     if (!isVideo || !media?.videoPlaylist || !videoRef.current) return
     const video = videoRef.current
     const src = media!.videoPlaylist
@@ -407,7 +419,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   )
 
   return (
-    <div ref={setCardRef} className={`${styles.card} ${isSelected ? styles.cardSelected : ''}`}>
+    <div ref={setCardRef} className={`${styles.card} ${isSelected ? styles.cardSelected : ''} ${fillCell ? styles.cardFillCell : ''}`}>
       <div
         role="button"
         tabIndex={0}
@@ -435,11 +447,15 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
       >
         <div
           ref={mediaWrapRef}
-          className={styles.mediaWrap}
-          style={{
-            aspectRatio:
-              !hasMedia ? '1' : mediaAspect != null ? String(mediaAspect) : isVideo ? '16/9' : undefined,
-          }}
+          className={`${styles.mediaWrap} ${fillCell ? styles.mediaWrapFillCell : ''}`}
+          style={
+            fillCell
+              ? undefined
+              : {
+                  aspectRatio:
+                    !hasMedia ? '1' : mediaAspect != null ? String(mediaAspect) : isVideo ? '16/9' : undefined,
+                }
+          }
           onMouseEnter={onMediaEnter}
           onMouseLeave={onMediaLeave}
         >
@@ -663,7 +679,9 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                     rootUri={post.uri}
                     isOwnPost={isOwnPost}
                     feedLabel={feedLabel}
-                    openTrigger={isSelected ? openActionsMenuTrigger : undefined}
+                    openTrigger={openActionsMenu === undefined && isSelected ? openActionsMenuTrigger : undefined}
+                    open={openActionsMenu}
+                    onOpenChange={onActionsMenuClose !== undefined ? (o) => { if (!o) onActionsMenuClose() } : undefined}
                   />
                 </div>
             </span>
