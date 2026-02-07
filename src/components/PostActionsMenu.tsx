@@ -100,7 +100,7 @@ export default function PostActionsMenu({
         setOpen(false)
         return
       }
-      if (key === 'w' || key === 's' || key === 'e') {
+      if (key === 'w' || key === 's' || key === 'e' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         const dropdown = dropdownRef.current
         if (!dropdown) return
         const items = Array.from(dropdown.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]'))
@@ -112,13 +112,13 @@ export default function PostActionsMenu({
           if (idx >= 0 && !items[idx].disabled) items[idx].click()
           return
         }
-        if (key === 'w') {
+        if (key === 'w' || e.key === 'ArrowUp') {
           e.preventDefault()
           const nextIdx = idx <= 0 ? items.length - 1 : idx - 1
           items[nextIdx].focus()
           return
         }
-        if (key === 's') {
+        if (key === 's' || e.key === 'ArrowDown') {
           e.preventDefault()
           const nextIdx = idx < 0 || idx >= items.length - 1 ? 0 : idx + 1
           items[nextIdx].focus()

@@ -302,8 +302,8 @@ export default function FeedPage() {
         return // let Tab/Enter reach the dialog buttons
       }
       // When ... menu is open, let the menu handle W/S/E/Q (navigate and activate)
-      if (openMenuIndex !== null && (key === 'w' || key === 's' || key === 'e' || key === 'q')) return
-      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'r' || key === 'f' || key === 'c' || key === 'h' || key === 'b' || key === 'm' || key === '`' || key === '4') e.preventDefault()
+      if (openMenuIndex !== null && (key === 'w' || key === 's' || key === 'e' || key === 'q' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return
+      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'r' || key === 'f' || key === 'c' || key === 'h' || key === 'b' || key === 'm' || key === '`' || key === '4' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') e.preventDefault()
 
       if (key === 'h') {
         const item = items[i]
@@ -327,13 +327,13 @@ export default function FeedPage() {
         return
       }
 
-      if (key === 'w') {
+      if (key === 'w' || e.key === 'ArrowUp') {
         mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
         setKeyboardFocusIndex((idx) => Math.max(0, idx - cols))
         return
       }
-      if (key === 's') {
+      if (key === 's' || e.key === 'ArrowDown') {
         mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
         setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + cols))

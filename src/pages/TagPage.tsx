@@ -90,14 +90,14 @@ export function TagContent({ tag, inModal = false }: { tag: string; inModal?: bo
       const items = mediaItemsRef.current
       const i = keyboardFocusIndexRef.current
       const key = e.key.toLowerCase()
-      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'f' || key === 'c') e.preventDefault()
+      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'f' || key === 'c' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') e.preventDefault()
 
-      if (key === 'w') {
+      if (key === 'w' || e.key === 'ArrowUp') {
         scrollIntoViewFromKeyboardRef.current = true
         setKeyboardFocusIndex((idx) => Math.max(0, idx - cols))
         return
       }
-      if (key === 's') {
+      if (key === 's' || e.key === 'ArrowDown') {
         scrollIntoViewFromKeyboardRef.current = true
         setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + cols))
         return
