@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import {
   agent,
@@ -64,8 +64,6 @@ export default function FeedPage() {
   const blockCancelRef = useRef<HTMLButtonElement>(null)
   const blockConfirmRef = useRef<HTMLButtonElement>(null)
   const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null)
-  /** Aspect ratio (width/height) per post URI for dense grid placement; portrait = span 2 rows */
-  const [aspectRatios, setAspectRatios] = useState<Record<string, number>>({})
 
   const presetUris = new Set((PRESET_SOURCES.map((s) => s.uri).filter(Boolean) as string[]))
   const savedDeduped = savedFeedSources.filter((s) => !s.uri || !presetUris.has(s.uri))
@@ -251,46 +249,6 @@ export default function FeedPage() {
   mediaItemsRef.current = displayItems
   keyboardFocusIndexRef.current = keyboardFocusIndex
 
-  /** Dense row-based placement for 2/3 col: index -> { row, col, span }; and cell (row,col) -> index for WASD */
-  const gridPlacement = useMemo(() => {
-    if (cols < 2 || displayItems.length === 0) return null
-    const placements: Array<{ row: number; col: number; span: number }> = []
-    const cellToIndex = new Map<string, number>()
-    const occupied = new Set<string>()
-    for (let i = 0; i < displayItems.length; i++) {
-      const uri = displayItems[i].post.uri
-      const aspect = aspectRatios[uri] ?? 1
-      const span = aspect < 0.85 ? 2 : 1 // portrait => span 2 rows
-      let row = 0
-      let col = 0
-      while (true) {
-        if (col >= cols) {
-          col = 0
-          row++
-          continue
-        }
-        let fits = true
-        for (let k = 0; k < span; k++) {
-          if (occupied.has(`${row + k},${col}`)) {
-            fits = false
-            break
-          }
-        }
-        if (fits) {
-          placements.push({ row, col, span })
-          for (let k = 0; k < span; k++) {
-            const key = `${row + k},${col}`
-            occupied.add(key)
-            cellToIndex.set(key, i)
-          }
-          break
-        }
-        col++
-      }
-    }
-    return { placements, cellToIndex, cols }
-  }, [cols, displayItems, aspectRatios])
-
   useEffect(() => {
     setKeyboardFocusIndex((i) => (displayItems.length ? Math.min(i, displayItems.length - 1) : 0))
   }, [displayItems.length])
@@ -372,49 +330,25 @@ export default function FeedPage() {
       if (key === 'w' || e.key === 'ArrowUp') {
         mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
-        if (gridPlacement && i < gridPlacement.placements.length) {
-          const { row, col } = gridPlacement.placements[i]
-          const next = gridPlacement.cellToIndex.get(`${row - 1},${col}`)
-          setKeyboardFocusIndex(() => (next !== undefined ? next : Math.max(0, i - cols)))
-        } else {
-          setKeyboardFocusIndex((idx) => Math.max(0, idx - cols))
-        }
+        setKeyboardFocusIndex((idx) => Math.max(0, idx - cols))
         return
       }
       if (key === 's' || e.key === 'ArrowDown') {
         mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
-        if (gridPlacement && i < gridPlacement.placements.length) {
-          const { row, col, span } = gridPlacement.placements[i]
-          const next = gridPlacement.cellToIndex.get(`${row + span},${col}`)
-          setKeyboardFocusIndex(() => (next !== undefined ? next : Math.min(items.length - 1, i + cols)))
-        } else {
-          setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + cols))
-        }
+        setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + cols))
         return
       }
       if (key === 'a' || e.key === 'ArrowLeft') {
         mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
-        if (gridPlacement && i < gridPlacement.placements.length) {
-          const { row, col } = gridPlacement.placements[i]
-          const next = gridPlacement.cellToIndex.get(`${row},${col - 1}`)
-          setKeyboardFocusIndex(() => (next !== undefined ? next : Math.max(0, i - 1)))
-        } else {
-          setKeyboardFocusIndex((idx) => Math.max(0, idx - 1))
-        }
+        setKeyboardFocusIndex((idx) => Math.max(0, idx - 1))
         return
       }
       if (key === 'd' || e.key === 'ArrowRight') {
         mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
-        if (gridPlacement && i < gridPlacement.placements.length) {
-          const { row, col } = gridPlacement.placements[i]
-          const next = gridPlacement.cellToIndex.get(`${row},${col + 1}`)
-          setKeyboardFocusIndex(() => (next !== undefined ? next : Math.min(items.length - 1, i + 1)))
-        } else {
-          setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + 1))
-        }
+        setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + 1))
         return
       }
       if (key === 'e' || key === 'enter') {
@@ -473,7 +407,7 @@ export default function FeedPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [location.pathname, cols, isModalOpen, openPostModal, blockConfirm, addHidden, session, openMenuIndex, gridPlacement])
+  }, [location.pathname, cols, isModalOpen, openPostModal, blockConfirm, addHidden, session, openMenuIndex])
 
   useEffect(() => {
     if (blockConfirm) blockCancelRef.current?.focus()
@@ -591,52 +525,48 @@ export default function FeedPage() {
           </div>
         ) : (
           <>
-            {gridPlacement ? (
-              <div
-                className={`${styles.grid} ${styles.gridDense} ${styles[`gridView${viewMode}`]}`}
-                style={{ gridTemplateColumns: `repeat(${gridPlacement.cols}, minmax(0, 1fr))` }}
-              >
-                {displayItems.map((item, index) => {
-                  const { row, col, span } = gridPlacement.placements[index]
-                  return (
-                    <div
-                      key={item.post.uri}
-                      className={styles.gridItem}
-                      style={{
-                        gridColumn: col + 1,
-                        gridRow: `${row + 1} / span ${span}`,
-                      }}
-                      onMouseEnter={() => {
-                        if (mouseMovedRef.current) {
-                          mouseMovedRef.current = false
-                          setKeyboardFocusIndex(index)
-                        }
-                      }}
-                    >
-                      <PostCard
-                        item={item}
-                        isSelected={index === keyboardFocusIndex}
-                        cardRef={(el) => { cardRefsRef.current[index] = el }}
-                        openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
-                        onAddClose={() => setKeyboardAddOpen(false)}
-                        onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
-                        feedLabel={(item as { _feedSource?: { label?: string } })._feedSource?.label ?? feedLabel}
-                        openActionsMenu={openMenuIndex === index}
-                        onActionsMenuOpen={() => setOpenMenuIndex(index)}
-                        onActionsMenuClose={() => setOpenMenuIndex(null)}
-                        onAspectRatio={(aspect) => setAspectRatios((prev) => ({ ...prev, [item.post.uri]: aspect }))}
-                        fillCell={true}
-                      />
-                    </div>
-                  )
-                })}
+            {cols >= 2 ? (
+              <div className={`${styles.gridColumns} ${styles[`gridView${viewMode}`]}`}>
+                {Array.from({ length: cols }, (_, colIndex) => (
+                  <div key={colIndex} className={styles.gridColumn}>
+                    {displayItems
+                      .map((item, index) => ({ item, index }))
+                      .filter(({ index }) => index % cols === colIndex)
+                      .map(({ item, index }) => (
+                        <div
+                          key={item.post.uri}
+                          className={styles.gridItem}
+                          onMouseEnter={() => {
+                            if (mouseMovedRef.current) {
+                              mouseMovedRef.current = false
+                              setKeyboardFocusIndex(index)
+                            }
+                          }}
+                        >
+                          <PostCard
+                            item={item}
+                            isSelected={index === keyboardFocusIndex}
+                            cardRef={(el) => { cardRefsRef.current[index] = el }}
+                            openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
+                            onAddClose={() => setKeyboardAddOpen(false)}
+                            onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
+                            feedLabel={(item as { _feedSource?: { label?: string } })._feedSource?.label ?? feedLabel}
+                            openActionsMenu={openMenuIndex === index}
+                            onActionsMenuOpen={() => setOpenMenuIndex(index)}
+                            onActionsMenuClose={() => setOpenMenuIndex(null)}
+                            onAspectRatio={undefined}
+                            fillCell={false}
+                          />
+                        </div>
+                      ))}
+                  </div>
+                ))}
               </div>
             ) : (
               <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
                 {displayItems.map((item, index) => (
                   <div
                     key={item.post.uri}
-                    className={cols >= 2 ? styles.gridItem : ''}
                     onMouseEnter={() => {
                       if (mouseMovedRef.current) {
                         mouseMovedRef.current = false

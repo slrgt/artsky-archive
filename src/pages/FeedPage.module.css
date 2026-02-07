@@ -349,23 +349,25 @@
   gap: 0.35rem;
 }
 
-/* Dense row-based grid: fixed row height so portrait cards span 2 rows and short cards fill gaps */
-.gridDense {
-  grid-auto-rows: var(--feed-dense-row-height, 200px);
-  align-items: stretch;
-}
-.gridDense .gridItem {
-  min-height: 0;
-  display: flex;
-}
-.gridDense .gridItem > * {
-  flex: 1;
-  min-height: 0;
-}
-
 /* Wrapper so card can size naturally; min-width prevents overflow in grid */
 .gridItem {
   min-width: 0;
+}
+
+/* Column layout for 2/3 col: items flow top-to-bottom per column so cards keep natural height and fill gaps */
+.gridColumns {
+  display: flex;
+  flex-direction: row;
+  gap: 0.35rem;
+  align-items: flex-start;
+}
+
+.gridColumn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
 /* Invisible sentinel for infinite scroll (IntersectionObserver target) */
