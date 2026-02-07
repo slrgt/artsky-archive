@@ -4,7 +4,6 @@ import { useProfileModal } from '../context/ProfileModalContext'
 import { agent, publicAgent, getPostMediaInfo, getSession, listStandardSiteDocumentsForAuthor, type TimelineItem, type StandardSiteDocumentView } from '../lib/bsky'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import PostCard from '../components/PostCard'
-import PostDetailModal from '../components/PostDetailModal'
 import PostText from '../components/PostText'
 import Layout from '../components/Layout'
 import { useViewMode } from '../context/ViewModeContext'
@@ -57,7 +56,7 @@ export function ProfileContent({
   const [tabsBarVisible, setTabsBarVisible] = useState(true)
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
   const [keyboardAddOpen, setKeyboardAddOpen] = useState(false)
-  const [postModalState, setPostModalState] = useState<{ uri: string; openReply?: boolean } | null>(null)
+  const { openPostModal, isModalOpen } = useProfileModal()
   const lastScrollYRef = useRef(0)
   const touchStartXRef = useRef(0)
   const cardRefsRef = useRef<(HTMLDivElement | null)[]>([])
@@ -266,7 +265,7 @@ export function ProfileContent({
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (postModalState) return
+      if (isModalOpen) return
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return
       if (e.ctrlKey || e.metaKey) return
@@ -297,7 +296,7 @@ export function ProfileContent({
       }
       if (key === 'e' || key === 'enter') {
         const item = items[i]
-        if (item) setPostModalState({ uri: item.post.uri })
+        if (item) openPostModal(item.post.uri)
         return
       }
       if (key === 'f') {
@@ -311,7 +310,7 @@ export function ProfileContent({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [tab, cols, postModalState])
+  }, [tab, cols, isModalOpen, openPostModal])
 
   const postText = (post: TimelineItem['post']) => (post.record as { text?: string })?.text?.trim() ?? ''
   const isReply = (post: TimelineItem['post']) => !!(post.record as { reply?: unknown })?.reply
@@ -353,13 +352,6 @@ export function ProfileContent({
 
   return (
     <>
-      {postModalState && (
-        <PostDetailModal
-          uri={postModalState.uri}
-          openReply={postModalState.openReply}
-          onClose={() => setPostModalState(null)}
-        />
-      )}
       <div className={styles.wrap}>
         <header className={styles.profileHeader}>
           {profile?.avatar && (
@@ -642,7 +634,7 @@ export function ProfileContent({
                       cardRef={(el) => { cardRefsRef.current[index] = el }}
                       openAddDropdown={tab === 'liked' && index === keyboardFocusIndex && keyboardAddOpen}
                       onAddClose={() => setKeyboardAddOpen(false)}
-                      onPostClick={(uri, opts) => setPostModalState({ uri, openReply: opts?.openReply })}
+                      onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
                     />
                   </div>
                 ))}
@@ -669,7 +661,7 @@ export function ProfileContent({
                     cardRef={(el) => { cardRefsRef.current[index] = el }}
                     openAddDropdown={(tab === 'posts' || tab === 'reposts') && index === keyboardFocusIndex && keyboardAddOpen}
                     onAddClose={() => setKeyboardAddOpen(false)}
-                    onPostClick={(uri, opts) => setPostModalState({ uri, openReply: opts?.openReply })}
+                    onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
                   />
                 </div>
               ))}

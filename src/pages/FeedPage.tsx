@@ -15,9 +15,9 @@ import { GUEST_FEED_ACCOUNTS } from '../config/guestFeed'
 import type { FeedSource } from '../types'
 import FeedSelector from '../components/FeedSelector'
 import PostCard from '../components/PostCard'
-import PostDetailModal from '../components/PostDetailModal'
 import ProfileLink from '../components/ProfileLink'
 import Layout from '../components/Layout'
+import { useProfileModal } from '../context/ProfileModalContext'
 import { useSession } from '../context/SessionContext'
 import { useViewMode } from '../context/ViewModeContext'
 import styles from './FeedPage.module.css'
@@ -46,7 +46,7 @@ export default function FeedPage() {
   const loadingMoreRef = useRef(false)
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
   const [keyboardAddOpen, setKeyboardAddOpen] = useState(false)
-  const [postModalState, setPostModalState] = useState<{ uri: string; openReply?: boolean } | null>(null)
+  const { openPostModal, isModalOpen } = useProfileModal()
   const cardRefsRef = useRef<(HTMLDivElement | null)[]>([])
   const mediaItemsRef = useRef<TimelineItem[]>([])
   const keyboardFocusIndexRef = useRef(0)
@@ -216,7 +216,7 @@ export default function FeedPage() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (postModalState) return
+      if (isModalOpen) return
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return
       if (e.ctrlKey || e.metaKey) return
@@ -247,12 +247,12 @@ export default function FeedPage() {
       }
       if (key === 'e' || key === 'enter') {
         const item = items[i]
-        if (item) setPostModalState({ uri: item.post.uri })
+        if (item) openPostModal(item.post.uri)
         return
       }
       if (key === 'r') {
         const item = items[i]
-        if (item) setPostModalState({ uri: item.post.uri, openReply: true })
+        if (item) openPostModal(item.post.uri, true)
         return
       }
       if (key === 'f') {
@@ -266,17 +266,10 @@ export default function FeedPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [location.pathname, cols, postModalState])
+  }, [location.pathname, cols, isModalOpen, openPostModal])
 
   return (
     <Layout title="Feed" showNav>
-      {postModalState && (
-        <PostDetailModal
-          uri={postModalState.uri}
-          openReply={postModalState.openReply}
-          onClose={() => setPostModalState(null)}
-        />
-      )}
       <div className={styles.wrap}>
         {session && (
           <FeedSelector
@@ -387,7 +380,7 @@ export default function FeedPage() {
                           cardRef={(el) => { cardRefsRef.current[index] = el }}
                           openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
                           onAddClose={() => setKeyboardAddOpen(false)}
-                          onPostClick={(uri, opts) => setPostModalState({ uri, openReply: opts?.openReply })}
+                          onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
                         />
                       </div>
                     )
@@ -418,7 +411,7 @@ export default function FeedPage() {
                     cardRef={(el) => { cardRefsRef.current[index] = el }}
                     openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
                     onAddClose={() => setKeyboardAddOpen(false)}
-                    onPostClick={(uri, opts) => setPostModalState({ uri, openReply: opts?.openReply })}
+                    onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
                   />
                 </div>
               ))}
