@@ -403,7 +403,7 @@
     backdrop-filter: blur(var(--glass-blur-strong));
     border: 1px solid var(--glass-border);
     border-radius: var(--glass-radius-sm);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-dropdown);
     z-index: 30;
   }
   .accountMenu {
@@ -427,7 +427,7 @@
     backdrop-filter: blur(var(--glass-blur-strong));
     border: 1px solid var(--glass-border);
     border-radius: var(--glass-radius-sm);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-dropdown);
     z-index: 30;
   }
   .notificationFilters {
@@ -767,7 +767,7 @@
 .searchOverlayBackdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--overlay-bg);
   z-index: 22;
   animation: fadeIn 0.2s ease;
 }
@@ -811,7 +811,7 @@
   backdrop-filter: blur(var(--glass-blur-strong));
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-dropdown);
   pointer-events: auto;
   animation: popIn 0.2s ease;
 }
@@ -848,7 +848,7 @@
   backdrop-filter: blur(var(--glass-blur-strong));
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-dropdown);
   pointer-events: auto;
   animation: popIn 0.2s ease;
 }
@@ -932,7 +932,7 @@
   font-size: 1.1rem;
   line-height: 1;
   color: var(--text);
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--media-control-bg);
   border: none;
   border-radius: 50%;
   cursor: pointer;
@@ -942,7 +942,7 @@
 }
 
 .composePreviewRemove:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--overlay-bg);
 }
 
 .composePreviewRemove:disabled {
@@ -1060,7 +1060,7 @@
 .sheetBackdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--overlay-bg);
   z-index: 24;
   animation: fadeIn 0.2s ease;
 }
@@ -1085,7 +1085,7 @@
   backdrop-filter: blur(var(--glass-blur-strong));
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-dropdown);
 }
 
 .accountPopupContent {

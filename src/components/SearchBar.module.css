@@ -54,7 +54,7 @@
 
 .filterIconBtn:hover {
   color: var(--text);
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--glass-highlight);
 }
 
 .filterIconActive {
@@ -89,7 +89,7 @@
   backdrop-filter: blur(var(--glass-blur-strong));
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius-sm);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-dropdown);
   z-index: 101;
 }
 
@@ -130,7 +130,7 @@
   backdrop-filter: blur(var(--glass-blur-strong));
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius-sm);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-dropdown);
   z-index: 100;
 }
 

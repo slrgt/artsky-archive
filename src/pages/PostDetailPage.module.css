@@ -374,7 +374,7 @@
   height: 100dvh;
   height: 100vh;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.95);
+  background: var(--overlay-bg-strong);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -629,7 +629,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 0.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-dropdown);
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -890,7 +890,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 0.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-card);
   z-index: 20;
   display: flex;
   flex-direction: column;

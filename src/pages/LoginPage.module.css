@@ -21,7 +21,7 @@
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius);
   padding: 1.5rem;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-dropdown);
 }
 
 .title {
@@ -120,7 +120,7 @@
   background: var(--glass-bg-strong);
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius-sm);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-dropdown);
   max-height: 220px;
   overflow-y: auto;
   z-index: 10;
