@@ -6,6 +6,7 @@ import { useViewMode, VIEW_LABELS } from '../context/ViewModeContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { publicAgent, createPost, getNotifications } from '../lib/bsky'
+import EditProfileModal from './EditProfileModal'
 import SearchBar from './SearchBar'
 import styles from './Layout.module.css'
 
@@ -152,6 +153,15 @@ function UserPlusIcon() {
   )
 }
 
+function PencilIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+      <path d="m15 5 4 4" />
+    </svg>
+  )
+}
+
 function ThemeSunIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -214,7 +224,7 @@ export default function Layout({ title, children, showNav }: Props) {
       }).catch(() => {})
     })
     return () => { cancelled = true }
-  }, [sessionsDidKey, sessionsList])
+  }, [sessionsDidKey, sessionsList, accountProfilesVersion])
   const { theme, setTheme } = useTheme()
   const themeButtons = (
     <div className={styles.themeButtonGroup} role="group" aria-label="Theme">
@@ -256,6 +266,8 @@ export default function Layout({ title, children, showNav }: Props) {
   const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
   const [accountSheetOpen, setAccountSheetOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const [editProfileOpen, setEditProfileOpen] = useState(false)
+  const [accountProfilesVersion, setAccountProfilesVersion] = useState(0)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'reply' | 'follow' | 'like'>('all')
   const [notifications, setNotifications] = useState<{ uri: string; author: { handle?: string; did: string; avatar?: string; displayName?: string }; reason: string; reasonSubject?: string; isRead: boolean; indexedAt: string; replyPreview?: string }[]>([])
@@ -594,12 +606,22 @@ export default function Layout({ title, children, showNav }: Props) {
           {sessionsList.map((s) => {
             const profile = accountProfiles[s.did]
             const handle = profile?.handle ?? (s as { handle?: string }).handle ?? s.did
+            const isCurrent = s.did === session?.did
             return (
               <button
                 key={s.did}
                 type="button"
-                className={s.did === session?.did ? styles.menuItemActive : styles.menuItem}
-                onClick={() => handleSelectAccount(s.did)}
+                className={isCurrent ? styles.menuItemActive : styles.menuItem}
+                onClick={() => {
+                  if (isCurrent) {
+                    setAccountMenuOpen(false)
+                    setAccountSheetOpen(false)
+                    openProfileModal(handle)
+                  } else {
+                    handleSelectAccount(s.did)
+                  }
+                }}
+                title={isCurrent ? 'View my profile' : `Switch to @${handle}`}
               >
                 {profile?.avatar ? (
                   <img src={profile.avatar} alt="" className={styles.accountMenuAvatar} />
@@ -607,11 +629,22 @@ export default function Layout({ title, children, showNav }: Props) {
                   <span className={styles.accountMenuAvatarPlaceholder} aria-hidden>{(handle || s.did).slice(0, 1).toUpperCase()}</span>
                 )}
                 <span>@{handle}</span>
-                {s.did === session?.did && <span className={styles.sheetCheck} aria-hidden> ✓</span>}
+                {isCurrent && <span className={styles.sheetCheck} aria-hidden> ✓</span>}
               </button>
             )
           })}
           <div className={styles.menuActions}>
+            <button
+              type="button"
+              className={styles.menuActionBtn}
+              onClick={() => {
+                setAccountMenuOpen(false)
+                setAccountSheetOpen(false)
+                setEditProfileOpen(true)
+              }}
+            >
+              Edit profile
+            </button>
             <button type="button" className={styles.menuActionBtn} onClick={handleAddAccount}>
               Add account
             </button>
@@ -647,13 +680,21 @@ export default function Layout({ title, children, showNav }: Props) {
             {sessionsList.map((s) => {
               const profile = accountProfiles[s.did]
               const handle = profile?.handle ?? (s as { handle?: string }).handle ?? s.did
+              const isCurrent = s.did === session?.did
               return (
                 <button
                   key={s.did}
                   type="button"
-                  className={s.did === session?.did ? styles.menuCompactItemActive : styles.menuCompactItem}
-                  onClick={() => handleSelectAccount(s.did)}
-                  title={`@${handle}`}
+                  className={isCurrent ? styles.menuCompactItemActive : styles.menuCompactItem}
+                  onClick={() => {
+                    if (isCurrent) {
+                      setAccountSheetOpen(false)
+                      openProfileModal(handle)
+                    } else {
+                      handleSelectAccount(s.did)
+                    }
+                  }}
+                  title={isCurrent ? 'View my profile' : `@${handle}`}
                 >
                   {profile?.avatar ? (
                     <img src={profile.avatar} alt="" className={styles.accountMenuAvatar} />
@@ -666,6 +707,9 @@ export default function Layout({ title, children, showNav }: Props) {
             })}
           </div>
           <div className={styles.menuCompactActions}>
+            <button type="button" className={styles.menuCompactActionBtn} onClick={() => { setAccountSheetOpen(false); setEditProfileOpen(true) }} title="Edit profile" aria-label="Edit profile">
+              <PencilIcon />
+            </button>
             <button type="button" className={styles.menuCompactActionBtn} onClick={handleAddAccount} title="Add account" aria-label="Add account">
               <PlusIcon />
             </button>
@@ -1046,6 +1090,12 @@ export default function Layout({ title, children, showNav }: Props) {
                 </div>
               </div>
             </>
+          )}
+          {editProfileOpen && (
+            <EditProfileModal
+              onClose={() => setEditProfileOpen(false)}
+              onSaved={() => setAccountProfilesVersion((v) => v + 1)}
+            />
           )}
         </>
       )}
