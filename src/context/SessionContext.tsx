@@ -74,7 +74,29 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <SessionContext.Provider value={value}>
-      {children}
+      {loading ? (
+        <div
+          style={{
+            margin: 0,
+            padding: '2rem',
+            textAlign: 'center',
+            minHeight: '100dvh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'var(--bg, #0f0f1a)',
+            color: 'var(--text, #e8e8f0)',
+            fontFamily: 'system-ui, sans-serif',
+            fontSize: '1rem',
+          }}
+          aria-live="polite"
+          aria-busy="true"
+        >
+          Loading…
+        </div>
+      ) : (
+        children
+      )}
     </SessionContext.Provider>
   )
 }
