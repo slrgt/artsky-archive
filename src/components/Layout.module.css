@@ -545,12 +545,32 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
-  .menuTopRow {
+  .menuThemeColumnRow {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
     gap: 0.35rem;
+    width: 100%;
     margin-bottom: 0.35rem;
+  }
+  .menuThemeColumnRow .themeButtonGroup {
+    flex: 1;
+    display: flex;
+    gap: 0.2rem;
+  }
+  .menuThemeColumnRow .themeButtonGroup button {
+    flex: 1;
+    min-width: 0;
+  }
+  .menuThemeColumnRow .menuRow {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.2rem;
+  }
+  .menuThemeColumnRow .menuRow .menuOption,
+  .menuThemeColumnRow .menuRow .menuOptionActive {
+    flex: 1;
+    min-width: 0;
   }
   .menuRow {
     display: flex;
@@ -672,25 +692,17 @@
   padding-right: env(safe-area-inset-right);
 }
 
-/* Adult content toggle (account menu) - base styles for both popup and sheet */
+/* Adult content toggle (account menu) - row of 3 buttons below theme/column row */
 .menuNsfwRow {
   display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-.menuNsfwLabel {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--muted);
-}
-.menuNsfwBtns {
-  display: flex;
-  flex-wrap: wrap;
   gap: 0.25rem;
+  width: 100%;
 }
-.menuNsfwBtn,
-.menuNsfwBtnActive {
-  padding: 0.35rem 0.6rem;
+.menuNsfwRow .menuNsfwBtn,
+.menuNsfwRow .menuNsfwBtnActive {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
   font-size: 0.8rem;
   font-family: inherit;
   border-radius: var(--glass-radius-sm);
@@ -698,13 +710,17 @@
   background: var(--glass-bg);
   color: var(--text);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
-.menuNsfwBtn:hover {
+.menuNsfwRow .menuNsfwBtn:hover {
   background: var(--glass-highlight);
   border-color: var(--accent);
   color: var(--accent);
 }
-.menuNsfwBtnActive {
+.menuNsfwRow .menuNsfwBtnActive {
   background: var(--accent-subtle);
   border-color: var(--accent);
   color: var(--accent);
@@ -1238,9 +1254,24 @@
 
 .menuCompactRow {
   display: flex;
-  gap: 0.35rem;
-  justify-content: center;
-  flex-wrap: wrap;
+  gap: 0.25rem;
+  width: 100%;
+  align-items: center;
+}
+.menuCompactRow .themeButtonGroup {
+  flex: 1;
+  display: flex;
+  gap: 0.2rem;
+}
+.menuCompactRow .themeButtonGroup button {
+  flex: 1;
+  min-width: 0;
+}
+.menuCompactRow > button.menuCompactBtn,
+.menuCompactRow > button.menuCompactBtnActive {
+  flex: 1;
+  min-width: 0;
+  width: auto;
 }
 
 .menuCompactBtn,
@@ -1325,26 +1356,16 @@
 
 .menuCompactNsfwRow {
   display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.25rem;
+  width: 100%;
   padding-top: 0.5rem;
   border-top: 1px solid var(--glass-border);
-}
-
-.menuCompactNsfwRow .menuNsfwLabel {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--muted);
-}
-
-.menuCompactNsfwRow .menuNsfwBtns {
-  display: flex;
-  gap: 0.2rem;
 }
 
 .menuCompactNsfwRow .menuNsfwBtn,
 .menuCompactNsfwRow .menuNsfwBtnActive {
   flex: 1;
+  min-width: 0;
   padding: 0.35rem 0.4rem;
   font-size: 0.75rem;
   font-family: inherit;
@@ -1353,6 +1374,10 @@
   background: var(--glass-bg);
   color: var(--text);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .menuCompactNsfwRow .menuNsfwBtn:hover {
@@ -1431,6 +1456,34 @@ a.menuCompactActionBtn {
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.accountPopupContent .menuThemeColumnRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  margin-bottom: 0.35rem;
+}
+.accountPopupContent .menuThemeColumnRow .themeButtonGroup {
+  flex: 1;
+  display: flex;
+  gap: 0.2rem;
+}
+.accountPopupContent .menuThemeColumnRow .themeButtonGroup button {
+  flex: 1;
+  min-width: 0;
+}
+.accountPopupContent .menuThemeColumnRow .menuRow {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.2rem;
+}
+.accountPopupContent .menuThemeColumnRow .menuRow .menuOption,
+.accountPopupContent .menuThemeColumnRow .menuRow .menuOptionActive {
+  flex: 1;
+  min-width: 0;
 }
 
 .accountPopupContent .menuRow {

@@ -166,12 +166,14 @@ export default function FeedPage() {
           : source.label ?? undefined
 
   const load = useCallback(async (nextCursor?: string) => {
+    const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
+    const limit = cols >= 2 ? cols * 10 : 30
     try {
       if (nextCursor) setLoadingMore(true)
       else setLoading(true)
       setError(null)
       if (!session) {
-        const { feed, cursor: next } = await getGuestFeed(30, nextCursor)
+        const { feed, cursor: next } = await getGuestFeed(limit, nextCursor)
         setItems((prev) => (nextCursor ? [...prev, ...feed] : feed))
         setCursor(next)
       } else if (mixEntries.length >= 2 && mixTotalPercent >= 99) {
@@ -186,7 +188,7 @@ export default function FeedPage() {
         }
         const { feed, cursors: nextCursors } = await getMixedFeed(
           mixEntries.map((e) => ({ source: e.source, percent: e.percent })),
-          30,
+          limit,
           cursorsToUse
         )
         setItems((prev) => (isLoadMore ? [...prev, ...feed] : feed))
@@ -194,20 +196,20 @@ export default function FeedPage() {
       } else if (mixEntries.length === 1) {
         const single = mixEntries[0].source
         if (single.kind === 'timeline') {
-          const res = await agent.getTimeline({ limit: 30, cursor: nextCursor })
+          const res = await agent.getTimeline({ limit, cursor: nextCursor })
           setItems((prev) => (nextCursor ? [...prev, ...res.data.feed] : res.data.feed))
           setCursor(res.data.cursor ?? undefined)
         } else if (single.uri) {
-          const res = await agent.app.bsky.feed.getFeed({ feed: single.uri, limit: 30, cursor: nextCursor })
+          const res = await agent.app.bsky.feed.getFeed({ feed: single.uri, limit, cursor: nextCursor })
           setItems((prev) => (nextCursor ? [...prev, ...res.data.feed] : res.data.feed))
           setCursor(res.data.cursor ?? undefined)
         }
       } else if (source.kind === 'timeline') {
-        const res = await agent.getTimeline({ limit: 30, cursor: nextCursor })
+        const res = await agent.getTimeline({ limit, cursor: nextCursor })
         setItems((prev) => (nextCursor ? [...prev, ...res.data.feed] : res.data.feed))
         setCursor(res.data.cursor ?? undefined)
       } else if (source.uri) {
-        const res = await agent.app.bsky.feed.getFeed({ feed: source.uri, limit: 30, cursor: nextCursor })
+        const res = await agent.app.bsky.feed.getFeed({ feed: source.uri, limit, cursor: nextCursor })
         setItems((prev) => (nextCursor ? [...prev, ...res.data.feed] : res.data.feed))
         setCursor(res.data.cursor ?? undefined)
       }
@@ -218,7 +220,7 @@ export default function FeedPage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [source, session, mixEntries, mixTotalPercent])
+  }, [source, session, mixEntries, mixTotalPercent, viewMode])
 
   useEffect(() => {
     load()

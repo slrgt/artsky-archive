@@ -17,6 +17,7 @@
 
 /* Match main content width on homepage (Layout .main) */
 .pane {
+  position: relative;
   width: 100%;
   max-width: 1200px;
   max-height: 100%;
@@ -35,18 +36,27 @@
   -webkit-overflow-scrolling: touch;
   flex: 1;
   min-height: 0;
+  padding-top: 1.75rem;
 }
 
-/* Top bar 75% less height: compact padding and smaller buttons */
+/* Close/back float over content; no full-width bar covering scroll */
 .modalTopBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  flex-shrink: 0;
   padding: 0.25rem 0.5rem;
-  min-height: 0;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  background: transparent;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.modalTopBar .closeBtn,
+.modalTopBar .backBtn {
+  pointer-events: auto;
 }
 
 .backBtn,
@@ -84,13 +94,17 @@
   transform: scale(0.96);
 }
 
-/* Mobile: pin close/back bar to bottom of popup */
+/* Mobile: pin close/back to bottom of popup, floating over content */
 @media (max-width: 767px) {
   .pane {
     flex-direction: column-reverse;
   }
   .modalTopBar {
-    border-bottom: none;
-    border-top: 1px solid var(--border);
+    top: auto;
+    bottom: 0;
+  }
+  .scroll {
+    padding-top: 0;
+    padding-bottom: 2.25rem;
   }
 }

@@ -537,7 +537,7 @@
   opacity: 0.9;
 }
 
-/* Long-press action menu: buttons above, below, left of thumb (fixed so not under finger) */
+/* Long-press action menu: buttons around touch point with clearance so finger doesn't cover them */
 .longPressOverlay {
   position: fixed;
   transform: translate(-50%, -50%);
@@ -569,22 +569,23 @@
   pointer-events: auto;
 }
 
+/* Offset so buttons sit around the finger/mouse with comfortable clearance (~2.75rem from center) */
 .longPressBtnTop {
   left: 50%;
   bottom: 100%;
-  transform: translate(-50%, -0.5rem);
+  transform: translate(-50%, -2.75rem);
 }
 
 .longPressBtnBottom {
   left: 50%;
   top: 100%;
-  transform: translate(-50%, 0.5rem);
+  transform: translate(-50%, 2.75rem);
 }
 
 .longPressBtnLeft {
   right: 100%;
   top: 50%;
-  transform: translate(-0.5rem, -50%);
+  transform: translate(-2.75rem, -50%);
 }
 
 .longPressOverlay button:hover {

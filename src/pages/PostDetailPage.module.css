@@ -3,13 +3,23 @@
   padding-bottom: 5rem;
 }
 
+/* In modal: no border/outline around post block or media; no extra gap above media */
+.wrapInModal.wrap {
+  padding-top: 0;
+}
+.wrapInModal .rootPostBlock {
+  border: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+.wrapInModal .galleryImageBtn:focus,
+.wrapInModal .galleryVideoWrap:focus {
+  outline: none;
+}
+
 /* In modal on mobile: media takes full width of popup */
 @media (max-width: 767px) {
   .wrapInModal.wrap {
-    padding-left: 0;
-    padding-right: 0;
-  }
-  .wrapInModal .rootPostBlock {
     padding-left: 0;
     padding-right: 0;
   }
@@ -789,17 +799,17 @@
   margin-top: 0.75rem;
 }
 
-.commentFormWrapFocused {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+/* No outline by default; accent outline when form or any control inside has focus */
+.inlineReplyFormWrap > div:first-child {
+  outline: none;
+  padding: 0.75rem 1rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
 }
 
-.inlineReplyFormWrap > div:first-child {
-  padding: 0.75rem 1rem;
-  background: var(--bg);
-  border: 1px solid var(--accent);
-  border-radius: 0.5rem;
+.inlineReplyFormWrap > div:first-child:focus-within {
+  border-color: var(--accent);
   border-left-width: 3px;
 }
 

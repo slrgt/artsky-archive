@@ -644,7 +644,7 @@ export default function Layout({ title, children, showNav }: Props) {
         </Link>
       </section>
       <section className={styles.menuSection}>
-        <div className={styles.menuTopRow}>
+        <div className={styles.menuThemeColumnRow}>
           {themeButtons}
           <div className={styles.menuRow}>
             {viewOptions.map((m) => (
@@ -662,6 +662,18 @@ export default function Layout({ title, children, showNav }: Props) {
               </button>
             ))}
           </div>
+        </div>
+        <div className={styles.menuNsfwRow} role="group" aria-label="Adult content preference">
+          {(['blurred', 'nsfw', 'sfw'] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              className={nsfwPreference === p ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
+              onClick={() => setNsfwPreference(p)}
+            >
+              {p === 'nsfw' ? 'NSFW' : p === 'sfw' ? 'SFW' : 'Blurred'}
+            </button>
+          ))}
         </div>
       </section>
       {session && (
@@ -709,21 +721,6 @@ export default function Layout({ title, children, showNav }: Props) {
             >
               Edit profile
             </button>
-            <div className={styles.menuNsfwRow}>
-              <span className={styles.menuNsfwLabel}>Adult content</span>
-              <div className={styles.menuNsfwBtns} role="group" aria-label="Adult content preference">
-                {(['nsfw', 'sfw', 'blurred'] as const).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    className={nsfwPreference === p ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
-                    onClick={() => setNsfwPreference(p)}
-                  >
-                    {p === 'nsfw' ? 'NSFW' : p === 'sfw' ? 'SFW' : 'Blurred'}
-                  </button>
-                ))}
-              </div>
-            </div>
             <button type="button" className={styles.menuActionBtn} onClick={handleAddAccount}>
               Add account
             </button>
@@ -794,21 +791,6 @@ export default function Layout({ title, children, showNav }: Props) {
               )
             })}
           </div>
-          <div className={styles.menuCompactNsfwRow}>
-            <span className={styles.menuNsfwLabel}>Adult content</span>
-            <div className={styles.menuNsfwBtns} role="group" aria-label="Adult content preference">
-              {(['nsfw', 'sfw', 'blurred'] as const).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  className={nsfwPreference === p ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
-                  onClick={() => setNsfwPreference(p)}
-                >
-                  {p === 'nsfw' ? 'NSFW' : p === 'sfw' ? 'SFW' : 'Blurred'}
-                </button>
-              ))}
-            </div>
-          </div>
           <div className={styles.menuCompactActions}>
             <button type="button" className={styles.menuCompactActionBtn} onClick={() => { setAccountSheetOpen(false); openEditProfile() }} title="Edit profile" aria-label="Edit profile">
               <PencilIcon />
@@ -857,6 +839,18 @@ export default function Layout({ title, children, showNav }: Props) {
             {m === '1' && <Column1Icon />}
             {m === '2' && <Column2Icon />}
             {m === '3' && <Column3Icon />}
+          </button>
+        ))}
+      </div>
+      <div className={styles.menuCompactNsfwRow} role="group" aria-label="Adult content preference">
+        {(['blurred', 'nsfw', 'sfw'] as const).map((p) => (
+          <button
+            key={p}
+            type="button"
+            className={nsfwPreference === p ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
+            onClick={() => setNsfwPreference(p)}
+          >
+            {p === 'nsfw' ? 'NSFW' : p === 'sfw' ? 'SFW' : 'Blurred'}
           </button>
         ))}
       </div>

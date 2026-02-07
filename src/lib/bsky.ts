@@ -1,4 +1,5 @@
 import { AtpAgent, RichText, type AtpSessionData, type AtpSessionEvent } from '@atproto/api'
+import type { AppBskyFeedDefs } from '@atproto/api'
 import { GUEST_FEED_ACCOUNTS } from '../config/guestFeed'
 
 const BSKY_SERVICE = 'https://bsky.social'
@@ -429,10 +430,24 @@ export async function getSuggestedFeeds(limit = 8) {
   }
 }
 
-/** Search posts by hashtag (tag without #). Returns PostView[]; use with cursor for pagination. */
+/** Search posts by hashtag (tag without #). When logged out uses direct fetch to public API to avoid CORS. Returns PostView[]; use with cursor for pagination. */
 export async function searchPostsByTag(tag: string, cursor?: string) {
   const normalized = tag.replace(/^#/, '').trim()
   if (!normalized) return { posts: [], cursor: undefined as string | undefined }
+
+  if (!getSession()) {
+    const params = new URLSearchParams()
+    params.set('q', normalized)
+    params.set('tag', normalized)
+    params.set('limit', '30')
+    params.set('sort', 'latest')
+    if (cursor) params.set('cursor', cursor)
+    const res = await fetch(`${PUBLIC_BSKY}/xrpc/app.bsky.feed.searchPosts?${params.toString()}`)
+    const data = (await res.json()) as { posts?: AppBskyFeedDefs.PostView[]; cursor?: string; message?: string }
+    if (!res.ok) throw new Error(data.message ?? 'Failed to load tag')
+    return { posts: data.posts ?? [], cursor: data.cursor }
+  }
+
   const res = await agent.app.bsky.feed.searchPosts({
     q: normalized,
     tag: [normalized],

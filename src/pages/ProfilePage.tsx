@@ -15,7 +15,7 @@ import postBlockStyles from './PostDetailPage.module.css'
 const REASON_REPOST = 'app.bsky.feed.defs#reasonRepost'
 const REASON_PIN = 'app.bsky.feed.defs#reasonPin'
 
-type ProfileTab = 'posts' | 'reposts' | 'liked' | 'blog' | 'text' | 'feeds'
+type ProfileTab = 'posts' | 'reposts' | 'blog' | 'text' | 'feeds'
 
 type ProfileState = {
   displayName?: string
@@ -40,8 +40,6 @@ export function ProfileContent({
   const [tab, setTab] = useState<ProfileTab>('posts')
   const [items, setItems] = useState<TimelineItem[]>([])
   const [cursor, setCursor] = useState<string | undefined>()
-  const [likedItems, setLikedItems] = useState<TimelineItem[]>([])
-  const [likedCursor, setLikedCursor] = useState<string | undefined>()
   const [feeds, setFeeds] = useState<GeneratorView[]>([])
   const [blogDocuments, setBlogDocuments] = useState<StandardSiteDocumentView[]>([])
   const [blogCursor, setBlogCursor] = useState<string | undefined>()
@@ -106,24 +104,6 @@ export function ProfileContent({
     }
   }, [handle, readAgent])
 
-  const loadLiked = useCallback(async (nextCursor?: string) => {
-    if (!handle || !profile || session?.did !== profile.did) return
-    try {
-      if (nextCursor) setLoadingMore(true)
-      else setLoading(true)
-      setError(null)
-      const res = await agent.getActorLikes({ actor: handle, limit: 30, cursor: nextCursor })
-      const feed = res.data.feed as TimelineItem[]
-      setLikedItems((prev) => (nextCursor ? [...prev, ...feed] : feed))
-      setLikedCursor(res.data.cursor ?? undefined)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load likes')
-    } finally {
-      setLoading(false)
-      setLoadingMore(false)
-    }
-  }, [handle, profile?.did, session?.did])
-
   const loadFeeds = useCallback(async () => {
     if (!handle) return
     try {
@@ -172,14 +152,6 @@ export function ProfileContent({
   }, [handle, load])
 
   useEffect(() => {
-    if (tab === 'liked' && profile && session?.did === profile.did) {
-      setLikedItems([])
-      setLikedCursor(undefined)
-      loadLiked()
-    }
-  }, [tab, profile?.did, session?.did, loadLiked])
-
-  useEffect(() => {
     if (tab === 'feeds') loadFeeds()
   }, [tab, loadFeeds])
 
@@ -199,26 +171,25 @@ export function ProfileContent({
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Infinite scroll: load more when sentinel enters view (posts, reposts, liked, text tabs)
+  // Infinite scroll: load more when sentinel enters view (posts, reposts tabs)
   loadingMoreRef.current = loadingMore
   useEffect(() => {
+    if (tab !== 'posts' && tab !== 'reposts') return
     const sentinel = loadMoreSentinelRef.current
     if (!sentinel) return
-    const activeCursor = tab === 'liked' ? likedCursor : cursor
-    if (!activeCursor) return
-    const loadMore = tab === 'liked' ? () => loadLiked(likedCursor) : () => load(cursor)
+    if (!cursor) return
     const observer = new IntersectionObserver(
       (entries) => {
         const [e] = entries
         if (!e?.isIntersecting || loadingMoreRef.current) return
         loadingMoreRef.current = true
-        loadMore()
+        load(cursor)
       },
       { rootMargin: '200px', threshold: 0 }
     )
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [tab, cursor, likedCursor, load, loadLiked])
+  }, [tab, cursor, load])
 
   const followingUri = profile?.viewer?.following ?? followUriOverride
   const isFollowing = !!followingUri
@@ -242,10 +213,7 @@ export function ProfileContent({
   const mediaItems = authorFeedItems
     .filter((item) => getPostMediaInfo(item.post))
     .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
-  const likedMediaItems = likedItems
-    .filter((item) => getPostMediaInfo(item.post))
-    .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
-  const profileGridItems = tab === 'liked' ? likedMediaItems : mediaItems
+  const profileGridItems = mediaItems
   const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
   profileGridItemsRef.current = profileGridItems
   keyboardFocusIndexRef.current = keyboardFocusIndex
@@ -274,7 +242,7 @@ export function ProfileContent({
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) return
       if (e.ctrlKey || e.metaKey) return
-      const gridTab = tab === 'posts' || tab === 'reposts' || tab === 'liked'
+      const gridTab = tab === 'posts' || tab === 'reposts'
       if (!gridTab) return
 
       const items = profileGridItemsRef.current
@@ -437,13 +405,6 @@ export function ProfileContent({
             onClick={() => setTab('reposts')}
           >
             Reposts
-          </button>
-          <button
-            type="button"
-            className={`${styles.tab} ${tab === 'liked' ? styles.tabActive : ''}`}
-            onClick={() => setTab('liked')}
-          >
-            Liked
           </button>
           <button
             type="button"
@@ -639,41 +600,6 @@ export function ProfileContent({
                 </li>
               ))}
             </ul>
-          )
-        ) : tab === 'liked' ? (
-            !isOwnProfile ? (
-            <div className={styles.empty}>Liked posts are only visible to the account owner.</div>
-          ) : likedMediaItems.length === 0 ? (
-            <div className={styles.empty}>No liked posts with images or videos.</div>
-          ) : (
-            <>
-              <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
-                {likedMediaItems.map((item, index) => (
-                  <div
-                    key={item.post.uri}
-                    onMouseEnter={() => {
-                      if (mouseMovedRef.current) {
-                        mouseMovedRef.current = false
-                        setKeyboardFocusIndex(index)
-                      }
-                    }}
-                  >
-                    <PostCard
-                      item={item}
-                      isSelected={tab === 'liked' && index === keyboardFocusIndex}
-                      cardRef={(el) => { cardRefsRef.current[index] = el }}
-                      openAddDropdown={tab === 'liked' && index === keyboardFocusIndex && keyboardAddOpen}
-                      onAddClose={() => setKeyboardAddOpen(false)}
-                      onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
-                      nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
-                      onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
-                    />
-                  </div>
-                ))}
-              </div>
-              {likedCursor && <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />}
-              {loadingMore && <div className={styles.loadingMore}>Loading…</div>}
-            </>
           )
         ) : mediaItems.length === 0 ? (
           <div className={styles.empty}>
