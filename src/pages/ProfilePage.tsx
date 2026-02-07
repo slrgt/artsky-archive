@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { agent, publicAgent, getPostMediaInfo, getSession, listStandardSiteDocumentsForAuthor, type TimelineItem, type StandardSiteDocumentView } from '../lib/bsky'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import PostCard from '../components/PostCard'
@@ -58,7 +58,6 @@ export default function ProfilePage() {
   const cardRefsRef = useRef<(HTMLDivElement | null)[]>([])
   const keyboardFocusIndexRef = useRef(0)
   const profileGridItemsRef = useRef<TimelineItem[]>([])
-  const navigate = useNavigate()
   const SWIPE_THRESHOLD = 100
   const SCROLL_THRESHOLD = 8
 
