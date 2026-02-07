@@ -103,8 +103,12 @@ function ScrollRestoration() {
         window.scrollTo(0, y)
       }
       requestAnimationFrame(restore)
-      const t = setTimeout(restore, 50)
-      return () => clearTimeout(t)
+      const t1 = setTimeout(restore, 50)
+      const t2 = setTimeout(restore, 200) // re-apply after content (e.g. feed) has rendered
+      return () => {
+        clearTimeout(t1)
+        clearTimeout(t2)
+      }
     } catch {
       // ignore
     }

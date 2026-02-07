@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import {
   agent,
   publicAgent,
@@ -28,6 +28,7 @@ const PRESET_SOURCES: FeedSource[] = [
 export default function FeedPage() {
   const location = useLocation()
   const navigate = useNavigate()
+  const navigationType = useNavigationType()
   const { session } = useSession()
   const { viewMode } = useViewMode()
   const [source, setSource] = useState<FeedSource>(PRESET_SOURCES[0])
@@ -74,10 +75,10 @@ export default function FeedPage() {
     loadSavedFeeds()
   }, [loadSavedFeeds])
 
-  // Scroll to top when landing on the feed (e.g. clicking logo from another page)
+  // Scroll to top when landing on the feed (e.g. clicking logo), but not when returning via back/Q
   useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [])
+    if (navigationType !== 'POP') window.scrollTo(0, 0)
+  }, [navigationType])
 
   // When logged in, see which guest accounts the user follows (so we can show the preview section for those).
   useEffect(() => {
