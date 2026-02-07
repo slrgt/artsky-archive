@@ -16,8 +16,6 @@ const REASON_PIN = 'app.bsky.feed.defs#reasonPin'
 
 type ProfileTab = 'posts' | 'reposts' | 'liked' | 'blog' | 'text' | 'feeds'
 
-const PROFILE_TABS: ProfileTab[] = ['posts', 'reposts', 'liked', 'blog', 'text', 'feeds']
-
 type ProfileState = {
   displayName?: string
   avatar?: string
@@ -199,12 +197,6 @@ export function ProfileContent({
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
-
-  function goTab(direction: 1 | -1) {
-    const idx = PROFILE_TABS.indexOf(tab)
-    const next = (idx + direction + PROFILE_TABS.length) % PROFILE_TABS.length
-    setTab(PROFILE_TABS[next])
-  }
 
   // Infinite scroll: load more when sentinel enters view (posts, reposts, liked, text tabs)
   loadingMoreRef.current = loadingMore
