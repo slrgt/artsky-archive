@@ -245,12 +245,22 @@ export default function FeedPage() {
       }
       if (key === 'a' || e.key === 'ArrowLeft') {
         scrollIntoViewFromKeyboardRef.current = true
-        setKeyboardFocusIndex((idx) => Math.max(0, idx - 1))
+        // Same row, previous column (stay at left edge) so A always moves left
+        setKeyboardFocusIndex((idx) => {
+          const col = idx % cols
+          if (col <= 0) return idx
+          return idx - 1
+        })
         return
       }
       if (key === 'd' || e.key === 'ArrowRight') {
         scrollIntoViewFromKeyboardRef.current = true
-        setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + 1))
+        // Same row, next column (stay at right edge) so D always moves right
+        setKeyboardFocusIndex((idx) => {
+          const col = idx % cols
+          if (col >= cols - 1) return idx
+          return Math.min(items.length - 1, idx + 1)
+        })
         return
       }
       if (key === 'e' || key === 'enter') {
