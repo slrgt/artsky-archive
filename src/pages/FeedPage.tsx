@@ -49,7 +49,6 @@ export default function FeedPage() {
   const cardRefsRef = useRef<(HTMLDivElement | null)[]>([])
   const mediaItemsRef = useRef<TimelineItem[]>([])
   const keyboardFocusIndexRef = useRef(0)
-  const lastScrollIntoViewIndexRef = useRef<number>(-1)
 
   const allSources = [...PRESET_SOURCES, ...savedFeedSources]
 
@@ -198,21 +197,6 @@ export default function FeedPage() {
   useEffect(() => {
     setKeyboardFocusIndex((i) => (mediaItems.length ? Math.min(i, mediaItems.length - 1) : 0))
   }, [mediaItems.length])
-
-  // Scroll focused card into view when user changes focus (WASD etc.); use block: 'start' so S reliably scrolls the page down
-  useEffect(() => {
-    if (navigationType === 'POP') return
-    if (keyboardFocusIndex === lastScrollIntoViewIndexRef.current) return
-    lastScrollIntoViewIndexRef.current = keyboardFocusIndex
-    const index = keyboardFocusIndex
-    const raf = requestAnimationFrame(() => {
-      const el = cardRefsRef.current[index]
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' })
-      }
-    })
-    return () => cancelAnimationFrame(raf)
-  }, [keyboardFocusIndex, navigationType])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
