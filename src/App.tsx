@@ -113,14 +113,19 @@ function ScrollRestoration() {
         restored = true
         window.scrollTo(0, y)
       }
-      const delays = [0, 50, 150, 400, 800, 1500]
-      const timers = delays.map((ms) => setTimeout(restoreOnce, ms))
+      // ResizeObserver fires when layout changes (e.g. images load); restore as soon as height is enough
       const ro = new ResizeObserver(restoreOnce)
       ro.observe(document.documentElement)
-      const roStop = setTimeout(() => ro.disconnect(), 3000)
+      // Interval keeps trying until doc is tall enough (back navigation: feed + images load late)
+      const interval = setInterval(restoreOnce, 250)
+      const maxWaitMs = 10000
+      const stop = setTimeout(() => {
+        clearInterval(interval)
+        ro.disconnect()
+      }, maxWaitMs)
       return () => {
-        timers.forEach(clearTimeout)
-        clearTimeout(roStop)
+        clearInterval(interval)
+        clearTimeout(stop)
         ro.disconnect()
       }
     } catch {
