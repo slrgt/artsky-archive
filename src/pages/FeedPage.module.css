@@ -314,7 +314,7 @@
 /* Grid layout */
 .grid {
   display: grid;
-  gap: 0.5rem;
+  gap: 0.35rem;
   width: 100%;
   min-width: 0;
   margin-bottom: 0.5rem;
@@ -324,7 +324,7 @@
 .gridView1 {
   grid-template-columns: repeat(1, minmax(0, 1fr));
   grid-auto-rows: auto;
-  gap: 0.5rem;
+  gap: 0.35rem;
   --feed-card-media-max-height: min(calc(100vh - 10rem), 85vh);
 }
 
@@ -342,11 +342,11 @@
 }
 .gridView2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 .gridView3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
 /* Wrapper so card can size naturally; min-width prevents overflow in grid */
@@ -358,7 +358,7 @@
 .gridColumns {
   display: flex;
   flex-direction: row;
-  gap: 0.5rem;
+  gap: 0.35rem;
   align-items: flex-start;
 }
 
@@ -367,7 +367,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
 /* Invisible sentinel for infinite scroll (IntersectionObserver target) */
