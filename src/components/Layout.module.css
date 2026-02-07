@@ -56,21 +56,22 @@
     gap: 0.25rem;
     flex-shrink: 0;
   }
-  /* Mobile: account button matches bottom nav style (icon + label, muted) */
+  /* Mobile: account button – larger touch target, opens popup */
   .headerAccountNavBtn {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.1rem;
-    padding: 0.2rem 0.35rem;
-    min-height: 0;
+    gap: 0.15rem;
+    padding: 0.45rem 0.6rem;
+    min-height: 44px;
+    min-width: 44px;
     border: none;
     border-radius: var(--glass-radius-sm);
     background: transparent;
     color: var(--muted);
     font-weight: 500;
-    font-size: 0.55rem;
+    font-size: 0.65rem;
     cursor: pointer;
     font-family: inherit;
     -webkit-tap-highlight-color: transparent;
@@ -83,15 +84,46 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 22px;
-    height: 22px;
+    width: 28px;
+    height: 28px;
   }
   .headerAccountNavBtn .navIcon svg {
-    width: 22px;
-    height: 22px;
+    width: 28px;
+    height: 28px;
+  }
+  .headerAccountNavBtn .headerAccountAvatar {
+    width: 28px;
+    height: 28px;
   }
   .headerAccountNavBtn .navLabel {
     white-space: nowrap;
+  }
+  /* Mobile: header icon buttons (art-only, notifications) – larger touch targets */
+  .headerBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: none;
+    border-radius: var(--glass-radius-sm);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .headerBtn:hover {
+    color: var(--text);
+    background: var(--glass-highlight);
+  }
+  .headerBtn svg {
+    width: 24px;
+    height: 24px;
+  }
+  .headerBtn .headerAccountAvatar {
+    width: 24px;
+    height: 24px;
   }
 }
 
@@ -670,13 +702,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.1rem;
-  padding: 0.2rem 0.15rem;
-  min-height: 0;
+  gap: 0.15rem;
+  padding: 0.45rem 0.35rem;
+  min-height: 44px;
   color: var(--muted);
   text-decoration: none;
   font-weight: 500;
-  font-size: 0.55rem;
+  font-size: 0.65rem;
   -webkit-tap-highlight-color: transparent;
   background: none;
   border: none;
@@ -697,13 +729,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
 }
 
 .navIcon svg {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
 }
 
 .headerAccountAvatar {

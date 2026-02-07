@@ -958,9 +958,12 @@ export default function Layout({ title, children, showNav }: Props) {
                   ref={accountBtnRef}
                   type="button"
                   className={!isDesktop ? styles.headerAccountNavBtn : styles.headerBtn}
-                  onClick={() => setAccountMenuOpen((o) => !o)}
+                  onClick={() => {
+                    if (isDesktop) setAccountMenuOpen((o) => !o)
+                    else setAccountSheetOpen(true)
+                  }}
                   aria-label="Accounts and settings"
-                  aria-expanded={accountMenuOpen}
+                  aria-expanded={isDesktop ? accountMenuOpen : accountSheetOpen}
                 >
                   <span className={styles.navIcon}>
                     {currentAccountAvatar ? (
@@ -971,7 +974,7 @@ export default function Layout({ title, children, showNav }: Props) {
                   </span>
                   {!isDesktop && <span className={styles.navLabel}>Accounts</span>}
                 </button>
-                {accountMenuOpen && (
+                {accountMenuOpen && isDesktop && (
                   <div ref={accountMenuRef} className={styles.accountMenu} role="menu" aria-label="Accounts and settings">
                     {accountPanelContent}
                   </div>

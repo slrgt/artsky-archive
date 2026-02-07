@@ -48,6 +48,9 @@ export default function PostActionsMenu({
   const { addHidden } = useHiddenPosts()
   const [openUncontrolled, setOpenUncontrolled] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [reportStep, setReportStep] = useState<'main' | 'reason'>('main')
+  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -61,7 +64,15 @@ export default function PostActionsMenu({
   }
 
   useEffect(() => {
-    if (!open) triggerRef.current?.blur()
+    if (!open) {
+      triggerRef.current?.blur()
+      setReportStep('main')
+      setFeedback(null)
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current)
+        feedbackTimeoutRef.current = null
+      }
+    }
   }, [open])
 
   useEffect(() => {
@@ -130,27 +141,50 @@ export default function PostActionsMenu({
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
+  function showSuccess(message: string) {
+    setFeedback({ type: 'success', message })
+    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current)
+    feedbackTimeoutRef.current = setTimeout(() => {
+      feedbackTimeoutRef.current = null
+      setOpen(false)
+      setFeedback(null)
+    }, 1800)
+  }
+
+  function showError(message: string) {
+    setFeedback({ type: 'error', message })
+  }
+
   async function handleBlock() {
     if (!session?.did || isOwnPost) return
     setLoading('block')
+    setFeedback(null)
     try {
       await blockAccount(authorDid)
-      setOpen(false)
+      showSuccess('Account blocked')
     } catch {
-      // leave menu open; user can retry
+      showError('Could not block. Try again.')
     } finally {
       setLoading(null)
     }
   }
 
-  async function handleReport() {
+  const REPORT_REASONS: { label: string; reasonType: string }[] = [
+    { label: 'Spam', reasonType: 'com.atproto.moderation.defs#reasonSpam' },
+    { label: 'Harassment', reasonType: 'com.atproto.moderation.defs#reasonViolation' },
+    { label: 'Misleading', reasonType: 'com.atproto.moderation.defs#reasonMisleading' },
+    { label: 'Other', reasonType: 'com.atproto.moderation.defs#reasonOther' },
+  ]
+
+  async function handleReportWithReason(reasonType: string) {
     if (!session?.did) return
     setLoading('report')
+    setFeedback(null)
     try {
-      await reportPost(postUri, postCid)
-      setOpen(false)
+      await reportPost(postUri, postCid, reasonType)
+      showSuccess('Report sent to Bluesky')
     } catch {
-      // leave menu open
+      showError('Could not send report. Try again.')
     } finally {
       setLoading(null)
     }
@@ -159,11 +193,12 @@ export default function PostActionsMenu({
   async function handleMuteThread() {
     if (!session?.did) return
     setLoading('mute')
+    setFeedback(null)
     try {
       await muteThread(rootUri)
-      setOpen(false)
+      showSuccess('Thread muted')
     } catch {
-      // leave menu open
+      showError('Could not mute thread. Try again.')
     } finally {
       setLoading(null)
     }
@@ -215,54 +250,85 @@ export default function PostActionsMenu({
           {feedLabel ? (
             <div className={styles.feedLabel} role="presentation">From: {feedLabel}</div>
           ) : null}
-          {isOwnPost && (
-            <button
-              type="button"
-              className={styles.item}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete() }}
-              disabled={loading === 'delete'}
-              role="menuitem"
-            >
-              {loading === 'delete' ? '…' : 'Delete post'}
-            </button>
+          {feedback ? (
+            <div className={feedback.type === 'success' ? styles.feedbackSuccess : styles.feedbackError} role="status">
+              {feedback.message}
+            </div>
+          ) : reportStep === 'reason' ? (
+            <>
+              <button
+                type="button"
+                className={styles.item}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReportStep('main') }}
+                role="menuitem"
+              >
+                ← Back
+              </button>
+              <div className={styles.reportReasonLabel}>Report to Bluesky</div>
+              {REPORT_REASONS.map(({ label, reasonType }) => (
+                <button
+                  key={reasonType}
+                  type="button"
+                  className={styles.item}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleReportWithReason(reasonType) }}
+                  disabled={loading === 'report'}
+                  role="menuitem"
+                >
+                  {loading === 'report' ? '…' : label}
+                </button>
+              ))}
+            </>
+          ) : (
+            <>
+              {isOwnPost && (
+                <button
+                  type="button"
+                  className={styles.item}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete() }}
+                  disabled={loading === 'delete'}
+                  role="menuitem"
+                >
+                  {loading === 'delete' ? '…' : 'Delete post'}
+                </button>
+              )}
+              {!isOwnPost && (
+                <button
+                  type="button"
+                  className={styles.item}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleBlock() }}
+                  disabled={loading === 'block'}
+                  role="menuitem"
+                >
+                  {loading === 'block' ? '…' : 'Block account'}
+                </button>
+              )}
+              <button
+                type="button"
+                className={styles.item}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReportStep('reason') }}
+                role="menuitem"
+              >
+                Report post
+              </button>
+              <button
+                type="button"
+                className={styles.item}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMuteThread() }}
+                disabled={loading === 'mute'}
+                role="menuitem"
+              >
+                {loading === 'mute' ? '…' : 'Mute thread'}
+              </button>
+              <button
+                type="button"
+                className={styles.item}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleHide() }}
+                role="menuitem"
+              >
+                Hide post
+              </button>
+            </>
           )}
-          {!isOwnPost && (
-            <button
-              type="button"
-              className={styles.item}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleBlock() }}
-              disabled={loading === 'block'}
-              role="menuitem"
-            >
-              {loading === 'block' ? '…' : 'Block account'}
-            </button>
-          )}
-          <button
-            type="button"
-            className={styles.item}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleReport() }}
-            disabled={loading === 'report'}
-            role="menuitem"
-          >
-            {loading === 'report' ? '…' : 'Report post'}
-          </button>
-          <button
-            type="button"
-            className={styles.item}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMuteThread() }}
-            disabled={loading === 'mute'}
-            role="menuitem"
-          >
-            {loading === 'mute' ? '…' : 'Mute thread'}
-          </button>
-          <button
-            type="button"
-            className={styles.item}
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleHide() }}
-            role="menuitem"
-          >
-            Hide post
-          </button>
         </div>
       )}
     </div>
