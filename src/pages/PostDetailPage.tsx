@@ -515,11 +515,18 @@ function PostBlock({
   )
 }
 
-export default function PostDetailPage() {
-  const { uri } = useParams<{ uri: string }>()
+export interface PostDetailContentProps {
+  /** Decoded post URI */
+  uri: string
+  /** When true, open the reply form focused on load */
+  initialOpenReply?: boolean
+  /** When provided, render in modal mode (no Layout). Call when uri is empty to close. */
+  onClose?: () => void
+}
+
+export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: PostDetailContentProps) {
   const navigate = useNavigate()
-  const location = useLocation()
-  const decodedUri = uri ? decodeURIComponent(uri) : ''
+  const decodedUri = uriProp
   const [thread, setThread] = useState<
     AppBskyFeedDefs.ThreadViewPost | AppBskyFeedDefs.NotFoundPost | AppBskyFeedDefs.BlockedPost | { $type: string } | null
   >(null)
@@ -675,16 +682,14 @@ export default function PostDetailPage() {
   }, [load])
 
   useEffect(() => {
-    const state = location.state as { openReply?: boolean } | null
-    if (!thread || !isThreadViewPost(thread) || !state?.openReply) return
+    if (!thread || !isThreadViewPost(thread) || !initialOpenReply) return
     const handle = thread.post.author?.handle ?? thread.post.author?.did ?? ''
     setReplyingTo({ uri: thread.post.uri, cid: thread.post.cid, handle })
-    navigate(location.pathname, { replace: true, state: {} })
     requestAnimationFrame(() => {
       const form = document.querySelector(`.${styles.commentForm} textarea`) as HTMLTextAreaElement | null
       form?.focus()
     })
-  }, [thread, location.state, location.pathname, navigate])
+  }, [thread, initialOpenReply])
 
   useEffect(() => {
     if (!replyingTo) return
@@ -982,15 +987,14 @@ export default function PostDetailPage() {
   }, [focusedCommentIndex, hasRepliesSection, postSectionIndex, postSectionCount])
 
   if (!decodedUri) {
-    navigate('/feed', { replace: true })
+    if (onClose) onClose()
     return null
   }
 
   const rootMedia =
     thread && isThreadViewPost(thread) ? getPostAllMedia(thread.post) : []
 
-  return (
-    <Layout title="Post" showNav>
+  const content = (
       <div className={styles.wrap}>
         {loading && <div className={styles.loading}>Loading…</div>}
         {error && <p className={styles.error}>{error}</p>}
@@ -1303,6 +1307,26 @@ export default function PostDetailPage() {
           </>
         )}
       </div>
+  )
+
+  return onClose ? content : <Layout title="Post" showNav>{content}</Layout>
+}
+
+export default function PostDetailPage() {
+  const { uri } = useParams<{ uri: string }>()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const decodedUri = uri ? decodeURIComponent(uri) : ''
+  if (!decodedUri) {
+    navigate('/feed', { replace: true })
+    return null
+  }
+  return (
+    <Layout title="Post" showNav>
+      <PostDetailContent
+        uri={decodedUri}
+        initialOpenReply={(location.state as { openReply?: boolean })?.openReply}
+      />
     </Layout>
   )
 }

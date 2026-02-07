@@ -25,6 +25,8 @@ interface Props {
   openAddDropdown?: boolean
   /** Called when the add-to-artboard dropdown is closed */
   onAddClose?: () => void
+  /** When provided, opening the post calls this instead of navigating to /post/:uri (e.g. open in modal) */
+  onPostClick?: (uri: string, options?: { openReply?: boolean }) => void
 }
 
 function RepostIcon() {
@@ -55,7 +57,7 @@ function isHlsUrl(url: string): boolean {
   return /\.m3u8(\?|$)/i.test(url) || url.includes('m3u8')
 }
 
-export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose }: Props) {
+export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick }: Props) {
   const navigate = useNavigate()
   const { session } = useSession()
   const { artOnly } = useArtOnly()
@@ -346,7 +348,11 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
       e.stopPropagation()
       return
     }
-    navigate(`/post/${encodeURIComponent(post.uri)}`)
+    if (onPostClick) {
+      onPostClick(post.uri)
+    } else {
+      navigate(`/post/${encodeURIComponent(post.uri)}`)
+    }
   }
 
   async function handleLongPressLike(e: React.MouseEvent) {
