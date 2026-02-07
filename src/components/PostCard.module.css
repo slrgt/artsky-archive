@@ -8,6 +8,7 @@
   backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-card);
+  -webkit-tap-highlight-color: transparent;
 }
 
 .cardLink {
@@ -30,7 +31,20 @@
   .card {
     outline: none;
   }
+  .card:focus,
+  .card:focus-within,
+  .card:active {
+    outline: none;
+  }
   .cardSelected {
+    outline: none;
+  }
+  .cardLink:focus,
+  .cardLink:focus-visible,
+  .cardLink:active {
+    outline: none;
+  }
+  .card:focus-within .cardLink {
     outline: none;
   }
 }
@@ -46,15 +60,6 @@
 .cardLink:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-
-@media (max-width: 767px) {
-  .cardLink:focus-visible {
-    outline: none;
-  }
-  .card:focus-within .cardLink {
-    outline: none;
-  }
 }
 
 .addWrap {
