@@ -45,7 +45,7 @@
 
 .tabActive {
   border-color: var(--accent);
-  background: rgba(124, 58, 237, 0.15);
+  background: var(--accent-muted);
   color: var(--accent);
 }
 

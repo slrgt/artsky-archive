@@ -5,7 +5,7 @@ import type { AtpSessionData } from '@atproto/api'
 import { agent, publicAgent, postReply, getPostAllMedia, getPostMediaUrl, getSession, createDownvote, deleteDownvote, listMyDownvotes } from '../lib/bsky'
 import { useSession } from '../context/SessionContext'
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard } from '../lib/artboards'
-import { formatRelativeTime, formatExactDateTime } from '../lib/date'
+import { formatRelativeTime, formatRelativeTimeTitle } from '../lib/date'
 import Layout from '../components/Layout'
 import ProfileLink from '../components/ProfileLink'
 import VideoWithHls from '../components/VideoWithHls'
@@ -400,7 +400,7 @@ function PostBlock({
           {createdAt && (
             <span
               className={styles.postTimestamp}
-              title={formatExactDateTime(createdAt)}
+              title={formatRelativeTimeTitle(createdAt)}
             >
               {formatRelativeTime(createdAt)}
             </span>
@@ -1247,7 +1247,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
                     {(thread.post.record as { createdAt?: string })?.createdAt && (
                       <span
                         className={styles.postTimestamp}
-                        title={formatExactDateTime((thread.post.record as { createdAt: string }).createdAt)}
+                        title={formatRelativeTimeTitle((thread.post.record as { createdAt: string }).createdAt)}
                       >
                         {formatRelativeTime((thread.post.record as { createdAt: string }).createdAt)}
                       </span>

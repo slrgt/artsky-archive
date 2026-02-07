@@ -6,7 +6,7 @@ import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard, getA
 import { putArtboardOnPds } from '../lib/artboardsPds'
 import { useSession } from '../context/SessionContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
-import { formatRelativeTime, formatExactDateTime } from '../lib/date'
+import { formatRelativeTime, formatRelativeTimeTitle } from '../lib/date'
 import PostText from './PostText'
 import ProfileLink from './ProfileLink'
 import PostActionsMenu from './PostActionsMenu'
@@ -581,7 +581,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                 <img src={post.author.avatar} alt="" className={styles.authorAvatar} loading="lazy" />
               )}
               <span className={styles.handleRowMain}>
-                <span className={showNotFollowingGreen ? styles.handleLinkWrapNotFollowing : styles.handleLinkWrap}>
+                <span className={likedUri ? styles.handleLinkWrapLiked : showNotFollowingGreen ? styles.handleLinkWrapNotFollowing : styles.handleLinkWrap}>
                   <ProfileLink
                     handle={handle}
                     className={styles.handleLink}
@@ -669,11 +669,15 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                 )}
               </div>
                 {(post.record as { createdAt?: string })?.createdAt && (
-                  <span className={styles.postTime} title={formatExactDateTime((post.record as { createdAt: string }).createdAt)}>
+                  <span className={styles.postTime} title={formatRelativeTimeTitle((post.record as { createdAt: string }).createdAt)}>
                     {formatRelativeTime((post.record as { createdAt: string }).createdAt)}
                   </span>
                 )}
-                <div onClick={(e) => e.stopPropagation()}>
+                <div
+                  className={styles.actionsMenuWrap}
+                  onClick={(e) => e.stopPropagation()}
+                  data-open={openActionsMenu === true ? 'true' : undefined}
+                >
                   <PostActionsMenu
                     postUri={post.uri}
                     postCid={post.cid}
@@ -708,6 +712,17 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                 {likeCount > 0 && <span className={styles.mobileLikeCount}>{likeCount}</span>}
               </button>
             )}
+            <div onClick={(e) => e.stopPropagation()}>
+              <PostActionsMenu
+                postUri={post.uri}
+                postCid={post.cid}
+                authorDid={post.author.did}
+                rootUri={post.uri}
+                isOwnPost={isOwnPost}
+                feedLabel={feedLabel}
+                compact
+              />
+            </div>
             <div
               ref={addRefMobile}
               className={`${styles.addWrap} ${addOpen ? styles.addWrapOpen : ''}`}

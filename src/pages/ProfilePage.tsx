@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useEditProfile } from '../context/EditProfileContext'
 import { agent, publicAgent, getPostMediaInfo, getSession, listStandardSiteDocumentsForAuthor, type TimelineItem, type StandardSiteDocumentView } from '../lib/bsky'
-import { formatRelativeTime, formatExactDateTime } from '../lib/date'
+import { formatRelativeTime, formatRelativeTimeTitle } from '../lib/date'
 import PostCard from '../components/PostCard'
 import PostText from '../components/PostText'
 import Layout from '../components/Layout'
@@ -501,7 +501,7 @@ export function ProfileContent({
                                   {createdAt && (
                                     <span
                                       className={postBlockStyles.postTimestamp}
-                                      title={formatExactDateTime(createdAt)}
+                                      title={formatRelativeTimeTitle(createdAt)}
                                     >
                                       {formatRelativeTime(createdAt)}
                                     </span>
@@ -530,7 +530,7 @@ export function ProfileContent({
                                 {createdAt && (
                                   <span
                                     className={postBlockStyles.postTimestamp}
-                                    title={formatExactDateTime(createdAt)}
+                                    title={formatRelativeTimeTitle(createdAt)}
                                   >
                                     {formatRelativeTime(createdAt)}
                                   </span>
@@ -591,7 +591,7 @@ export function ProfileContent({
                                 {createdAt && (
                                   <span
                                     className={postBlockStyles.postTimestamp}
-                                    title={formatExactDateTime(createdAt)}
+                                    title={formatRelativeTimeTitle(createdAt)}
                                   >
                                     {formatRelativeTime(createdAt)}
                                   </span>

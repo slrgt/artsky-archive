@@ -157,13 +157,13 @@
 }
 
 .headerAuthLinkPrimary {
-  color: white;
+  color: var(--text-on-accent);
   background: var(--accent);
 }
 
 .headerAuthLinkPrimary:hover {
   background: color-mix(in srgb, var(--accent) 90%, black);
-  color: white;
+  color: var(--text-on-accent);
 }
 
 @media (min-width: 768px) {
@@ -264,7 +264,7 @@
 }
 
 .themeSwitchTrack:hover {
-  background: color-mix(in srgb, var(--glass-highlight) 90%, white);
+  background: color-mix(in srgb, var(--glass-highlight) 90%, var(--surface));
 }
 
 .themeSwitchThumb {
@@ -272,7 +272,7 @@
   top: 2px;
   bottom: 2px;
   width: 33.333%;
-  background: rgba(124, 58, 237, 0.25);
+  background: var(--accent-strong);
   border-radius: 3px;
   pointer-events: none;
   transition: left 0.2s ease;
@@ -334,14 +334,14 @@
 
 .themeBtnActive {
   border-color: var(--accent);
-  background: rgba(124, 58, 237, 0.18);
+  background: var(--accent-muted);
   color: var(--accent);
 }
 
 @media (min-width: 768px) {
   .headerBtnActive {
     color: var(--accent);
-    background: rgba(124, 58, 237, 0.15);
+    background: var(--accent-muted);
   }
   .headerBtnWrap {
     position: relative;
@@ -452,7 +452,7 @@
     color: var(--text);
   }
   .notificationFilterActive {
-    background: rgba(124, 58, 237, 0.2);
+    background: var(--accent-strong);
     color: var(--accent);
     border-color: var(--accent);
   }
@@ -580,7 +580,7 @@
   }
   .menuOptionActive {
     border-color: var(--accent);
-    background: rgba(124, 58, 237, 0.18);
+    background: var(--accent-muted);
     color: var(--accent);
     font-weight: 600;
   }
@@ -642,7 +642,7 @@
     padding: 0.5rem 0.75rem;
     font-size: 0.85rem;
     font-weight: 600;
-    color: white;
+    color: var(--text-on-accent);
     background: var(--accent);
     border: none;
     border-radius: var(--glass-radius-sm);
@@ -1026,7 +1026,7 @@
 }
 
 .composeSubmit {
-  color: white;
+  color: var(--text-on-accent);
   background: var(--accent);
   border: none;
 }
@@ -1132,18 +1132,18 @@
 
 .menuCompactAuthBtn:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--glass-highlight);
 }
 
 .menuCompactAuthBtnPrimary {
-  color: white;
+  color: var(--text-on-accent);
   background: var(--accent);
   border: 1px solid var(--accent);
 }
 
 .menuCompactAuthBtnPrimary:hover {
   background: color-mix(in srgb, var(--accent) 90%, black);
-  color: white;
+  color: var(--text-on-accent);
 }
 
 .menuCompactRow {
@@ -1171,7 +1171,7 @@
 
 .menuCompactBtnActive {
   border-color: var(--accent);
-  background: rgba(124, 58, 237, 0.2);
+  background: var(--accent-strong);
   color: var(--accent);
 }
 
@@ -1215,7 +1215,7 @@
 .menuCompactItemActive {
   color: var(--accent);
   font-weight: 600;
-  background: rgba(124, 58, 237, 0.12);
+  background: var(--accent-muted);
 }
 
 .accountPopupContentCompact a.menuCompactItem,
@@ -1257,7 +1257,7 @@
 
 .menuCompactActionBtn {
   background: var(--accent);
-  color: white;
+  color: var(--text-on-accent);
 }
 
 a.menuCompactActionBtn {
@@ -1327,7 +1327,7 @@ a.menuCompactActionBtn {
 
 .accountPopupContent .menuOptionActive {
   border-color: var(--accent);
-  background: rgba(124, 58, 237, 0.18);
+  background: var(--accent-muted);
   color: var(--accent);
   font-weight: 600;
 }
@@ -1391,7 +1391,7 @@ a.menuCompactActionBtn {
   padding: 0.6rem 1rem;
   font-size: 0.95rem;
   font-weight: 600;
-  color: white;
+  color: var(--text-on-accent);
   background: var(--accent);
   border: none;
   border-radius: var(--glass-radius-sm);

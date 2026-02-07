@@ -1,5 +1,5 @@
 /**
- * Relative time string (e.g. "2h", "3d", "Mar 5") and exact datetime for tooltips.
+ * Relative time string (e.g. "2h", "3d", "Mar 5").
  */
 export function formatRelativeTime(isoDate: string): string {
   const d = new Date(isoDate)
@@ -9,6 +9,28 @@ export function formatRelativeTime(isoDate: string): string {
   if (sec < 3600) return `${Math.floor(sec / 60)}m`
   if (sec < 86400) return `${Math.floor(sec / 3600)}h`
   if (sec < 2592000) return `${Math.floor(sec / 86400)}d`
+  if (sec < 31536000) return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+/** Longer relative phrase for tooltips (e.g. "2 hours ago", "Mar 5"). */
+export function formatRelativeTimeTitle(isoDate: string): string {
+  const d = new Date(isoDate)
+  const now = new Date()
+  const sec = (now.getTime() - d.getTime()) / 1000
+  if (sec < 60) return 'Just now'
+  if (sec < 3600) {
+    const m = Math.floor(sec / 60)
+    return `${m} minute${m === 1 ? '' : 's'} ago`
+  }
+  if (sec < 86400) {
+    const h = Math.floor(sec / 3600)
+    return `${h} hour${h === 1 ? '' : 's'} ago`
+  }
+  if (sec < 2592000) {
+    const day = Math.floor(sec / 86400)
+    return `${day} day${day === 1 ? '' : 's'} ago`
+  }
   if (sec < 31536000) return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }

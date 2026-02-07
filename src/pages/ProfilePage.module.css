@@ -49,7 +49,7 @@
 }
 
 .followBtn:hover:not(:disabled) {
-  background: rgba(124, 58, 237, 0.15);
+  background: var(--accent-muted);
 }
 
 .followBtn:disabled {
@@ -65,7 +65,7 @@
 .followBtnFollowing:hover:not(:disabled) {
   color: var(--error);
   border-color: var(--error);
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--error-bg);
 }
 
 .followLabelHover {

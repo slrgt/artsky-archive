@@ -33,7 +33,7 @@
 
 .searchRow:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+  box-shadow: 0 0 0 2px var(--accent-focus-ring);
 }
 
 .filterIconBtn {
@@ -59,7 +59,7 @@
 
 .filterIconActive {
   color: var(--accent);
-  background: rgba(124, 58, 237, 0.12);
+  background: var(--accent-muted);
 }
 
 .input {
@@ -109,7 +109,7 @@
 }
 
 .filterActive {
-  background: rgba(124, 58, 237, 0.15);
+  background: var(--accent-muted);
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -158,7 +158,7 @@
 
 .item:hover,
 .itemActive {
-  background: rgba(124, 58, 237, 0.12);
+  background: var(--accent-muted);
 }
 
 .itemAvatar {

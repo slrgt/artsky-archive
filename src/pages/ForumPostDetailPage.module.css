@@ -102,12 +102,12 @@
 .actionBtnPrimary {
   background: var(--accent);
   border-color: var(--accent);
-  color: white;
+  color: var(--text-on-accent);
 }
 
 .actionBtnPrimary:hover:not(:disabled) {
   opacity: 0.9;
-  color: white;
+  color: var(--text-on-accent);
 }
 
 .actionBtnDanger {
@@ -116,7 +116,7 @@
 }
 
 .actionBtnDanger:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--error-bg);
 }
 
 .deleteConfirmText {
@@ -257,7 +257,7 @@
 
 .mediaPreviewRemove:hover {
   background: var(--error);
-  color: white;
+  color: var(--text-on-danger);
 }
 
 .editActions {
@@ -364,7 +364,7 @@
   border: 1px solid var(--accent);
   border-radius: 0.5rem;
   background: var(--accent);
-  color: white;
+  color: var(--text-on-accent);
   cursor: pointer;
 }
 

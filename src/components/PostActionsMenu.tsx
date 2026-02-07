@@ -210,6 +210,15 @@ export default function PostActionsMenu({
     onHidden?.()
   }
 
+  function handleCopyLink() {
+    const base = typeof window !== 'undefined' ? window.location.origin + (import.meta.env.BASE_URL || '/').replace(/\/$/, '') : ''
+    const url = `${base}/post/${encodeURIComponent(postUri)}`
+    navigator.clipboard.writeText(url).then(
+      () => showSuccess('Link copied'),
+      () => showError('Could not copy link')
+    )
+  }
+
   async function handleDelete() {
     if (!session?.did || !isOwnPost) return
     setLoading('delete')
@@ -225,7 +234,7 @@ export default function PostActionsMenu({
     }
   }
 
-  if (!session?.did) return null
+  const loggedIn = !!session?.did
 
   return (
     <div ref={menuRef} className={`${styles.wrap} ${compact ? styles.wrapCompact : ''} ${className ?? ''}`}>
@@ -254,6 +263,25 @@ export default function PostActionsMenu({
             <div className={feedback.type === 'success' ? styles.feedbackSuccess : styles.feedbackError} role="status">
               {feedback.message}
             </div>
+          ) : !loggedIn ? (
+            <>
+              <button
+                type="button"
+                className={styles.item}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCopyLink() }}
+                role="menuitem"
+              >
+                Copy link to post
+              </button>
+              <button
+                type="button"
+                className={styles.item}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleHide() }}
+                role="menuitem"
+              >
+                Hide post
+              </button>
+            </>
           ) : reportStep === 'reason' ? (
             <>
               <button
@@ -280,6 +308,14 @@ export default function PostActionsMenu({
             </>
           ) : (
             <>
+              <button
+                type="button"
+                className={styles.item}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCopyLink() }}
+                role="menuitem"
+              >
+                Copy link to post
+              </button>
               {isOwnPost && (
                 <button
                   type="button"

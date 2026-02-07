@@ -130,7 +130,7 @@
 
 .feedMixRemove:hover {
   color: var(--error);
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--error-bg);
 }
 
 .feedMixTotal {
@@ -165,7 +165,7 @@
 }
 
 .feedMixAddBtn:hover {
-  background: rgba(124, 58, 237, 0.12);
+  background: var(--accent-muted);
 }
 
 .feedMixAddMuted {
@@ -254,7 +254,7 @@
 
 .guestPreviewCard:hover {
   border-color: var(--accent);
-  background: rgba(124, 58, 237, 0.08);
+  background: var(--accent-subtle);
 }
 
 .guestPreviewText {
@@ -295,7 +295,7 @@
   padding: 0.4rem 0.75rem;
   font-size: 0.95rem;
   font-weight: 600;
-  color: white;
+  color: var(--text-on-accent);
   background: var(--accent);
   border-radius: var(--glass-radius-sm);
   text-decoration: none;
@@ -303,7 +303,7 @@
 
 .guestSignInBtn:hover {
   background: color-mix(in srgb, var(--accent) 90%, black);
-  color: white;
+  color: var(--text-on-accent);
 }
 
 .guestSignInSuffix {
@@ -467,9 +467,9 @@
 }
 
 .blockConfirmBtn {
-  background: var(--danger, #c00);
-  border-color: var(--danger, #c00);
-  color: #fff;
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--text-on-danger);
 }
 
 .blockConfirmBtn:hover {

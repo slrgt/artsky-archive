@@ -52,13 +52,13 @@
   min-width: 4rem;
   border: 1px solid var(--accent);
   border-radius: var(--glass-radius-sm);
-  color: white;
+  color: var(--text-on-accent);
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   text-align: center;
-  text-shadow: 0 0 1px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.15);
 }
 
 .tabs button {
@@ -76,7 +76,7 @@
 .tabs button.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: white;
+  color: var(--text-on-accent);
 }
 
 .customForm {
@@ -104,7 +104,7 @@
 .btn {
   padding: 0.4rem 0.75rem;
   background: var(--accent);
-  color: white;
+  color: var(--text-on-accent);
   border: none;
   border-radius: 0.4rem;
   font-size: 0.9rem;

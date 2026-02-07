@@ -72,7 +72,7 @@
 /* Hovering the - button also highlights the collapse strip below it */
 .collapseColumn:has(.collapseBtn:hover) .collapseStrip {
   color: var(--accent);
-  background: rgba(124, 58, 237, 0.2);
+  background: var(--accent-strong);
 }
 
 .collapseBtn {
@@ -112,7 +112,7 @@
 }
 
 .collapseStrip:hover {
-  background: rgba(124, 58, 237, 0.2);
+  background: var(--accent-strong);
 }
 
 .collapseStrip:focus {
@@ -170,7 +170,7 @@
 }
 
 .followBtn:hover:not(:disabled) {
-  background: rgba(124, 58, 237, 0.15);
+  background: var(--accent-muted);
 }
 
 .followBtn:disabled {
@@ -186,7 +186,7 @@
 .followBtnFollowing:hover:not(:disabled) {
   color: var(--error);
   border-color: var(--error);
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--error-bg);
 }
 
 .followLabelHover {
@@ -616,7 +616,7 @@
 }
 
 .addToBoardTrigger:hover {
-  background: rgba(124, 58, 237, 0.12);
+  background: var(--accent-muted);
 }
 
 .boardDropdown {
@@ -722,13 +722,13 @@
 }
 
 .newBoardTrigger:hover {
-  background: rgba(124, 58, 237, 0.12);
+  background: var(--accent-muted);
 }
 
 .addBtn {
   padding: 0.5rem 0.75rem;
   background: var(--accent);
-  color: white;
+  color: var(--text-on-accent);
   border: none;
   border-radius: 0.5rem;
   font-size: 0.9rem;
@@ -852,7 +852,7 @@
 
 .replyAsUserChip:hover {
   border-color: var(--accent);
-  background: rgba(124, 58, 237, 0.1);
+  background: var(--accent-subtle);
 }
 
 .replyAsHandleWrap {
@@ -1032,7 +1032,7 @@
 .submit {
   padding: 0.75rem;
   background: var(--accent);
-  color: white;
+  color: var(--text-on-accent);
   border: none;
   border-radius: 0.5rem;
   font-size: 1rem;

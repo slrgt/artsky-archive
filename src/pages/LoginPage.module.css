@@ -69,7 +69,7 @@
   min-height: var(--touch-min);
   border: 1px solid var(--accent);
   border-radius: var(--glass-radius-sm);
-  background: rgba(124, 58, 237, 0.18);
+  background: var(--accent-muted);
   color: var(--accent);
   font-size: clamp(0.9rem, 2.2vw, 0.95rem);
   font-weight: 600;
@@ -102,7 +102,7 @@
 .input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.25);
+  box-shadow: 0 0 0 2px var(--accent-focus-ring);
 }
 
 .inputWrap {
@@ -142,7 +142,7 @@
 }
 
 .suggestionActive {
-  background: rgba(124, 58, 237, 0.15);
+  background: var(--accent-muted);
 }
 
 .suggestionAvatar {
@@ -186,7 +186,7 @@
 }
 
 .signupLink:hover {
-  background: rgba(124, 58, 237, 0.1);
+  background: var(--accent-subtle);
 }
 
 .error {
@@ -199,7 +199,7 @@
   padding: 0.75rem 1rem;
   min-height: var(--touch-min);
   background: var(--accent);
-  color: white;
+  color: var(--text-on-accent);
   border: none;
   border-radius: var(--glass-radius-sm);
   font-size: 1rem;
@@ -216,7 +216,7 @@
 
 .button:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.5);
+  box-shadow: 0 0 0 2px var(--accent-focus-ring);
 }
 
 .hint {

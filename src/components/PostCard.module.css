@@ -9,6 +9,8 @@
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-card);
   -webkit-tap-highlight-color: transparent;
+  /* Reserve space above when scrollIntoView runs so fixed header doesn't cover the card */
+  scroll-margin-top: 5rem;
 }
 
 .cardLink {
@@ -91,6 +93,11 @@
 .card:hover .addWrap,
 .addWrapOpen {
   opacity: 1;
+}
+
+/* ... menu in meta row: always visible on preview cards */
+.actionsMenuWrap {
+  flex-shrink: 0;
 }
 
 .addToBoardBtn {
@@ -189,7 +196,7 @@
   padding: 0.4rem 0.6rem;
   font-size: 0.85rem;
   background: var(--accent);
-  color: white;
+  color: var(--text-on-accent);
   border: none;
   border-radius: 0.4rem;
   cursor: pointer;
@@ -223,6 +230,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Round top to match card so media doesn’t stick out of corners */
+  border-radius: var(--glass-radius) var(--glass-radius) 0 0;
 }
 
 /* Bento: media wrap fills available space; show full image/video (no crop) */
@@ -553,7 +562,7 @@
 .longPressOverlay button:hover {
   color: var(--accent);
   border-color: var(--accent);
-  background: rgba(124, 58, 237, 0.2);
+  background: var(--accent-strong);
 }
 
 .longPressOverlay button:focus {
@@ -587,6 +596,11 @@
 .handleLinkWrapNotFollowing {
   display: inline;
   text-shadow: 0 0 12px rgba(34, 197, 94, 0.75), 0 1px 4px rgba(34, 197, 94, 0.6);
+}
+
+.handleLinkWrapLiked {
+  display: inline;
+  text-shadow: 0 0 12px rgba(236, 72, 153, 0.75), 0 1px 4px rgba(236, 72, 153, 0.6);
 }
 
 .handleLink {

@@ -15,7 +15,7 @@ import {
 } from '../lib/bsky'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useSession } from '../context/SessionContext'
-import { formatRelativeTime, formatExactDateTime } from '../lib/date'
+import { formatRelativeTime, formatRelativeTimeTitle } from '../lib/date'
 import Layout from '../components/Layout'
 import PostText from '../components/PostText'
 import ProfileLink from '../components/ProfileLink'
@@ -426,7 +426,7 @@ export default function ForumPostDetailPage() {
                       @{doc.authorHandle ?? doc.did}
                     </ProfileLink>
                     {doc.createdAt && (
-                      <span className={postBlockStyles.postTimestamp} title={formatExactDateTime(doc.createdAt)}>
+                      <span className={postBlockStyles.postTimestamp} title={formatRelativeTimeTitle(doc.createdAt)}>
                         {formatRelativeTime(doc.createdAt)}
                       </span>
                     )}
@@ -624,7 +624,7 @@ export default function ForumPostDetailPage() {
                             </ProfileLink>
                             {isComment && <span className={styles.commentBadge}>standard.site comment</span>}
                             {p.record?.createdAt && (
-                              <span className={postBlockStyles.postTimestamp} title={formatExactDateTime(p.record.createdAt)}>
+                              <span className={postBlockStyles.postTimestamp} title={formatRelativeTimeTitle(p.record.createdAt)}>
                                 {formatRelativeTime(p.record.createdAt)}
                               </span>
                             )}

@@ -259,10 +259,10 @@ export default function FeedPage() {
     return () => window.removeEventListener('mousemove', onMouseMove)
   }, [])
 
-  // When focus moves (keyboard or hover) and a menu is open, open the menu on the newly focused card
+  // When focus moves to another post and a menu is open, close the menu (don't open the new post's menu)
   useEffect(() => {
-    if (openMenuIndex !== null) setOpenMenuIndex(keyboardFocusIndex)
-  }, [keyboardFocusIndex])
+    if (openMenuIndex !== null && openMenuIndex !== keyboardFocusIndex) setOpenMenuIndex(null)
+  }, [keyboardFocusIndex, openMenuIndex])
 
   // Scroll focused card into view only when focus was changed by keyboard (W/S/A/D), not on mouse hover
   useEffect(() => {
@@ -274,7 +274,7 @@ export default function FeedPage() {
     const raf = requestAnimationFrame(() => {
       const el = cardRefsRef.current[index]
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' })
+        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
       }
     })
     return () => cancelAnimationFrame(raf)
@@ -293,6 +293,8 @@ export default function FeedPage() {
       if (items.length === 0) return
 
       const key = e.key.toLowerCase()
+      /* Ignore key repeat so D/A/W/S move one step only (no skip) */
+      if (e.repeat && (key === 'w' || key === 's' || key === 'a' || key === 'd' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return
       if (blockConfirm) {
         if (key === 'escape') {
           e.preventDefault()
@@ -327,28 +329,29 @@ export default function FeedPage() {
         return
       }
 
+      /* Use ref + concrete value (not functional updater) so Strict Mode double-invoke doesn't move two steps */
       if (key === 'w' || e.key === 'ArrowUp') {
         mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
-        setKeyboardFocusIndex((idx) => Math.max(0, idx - cols))
+        setKeyboardFocusIndex(Math.max(0, i - cols))
         return
       }
       if (key === 's' || e.key === 'ArrowDown') {
         mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
-        setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + cols))
+        setKeyboardFocusIndex(Math.min(items.length - 1, i + cols))
         return
       }
       if (key === 'a' || e.key === 'ArrowLeft') {
         mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
-        setKeyboardFocusIndex((idx) => Math.max(0, idx - 1))
+        setKeyboardFocusIndex(Math.max(0, i - 1))
         return
       }
       if (key === 'd' || e.key === 'ArrowRight') {
         mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
-        setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + 1))
+        setKeyboardFocusIndex(Math.min(items.length - 1, i + 1))
         return
       }
       if (key === 'e' || key === 'enter') {
@@ -381,27 +384,50 @@ export default function FeedPage() {
       if (key === '4') {
         const item = items[i]
         const author = item?.post?.author as { did: string; viewer?: { following?: string } } | undefined
-        if (author && session?.did && session.did !== author.did && !author.viewer?.following) {
+        if (author && session?.did && session.did !== author.did) {
           const postUri = item.post.uri
-          agent.follow(author.did).then((res) => {
-            setItems((prev) =>
-              prev.map((it): TimelineItem => {
-                if (it.post.uri !== postUri) return it
-                const post = it.post
-                const auth = post.author as { did: string; handle?: string; viewer?: { following?: string } }
-                return {
-                  ...it,
-                  post: {
-                    ...post,
-                    author: {
-                      ...auth,
-                      viewer: { ...auth.viewer, following: res.uri },
-                    },
-                  } as TimelineItem['post'],
-                }
-              })
-            )
-          }).catch(() => {})
+          const followingUri = author.viewer?.following
+          if (followingUri) {
+            agent.deleteFollow(followingUri).then(() => {
+              setItems((prev) =>
+                prev.map((it): TimelineItem => {
+                  if (it.post.uri !== postUri) return it
+                  const post = it.post
+                  const auth = post.author as { did: string; handle?: string; viewer?: { following?: string } }
+                  return {
+                    ...it,
+                    post: {
+                      ...post,
+                      author: {
+                        ...auth,
+                        viewer: { ...auth.viewer, following: undefined },
+                      },
+                    } as TimelineItem['post'],
+                  }
+                })
+              )
+            }).catch(() => {})
+          } else {
+            agent.follow(author.did).then((res) => {
+              setItems((prev) =>
+                prev.map((it): TimelineItem => {
+                  if (it.post.uri !== postUri) return it
+                  const post = it.post
+                  const auth = post.author as { did: string; handle?: string; viewer?: { following?: string } }
+                  return {
+                    ...it,
+                    post: {
+                      ...post,
+                      author: {
+                        ...auth,
+                        viewer: { ...auth.viewer, following: res.uri },
+                      },
+                    } as TimelineItem['post'],
+                  }
+                })
+              )
+            }).catch(() => {})
+          }
         }
       }
     }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { listStandardSiteDocumentsAll, listStandardSiteDocumentsForForum, getSession, type StandardSiteDocumentView } from '../lib/bsky'
 import { FORUM_DISCOVERY_URLS } from '../config/forumDiscovery'
-import { formatRelativeTime, formatExactDateTime } from '../lib/date'
+import { formatRelativeTime, formatRelativeTimeTitle } from '../lib/date'
 import Layout from '../components/Layout'
 import ProfileLink from '../components/ProfileLink'
 import { useProfileModal } from '../context/ProfileModalContext'
@@ -211,7 +211,7 @@ export default function ForumPage() {
                     {createdAt && (
                       <span
                         className={postBlockStyles.postTimestamp}
-                        title={formatExactDateTime(createdAt)}
+                        title={formatRelativeTimeTitle(createdAt)}
                       >
                         {formatRelativeTime(createdAt)}
                       </span>
