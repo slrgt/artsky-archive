@@ -106,40 +106,19 @@ function ScrollRestoration() {
       const y = parseInt(raw, 10)
       if (!Number.isFinite(y) || y < 0) return
       skipSaveUntilRef.current = Date.now() + SKIP_SAVE_AFTER_POP_MS
-      const restore = () => {
+      let restored = false
+      const restoreOnce = () => {
+        if (restored) return
+        if (document.documentElement.scrollHeight < y) return
+        restored = true
         window.scrollTo(0, y)
       }
-      const done = () => {
-        const current = window.scrollY ?? document.documentElement.scrollTop
-        return Math.abs(current - y) < 10
-      }
-      requestAnimationFrame(restore)
-      const t1 = setTimeout(restore, 50)
-      const t2 = setTimeout(restore, 200)
-      const t3 = setTimeout(restore, 600)
-      const t4 = setTimeout(restore, 1500) // content may load late when coming back
-      const ro = new ResizeObserver(() => {
-        if (document.documentElement.scrollHeight >= y && !done()) restore()
-      })
+      const ro = new ResizeObserver(restoreOnce)
       ro.observe(document.documentElement)
-      const maxWaitMs = 8000
-      const stopRo = setTimeout(() => ro.disconnect(), maxWaitMs)
-      const interval = setInterval(() => {
-        if (done()) {
-          clearInterval(interval)
-          return
-        }
-        if (document.documentElement.scrollHeight >= y) restore()
-      }, 400)
-      const stopInterval = setTimeout(() => clearInterval(interval), maxWaitMs)
+      requestAnimationFrame(restoreOnce)
+      const fallback = setTimeout(restoreOnce, 1500)
       return () => {
-        clearTimeout(t1)
-        clearTimeout(t2)
-        clearTimeout(t3)
-        clearTimeout(t4)
-        clearTimeout(stopRo)
-        clearTimeout(stopInterval)
-        clearInterval(interval)
+        clearTimeout(fallback)
         ro.disconnect()
       }
     } catch {
