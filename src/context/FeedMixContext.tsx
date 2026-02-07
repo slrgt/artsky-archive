@@ -82,7 +82,7 @@ export function FeedMixProvider({ children }: { children: ReactNode }) {
     const n = entries.length
     const base = Math.floor(100 / n)
     let remainder = 100 - base * n
-    return entries.map((e, i) => {
+    return entries.map((e) => {
       const p = base + (remainder > 0 ? 1 : 0)
       if (remainder > 0) remainder -= 1
       return { ...e, percent: p }
