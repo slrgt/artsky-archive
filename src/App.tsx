@@ -113,12 +113,14 @@ function ScrollRestoration() {
         restored = true
         window.scrollTo(0, y)
       }
+      const delays = [0, 50, 150, 400, 800, 1500]
+      const timers = delays.map((ms) => setTimeout(restoreOnce, ms))
       const ro = new ResizeObserver(restoreOnce)
       ro.observe(document.documentElement)
-      requestAnimationFrame(restoreOnce)
-      const fallback = setTimeout(restoreOnce, 1500)
+      const roStop = setTimeout(() => ro.disconnect(), 3000)
       return () => {
-        clearTimeout(fallback)
+        timers.forEach(clearTimeout)
+        clearTimeout(roStop)
         ro.disconnect()
       }
     } catch {
