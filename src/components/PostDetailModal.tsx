@@ -14,13 +14,14 @@ export default function PostDetailModal({ uri, openReply, onClose }: PostDetailM
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' || e.key.toLowerCase() === 'q') {
         e.preventDefault()
+        e.stopImmediatePropagation()
         onClose()
       }
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [onClose])
 
   function handleBackdropClick(e: React.MouseEvent) {

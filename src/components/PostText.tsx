@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { RichText as AtpRichText } from '@atproto/api'
+import ProfileLink from './ProfileLink'
 import styles from './PostText.module.css'
 
 /** Bluesky facet from post record (optional). When present, links/mentions/tags render from facets. */
@@ -69,11 +70,10 @@ function renderSegment(
     )
   }
   const handle = seg.value.replace(/^@/, '')
-  const profileSlug = encodeURIComponent(handle)
   return (
-    <Link key={i} to={`/profile/${profileSlug}`} className={styles.mention} onClick={onClick}>
+    <ProfileLink key={i} handle={handle} className={styles.mention} onClick={onClick}>
       {seg.value}
-    </Link>
+    </ProfileLink>
   )
 }
 

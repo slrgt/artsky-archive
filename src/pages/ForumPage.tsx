@@ -4,6 +4,7 @@ import { listStandardSiteDocumentsAll, listStandardSiteDocumentsForForum, getSes
 import { FORUM_DISCOVERY_URLS } from '../config/forumDiscovery'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import Layout from '../components/Layout'
+import ProfileLink from '../components/ProfileLink'
 import styles from './ForumPage.module.css'
 import postBlockStyles from './PostDetailPage.module.css'
 
@@ -197,13 +198,13 @@ export default function ForumPage() {
                     <span className={styles.avatarPlaceholder} aria-hidden>{(handle || doc.did).slice(0, 1).toUpperCase()}</span>
                   )}
                   <div className={postBlockStyles.authorRow}>
-                    <Link
-                      to={`/profile/${encodeURIComponent(handle)}`}
+                    <ProfileLink
+                      handle={handle}
                       className={postBlockStyles.handleLink}
                       onClick={(e) => e.stopPropagation()}
                     >
                       @{handle}
-                    </Link>
+                    </ProfileLink>
                     {createdAt && (
                       <span
                         className={postBlockStyles.postTimestamp}

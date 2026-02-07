@@ -17,6 +17,7 @@ import { useSession } from '../context/SessionContext'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import Layout from '../components/Layout'
 import PostText from '../components/PostText'
+import ProfileLink from '../components/ProfileLink'
 import { ReplyAsRow } from './PostDetailPage'
 import styles from './ForumPostDetailPage.module.css'
 import postBlockStyles from './PostDetailPage.module.css'
@@ -418,9 +419,9 @@ export default function ForumPostDetailPage() {
                     <span className={styles.avatarPlaceholder} aria-hidden>{(doc.authorHandle ?? doc.did).slice(0, 1).toUpperCase()}</span>
                   )}
                   <div className={postBlockStyles.authorRow}>
-                    <Link to={`/profile/${encodeURIComponent(doc.authorHandle ?? doc.did)}`} className={postBlockStyles.handleLink}>
+                    <ProfileLink handle={doc.authorHandle ?? doc.did} className={postBlockStyles.handleLink}>
                       @{doc.authorHandle ?? doc.did}
-                    </Link>
+                    </ProfileLink>
                     {doc.createdAt && (
                       <span className={postBlockStyles.postTimestamp} title={formatExactDateTime(doc.createdAt)}>
                         {formatRelativeTime(doc.createdAt)}
@@ -615,9 +616,9 @@ export default function ForumPostDetailPage() {
                             <span className={styles.avatarPlaceholder} aria-hidden>{handle.slice(0, 1).toUpperCase()}</span>
                           )}
                           <div className={postBlockStyles.authorRow}>
-                            <Link to={`/profile/${encodeURIComponent(handle)}`} className={postBlockStyles.handleLink}>
+                            <ProfileLink handle={handle} className={postBlockStyles.handleLink}>
                               @{handle}
-                            </Link>
+                            </ProfileLink>
                             {isComment && <span className={styles.commentBadge}>standard.site comment</span>}
                             {p.record?.createdAt && (
                               <span className={postBlockStyles.postTimestamp} title={formatExactDateTime(p.record.createdAt)}>

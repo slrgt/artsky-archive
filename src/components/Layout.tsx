@@ -4,6 +4,7 @@ import { useSession } from '../context/SessionContext'
 import { useTheme } from '../context/ThemeContext'
 import { useViewMode, VIEW_LABELS } from '../context/ViewModeContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
+import { useProfileModal } from '../context/ProfileModalContext'
 import { publicAgent, createPost, getNotifications } from '../lib/bsky'
 import SearchBar from './SearchBar'
 import styles from './Layout.module.css'
@@ -193,6 +194,7 @@ function subscribeDesktop(cb: () => void) {
 export default function Layout({ title, children, showNav }: Props) {
   const loc = useLocation()
   const navigate = useNavigate()
+  const { openProfileModal } = useProfileModal()
   const { session, sessionsList, logout, switchAccount } = useSession()
   const [accountProfiles, setAccountProfiles] = useState<Record<string, { avatar?: string; handle?: string }>>({})
   const sessionsDidKey = useMemo(() => sessionsList.map((s) => s.did).sort().join(','), [sessionsList])
@@ -837,7 +839,13 @@ export default function Layout({ title, children, showNav }: Props) {
                                 <Link
                                   to={href}
                                   className={styles.notificationItem}
-                                  onClick={() => setNotificationsOpen(false)}
+                                  onClick={(e) => {
+                                    if (isFollow) {
+                                      e.preventDefault()
+                                      openProfileModal(handle)
+                                    }
+                                    setNotificationsOpen(false)
+                                  }}
                                 >
                                   {n.author.avatar ? (
                                     <img src={n.author.avatar} alt="" className={styles.notificationAvatar} />

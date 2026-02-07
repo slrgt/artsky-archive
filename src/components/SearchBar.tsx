@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useProfileModal } from '../context/ProfileModalContext'
 import { searchActorsTypeahead, getSuggestedFeeds } from '../lib/bsky'
 import type { FeedSource } from '../types'
 import type { AppBskyActorDefs, AppBskyFeedDefs } from '@atproto/api'
@@ -31,6 +32,7 @@ interface Props {
 
 export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, compact, onClose, suggestionsAbove }: Props) {
   const navigate = useNavigate()
+  const { openProfileModal } = useProfileModal()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<SearchFilter>('all')
   const [open, setOpen] = useState(false)
@@ -115,7 +117,7 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
       inputRef.current?.blur()
       onClose?.()
     } else if (opt.type === 'actor') {
-      navigate(`/profile/${encodeURIComponent(opt.handle)}`)
+      openProfileModal(opt.handle)
       inputRef.current?.blur()
       onClose?.()
     } else if (opt.type === 'feed') {

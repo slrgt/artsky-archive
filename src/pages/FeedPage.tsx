@@ -16,6 +16,7 @@ import type { FeedSource } from '../types'
 import FeedSelector from '../components/FeedSelector'
 import PostCard from '../components/PostCard'
 import PostDetailModal from '../components/PostDetailModal'
+import ProfileLink from '../components/ProfileLink'
 import Layout from '../components/Layout'
 import { useSession } from '../context/SessionContext'
 import { useViewMode } from '../context/ViewModeContext'
@@ -309,9 +310,9 @@ export default function FeedPage() {
                     if (!a) return null
                     const profile = guestProfiles[a.handle]
                     return (
-                      <Link
+                      <ProfileLink
                         key={a.handle}
-                        to={`/profile/${encodeURIComponent(a.handle)}`}
+                        handle={a.handle}
                         className={styles.guestPreviewCard}
                       >
                         {profile?.avatar ? (
@@ -323,7 +324,7 @@ export default function FeedPage() {
                           <span className={styles.guestPreviewLabel}>@{a.handle}</span>
                           <span className={styles.guestPreviewName}>{profile?.displayName ?? a.label}</span>
                         </div>
-                      </Link>
+                      </ProfileLink>
                     )
                   })}
                 </div>
@@ -342,9 +343,9 @@ export default function FeedPage() {
                   if (!a) return null
                   const profile = guestProfiles[a.handle]
                   return (
-                    <Link
+                    <ProfileLink
                       key={a.handle}
-                      to={`/profile/${encodeURIComponent(a.handle)}`}
+                      handle={a.handle}
                       className={styles.guestPreviewCard}
                     >
                       {profile?.avatar ? (
@@ -356,7 +357,7 @@ export default function FeedPage() {
                         <span className={styles.guestPreviewLabel}>@{a.handle}</span>
                         <span className={styles.guestPreviewName}>{profile?.displayName ?? a.label}</span>
                       </div>
-                    </Link>
+                    </ProfileLink>
                   )
                 })}
               </div>

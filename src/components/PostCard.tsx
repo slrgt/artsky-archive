@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import Hls from 'hls.js'
 import { getPostMediaInfo, getPostAllMedia, getPostMediaUrl, agent, type TimelineItem } from '../lib/bsky'
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard, getArtboard } from '../lib/artboards'
@@ -7,6 +7,7 @@ import { putArtboardOnPds } from '../lib/artboardsPds'
 import { useSession } from '../context/SessionContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
 import PostText from './PostText'
+import ProfileLink from './ProfileLink'
 import styles from './PostCard.module.css'
 
 const LONG_PRESS_MS = 350
@@ -552,24 +553,24 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
               )}
               <span className={styles.handleRowMain}>
                 <span className={showNotFollowingGreen ? styles.handleLinkWrapNotFollowing : styles.handleLinkWrap}>
-                  <Link
-                    to={`/profile/${encodeURIComponent(handle)}`}
+                  <ProfileLink
+                    handle={handle}
                     className={styles.handleLink}
                     onClick={(e) => e.stopPropagation()}
                   >
                     @{handle}
-                  </Link>
+                  </ProfileLink>
                 </span>
                 {repostedByHandle && (
-                  <Link
-                    to={`/profile/${encodeURIComponent(repostedByHandle)}`}
+                  <ProfileLink
+                    handle={repostedByHandle}
                     className={styles.repostIconLink}
                     onClick={(e) => e.stopPropagation()}
                     title={`Reposted by @${repostedByHandle}`}
                     aria-label={`Reposted by @${repostedByHandle}`}
                   >
                     <RepostIcon />
-                  </Link>
+                  </ProfileLink>
                 )}
               </span>
               <span className={styles.handleRowMeta}>

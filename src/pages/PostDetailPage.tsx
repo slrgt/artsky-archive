@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
-import { useParams, useNavigate, useLocation, Link } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import type { AppBskyFeedDefs } from '@atproto/api'
 import type { AtpSessionData } from '@atproto/api'
 import { agent, publicAgent, postReply, getPostAllMedia, getPostMediaUrl, getSession } from '../lib/bsky'
@@ -7,8 +7,10 @@ import { useSession } from '../context/SessionContext'
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard } from '../lib/artboards'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import Layout from '../components/Layout'
+import ProfileLink from '../components/ProfileLink'
 import VideoWithHls from '../components/VideoWithHls'
 import PostText from '../components/PostText'
+import { useProfileModal } from '../context/ProfileModalContext'
 import styles from './PostDetailPage.module.css'
 
 export function ReplyAsRow({
@@ -368,12 +370,9 @@ function PostBlock({
       <div className={styles.postHead}>
         {avatar && <img src={avatar} alt="" className={styles.avatar} />}
         <div className={styles.authorRow}>
-          <Link
-            to={`/profile/${encodeURIComponent(handle)}`}
-            className={styles.handleLink}
-          >
+          <ProfileLink handle={handle} className={styles.handleLink}>
             @{handle}
-          </Link>
+          </ProfileLink>
           {createdAt && (
             <span
               className={styles.postTimestamp}
@@ -525,7 +524,7 @@ export interface PostDetailContentProps {
 }
 
 export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: PostDetailContentProps) {
-  const navigate = useNavigate()
+  const { openProfileModal } = useProfileModal()
   const decodedUri = uriProp
   const [thread, setThread] = useState<
     AppBskyFeedDefs.ThreadViewPost | AppBskyFeedDefs.NotFoundPost | AppBskyFeedDefs.BlockedPost | { $type: string } | null
@@ -861,12 +860,12 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
         }
         if (inCommentsSection && threadRepliesFlat.length > 0 && focusedCommentIndex >= 0 && focusedCommentIndex < threadRepliesFlat.length) {
           const focused = threadRepliesFlat[focusedCommentIndex]
-          if (focused?.handle) navigate(`/profile/${encodeURIComponent(focused.handle)}`)
+          if (focused?.handle) openProfileModal(focused.handle)
           return
         }
         if ((inDescriptionSection || inMediaSection) && thread && isThreadViewPost(thread)) {
-          const handle = thread.post.author?.handle ?? thread.post.author?.did ?? ''
-          if (handle) navigate(`/profile/${encodeURIComponent(handle)}`)
+          const authorHandle = thread.post.author?.handle ?? thread.post.author?.did ?? ''
+          if (authorHandle) openProfileModal(authorHandle)
           return
         }
         return
@@ -947,7 +946,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [postSectionCount, postSectionIndex, hasRepliesSection, threadRepliesFlat, focusedCommentIndex, commentFormFocused, thread, hasMediaSection, handleReplyTo, rootMediaForNav.length, navigate, focusItems])
+  }, [postSectionCount, postSectionIndex, hasRepliesSection, threadRepliesFlat, focusedCommentIndex, commentFormFocused, thread, hasMediaSection, handleReplyTo, rootMediaForNav.length, openProfileModal, focusItems])
 
   useEffect(() => {
     if (postSectionCount <= 1) return
@@ -1021,12 +1020,12 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
                     <img src={thread.post.author.avatar} alt="" className={styles.avatar} />
                   )}
                   <div className={styles.authorRow}>
-                    <Link
-                      to={`/profile/${encodeURIComponent(thread.post.author.handle ?? thread.post.author.did)}`}
+                    <ProfileLink
+                      handle={thread.post.author.handle ?? thread.post.author.did}
                       className={styles.handleLink}
                     >
                       @{thread.post.author.handle ?? thread.post.author.did}
-                    </Link>
+                    </ProfileLink>
                     {!isOwnPost && (
                       alreadyFollowing ? (
                         <button
