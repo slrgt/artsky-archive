@@ -9,6 +9,7 @@ import {
   getFeedDisplayName,
   resolveFeedUri,
   addSavedFeed,
+  getMixedFeed,
   type TimelineItem,
 } from '../lib/bsky'
 import { GUEST_FEED_ACCOUNTS } from '../config/guestFeed'
@@ -20,6 +21,8 @@ import Layout from '../components/Layout'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useSession } from '../context/SessionContext'
 import { useHiddenPosts } from '../context/HiddenPostsContext'
+import { useMediaOnly } from '../context/MediaOnlyContext'
+import { useFeedMix } from '../context/FeedMixContext'
 import { useViewMode } from '../context/ViewModeContext'
 import styles from './FeedPage.module.css'
 
@@ -136,9 +139,19 @@ export default function FeedPage() {
     }
   }, [location.state, location.pathname, navigate])
 
+  const {
+    entries: mixEntries,
+    enabled: mixEnabled,
+    setEnabled: setMixEnabled,
+    setEntryPercent,
+    addEntry,
+    removeEntry,
+    totalPercent: mixTotalPercent,
+  } = useFeedMix()
+  const [mixEditorOpen, setMixEditorOpen] = useState(false)
+
   const load = useCallback(async (nextCursor?: string) => {
     try {
-      // Single request at a time; limit 30 per page to avoid heavy responses
       if (nextCursor) setLoadingMore(true)
       else setLoading(true)
       setError(null)
@@ -146,6 +159,23 @@ export default function FeedPage() {
         const { feed, cursor: next } = await getGuestFeed(30, nextCursor)
         setItems((prev) => (nextCursor ? [...prev, ...feed] : feed))
         setCursor(next)
+      } else if (mixEnabled && mixEntries.length > 0 && mixTotalPercent >= 99) {
+        const isLoadMore = !!nextCursor
+        let cursorsToUse: Record<string, string> | undefined
+        if (isLoadMore && nextCursor) {
+          try {
+            cursorsToUse = JSON.parse(nextCursor) as Record<string, string>
+          } catch {
+            cursorsToUse = undefined
+          }
+        }
+        const { feed, cursors: nextCursors } = await getMixedFeed(
+          mixEntries.map((e) => ({ source: e.source, percent: e.percent })),
+          30,
+          cursorsToUse
+        )
+        setItems((prev) => (isLoadMore ? [...prev, ...feed] : feed))
+        setCursor(Object.keys(nextCursors).length > 0 ? JSON.stringify(nextCursors) : undefined)
       } else if (source.kind === 'timeline') {
         const res = await agent.getTimeline({ limit: 30, cursor: nextCursor })
         setItems((prev) => (nextCursor ? [...prev, ...res.data.feed] : res.data.feed))
@@ -162,7 +192,7 @@ export default function FeedPage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [source, session])
+  }, [source, session, mixEnabled, mixEntries, mixTotalPercent])
 
   useEffect(() => {
     load()
@@ -187,24 +217,25 @@ export default function FeedPage() {
   }, [cursor, load])
 
   const { isHidden } = useHiddenPosts()
-  const mediaItems = items
-    .filter((item) => getPostMediaInfo(item.post))
+  const { mediaOnly, toggleMediaOnly } = useMediaOnly()
+  const displayItems = items
+    .filter((item) => (mediaOnly ? getPostMediaInfo(item.post) : true))
     .filter((item) => !isHidden(item.post.uri))
   const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
-  mediaItemsRef.current = mediaItems
+  mediaItemsRef.current = displayItems
   keyboardFocusIndexRef.current = keyboardFocusIndex
 
   /** Column-based layout for 2/3 cols so vertical and horizontal posts don't create big row gaps */
   const columns = useMemo(() => {
     if (cols <= 1) return null
     return Array.from({ length: cols }, (_, c) =>
-      mediaItems.filter((_, i) => i % cols === c)
+      displayItems.filter((_, i) => i % cols === c)
     )
-  }, [mediaItems, cols])
+  }, [displayItems, cols])
 
   useEffect(() => {
-    setKeyboardFocusIndex((i) => (mediaItems.length ? Math.min(i, mediaItems.length - 1) : 0))
-  }, [mediaItems.length])
+    setKeyboardFocusIndex((i) => (displayItems.length ? Math.min(i, displayItems.length - 1) : 0))
+  }, [displayItems.length])
 
   // Scroll focused card into view only when focus was changed by keyboard (W/S/A/D), not on mouse hover
   useEffect(() => {
@@ -230,7 +261,7 @@ export default function FeedPage() {
       if (e.ctrlKey || e.metaKey) return
       if (location.pathname !== '/feed') return
 
-      const items = mediaItemsRef.current
+      const items = mediaItemsRef.current // displayItems
       const i = keyboardFocusIndexRef.current
       if (items.length === 0) return
 
@@ -312,6 +343,74 @@ export default function FeedPage() {
             }}
           />
         )}
+        <div className={styles.filterRow}>
+          <button
+            type="button"
+            className={mediaOnly ? styles.filterBtn : styles.filterBtnActive}
+            onClick={toggleMediaOnly}
+            title={mediaOnly ? 'Include text-only posts' : 'Currently showing all posts. Click to show only posts with images or video.'}
+            aria-pressed={!mediaOnly}
+          >
+            {mediaOnly ? 'Include text-only posts' : 'Showing all posts'}
+          </button>
+        </div>
+        {session && (
+          <div className={styles.feedMixSection}>
+            <button
+              type="button"
+              className={styles.feedMixToggle}
+              onClick={() => setMixEditorOpen((o) => !o)}
+              aria-expanded={mixEditorOpen}
+            >
+              {mixEnabled ? `Feed mix: ${mixEntries.map((e) => `${e.source.label} ${e.percent}%`).join(', ')}` : 'Set feed mix (e.g. 50% Following, 40% For You)'}
+            </button>
+            {mixEditorOpen && (
+              <div className={styles.feedMixEditor}>
+                <label className={styles.feedMixUseLabel}>
+                  <input
+                    type="checkbox"
+                    checked={mixEnabled}
+                    onChange={(e) => setMixEnabled(e.target.checked)}
+                  />
+                  Use feed mix
+                </label>
+                <p className={styles.feedMixHint}>Add feeds and set percentage of posts from each (total must be 100%).</p>
+                {mixEntries.map((entry, idx) => (
+                  <div key={idx} className={styles.feedMixRow}>
+                    <span className={styles.feedMixLabel}>{entry.source.label}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={entry.percent}
+                      onChange={(e) => setEntryPercent(idx, e.target.valueAsNumber || 0)}
+                      className={styles.feedMixInput}
+                    />
+                    <span className={styles.feedMixPct}>%</span>
+                    <button type="button" className={styles.feedMixRemove} onClick={() => removeEntry(idx)} aria-label="Remove">×</button>
+                  </div>
+                ))}
+                <div className={styles.feedMixTotal}>
+                  Total: {mixTotalPercent}% {mixTotalPercent !== 100 && mixEntries.length > 0 && '(must be 100% to use mix)'}
+                </div>
+                <div className={styles.feedMixAddRow}>
+                  <span className={styles.feedMixAddLabel}>Add feed:</span>
+                  {allSources.filter((s) => !mixEntries.some((e) => (e.source.uri ?? e.source.label) === (s.uri ?? s.label))).length > 0 ? (
+                    allSources
+                      .filter((s) => !mixEntries.some((e) => (e.source.uri ?? e.source.label) === (s.uri ?? s.label)))
+                      .map((s) => (
+                        <button key={s.uri ?? s.label} type="button" className={styles.feedMixAddBtn} onClick={() => addEntry(s)}>
+                          + {s.label}
+                        </button>
+                      ))
+                  ) : (
+                    <span className={styles.feedMixAddMuted}>All feeds added</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         {showGuestSection && (
           <section className={styles.guestSection} aria-label={session ? 'Accounts you follow' : 'Guest feed'}>
             {session ? (
@@ -382,8 +481,10 @@ export default function FeedPage() {
         {error && <p className={styles.error}>{error}</p>}
         {loading ? (
           <div className={styles.loading}>Loading…</div>
-        ) : mediaItems.length === 0 ? (
-          <div className={styles.empty}>No posts with images or videos in this feed.</div>
+        ) : displayItems.length === 0 ? (
+          <div className={styles.empty}>
+            {mediaOnly ? 'No posts with images or videos in this feed.' : 'No posts in this feed.'}
+          </div>
         ) : columns ? (
           <>
             <div className={`${styles.grid} ${styles.gridColumns}`}>
@@ -422,7 +523,7 @@ export default function FeedPage() {
         ) : (
           <>
             <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
-              {mediaItems.map((item, index) => (
+              {displayItems.map((item, index) => (
                 <div
                   key={item.post.uri}
                   onMouseEnter={() => setKeyboardFocusIndex(index)}

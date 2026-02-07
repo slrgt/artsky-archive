@@ -6,6 +6,166 @@
   padding-bottom: calc(4rem + env(safe-area-inset-bottom));
 }
 
+.filterRow {
+  margin-bottom: 0.75rem;
+}
+
+.filterBtn,
+.filterBtnActive {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  border-radius: 0.35rem;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.filterBtn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.filterBtnActive {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.feedMixSection {
+  margin-bottom: 1rem;
+}
+
+.feedMixToggle {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  text-align: left;
+  color: var(--muted);
+  background: var(--glass-highlight);
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  cursor: pointer;
+}
+
+.feedMixToggle:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.feedMixEditor {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.feedMixUseLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.feedMixHint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.feedMixRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.feedMixLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.feedMixInput {
+  width: 4rem;
+  padding: 0.25rem 0.35rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.feedMixPct {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.feedMixRemove {
+  padding: 0 0.4rem;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 0.25rem;
+}
+
+.feedMixRemove:hover {
+  color: var(--error);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.feedMixTotal {
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border);
+}
+
+.feedMixAddRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.feedMixAddLabel {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-right: 0.25rem;
+}
+
+.feedMixAddBtn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 0.35rem;
+  cursor: pointer;
+}
+
+.feedMixAddBtn:hover {
+  background: rgba(124, 58, 237, 0.12);
+}
+
+.feedMixAddMuted {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 .error {
   color: var(--error);
   padding: 0.5rem 0;

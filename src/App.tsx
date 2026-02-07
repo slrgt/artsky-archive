@@ -5,6 +5,8 @@ import { SessionProvider } from './context/SessionContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ViewModeProvider } from './context/ViewModeContext'
 import { ArtOnlyProvider } from './context/ArtOnlyContext'
+import { MediaOnlyProvider } from './context/MediaOnlyContext'
+import { FeedMixProvider } from './context/FeedMixContext'
 import { ProfileModalProvider } from './context/ProfileModalContext'
 import { HiddenPostsProvider } from './context/HiddenPostsContext'
 import LoginPage from './pages/LoginPage'
@@ -80,11 +82,15 @@ export default function App() {
           <SessionProvider>
             <ViewModeProvider>
               <ArtOnlyProvider>
-                <ProfileModalProvider>
+                <MediaOnlyProvider>
+                  <FeedMixProvider>
+                    <ProfileModalProvider>
                   <HiddenPostsProvider>
                     <AppRoutes />
                   </HiddenPostsProvider>
-                </ProfileModalProvider>
+                    </ProfileModalProvider>
+                  </FeedMixProvider>
+                </MediaOnlyProvider>
               </ArtOnlyProvider>
             </ViewModeProvider>
           </SessionProvider>

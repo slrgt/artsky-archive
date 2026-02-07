@@ -222,6 +222,70 @@ export function getSession() {
 export type TimelineResponse = Awaited<ReturnType<typeof agent.getTimeline>>
 export type TimelineItem = TimelineResponse['data']['feed'][number]
 export type PostView = TimelineItem['post']
+
+/** Entry for mixed feed: source identifier and percentage (0–100). */
+export type FeedMixEntryInput = { source: { kind: 'timeline' | 'custom'; uri?: string }; percent: number }
+
+/**
+ * Fetch from multiple feeds and merge by percentage. Requires session.
+ * Returns merged feed (sorted by createdAt desc, deduped) and cursors per feed for load more.
+ */
+export async function getMixedFeed(
+  entries: FeedMixEntryInput[],
+  limit: number,
+  cursors?: Record<string, string>
+): Promise<{ feed: TimelineItem[]; cursors: Record<string, string> }> {
+  const totalPercent = entries.reduce((s, e) => s + e.percent, 0)
+  if (entries.length === 0 || totalPercent <= 0) {
+    return { feed: [], cursors: {} }
+  }
+  const fetchLimit = Math.max(limit, 50)
+  const results = await Promise.all(
+    entries.map(async (entry) => {
+      const key = entry.source.kind === 'timeline' ? 'timeline' : (entry.source.uri ?? '')
+      const cursor = cursors?.[key]
+      try {
+        if (entry.source.kind === 'timeline') {
+          const res = await agent.getTimeline({ limit: fetchLimit, cursor })
+          return { key, feed: res.data.feed, nextCursor: res.data.cursor ?? undefined }
+        }
+        if (entry.source.uri) {
+          const res = await agent.app.bsky.feed.getFeed({ feed: entry.source.uri, limit: fetchLimit, cursor })
+          return { key, feed: res.data.feed, nextCursor: res.data.cursor }
+        }
+      } catch {
+        // ignore failed feed
+      }
+      return { key, feed: [] as TimelineItem[], nextCursor: undefined }
+    })
+  )
+  const takePerEntry = results.map((_, i) => {
+    const pct = entries[i]?.percent ?? 0
+    return Math.round((limit * pct) / totalPercent)
+  })
+  const combined: TimelineItem[] = []
+  const seen = new Set<string>()
+  results.forEach((r, i) => {
+    const take = takePerEntry[i] ?? 0
+    for (let j = 0; j < take && j < r.feed.length; j++) {
+      const item = r.feed[j]
+      if (item?.post?.uri && !seen.has(item.post.uri)) {
+        seen.add(item.post.uri)
+        combined.push(item)
+      }
+    }
+  })
+  combined.sort((a, b) => {
+    const ta = new Date((a.post.record as { createdAt?: string })?.createdAt ?? 0).getTime()
+    const tb = new Date((b.post.record as { createdAt?: string })?.createdAt ?? 0).getTime()
+    return tb - ta
+  })
+  const nextCursors: Record<string, string> = {}
+  results.forEach((r) => {
+    if (r.nextCursor) nextCursors[r.key] = r.nextCursor
+  })
+  return { feed: combined.slice(0, limit), cursors: nextCursors }
+}
 export type ThreadView = Awaited<ReturnType<typeof agent.getPostThread>>['data']['thread']
 
 export type PostMediaInfo = {

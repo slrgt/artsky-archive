@@ -68,6 +68,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const hlsRef = useRef<Hls | null>(null)
   const { post, reason } = item as { post: typeof item.post; reason?: { $type?: string; by?: { handle?: string; did?: string } } }
   const media = getPostMediaInfo(post)
+  const hasMedia = !!media
   const text = (post.record as { text?: string })?.text ?? ''
   const handle = post.author.handle ?? post.author.did
   const repostedByHandle = reason?.by ? (reason.by.handle ?? reason.by.did) : null
@@ -256,11 +257,11 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
     }
   }
 
-  const isVideo = media.type === 'video' && media.videoPlaylist
-  const isMultipleImages = media.type === 'image' && (media.imageCount ?? 0) > 1
+  const isVideo = hasMedia && media!.type === 'video' && media!.videoPlaylist
+  const isMultipleImages = hasMedia && media!.type === 'image' && (media!.imageCount ?? 0) > 1
   const allMedia = getPostAllMedia(post)
   const imageItems = allMedia.filter((m) => m.type === 'image')
-  const currentImageUrl = isMultipleImages && imageItems.length ? imageItems[imageIndex]?.url : media.url
+  const currentImageUrl = isMultipleImages && imageItems.length ? imageItems[imageIndex]?.url : (media?.url ?? '')
   const n = imageItems.length
 
   const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -278,12 +279,12 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   /* Keep previous aspect when switching images so the container doesn't flash to 3/4 and back */
   useEffect(() => {
     if (isVideo) setMediaAspect(null)
-  }, [isVideo, media.videoPlaylist])
+  }, [isVideo, media?.videoPlaylist])
 
   useEffect(() => {
-    if (!isVideo || !media.videoPlaylist || !videoRef.current) return
+    if (!isVideo || !media?.videoPlaylist || !videoRef.current) return
     const video = videoRef.current
-    const src = media.videoPlaylist
+    const src = media!.videoPlaylist
     if (Hls.isSupported() && isHlsUrl(src)) {
       const hls = new Hls()
       hlsRef.current = hls
@@ -301,7 +302,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
         video.removeAttribute('src')
       }
     }
-  }, [isVideo, media.videoPlaylist])
+  }, [isVideo, media?.videoPlaylist])
 
   /* Autoplay video when in view, pause when out of view */
   useEffect(() => {
@@ -432,16 +433,20 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
           className={styles.mediaWrap}
           style={{
             aspectRatio:
-              mediaAspect != null ? String(mediaAspect) : isVideo ? '16/9' : undefined,
+              !hasMedia ? '1' : mediaAspect != null ? String(mediaAspect) : isVideo ? '16/9' : undefined,
           }}
           onMouseEnter={onMediaEnter}
           onMouseLeave={onMediaLeave}
         >
-          {isVideo ? (
+          {!hasMedia ? (
+            <div className={styles.textOnlyPlaceholder} aria-hidden>
+              Text post
+            </div>
+          ) : isVideo ? (
             <video
               ref={videoRef}
               className={styles.media}
-              poster={media.url || undefined}
+              poster={media!.url || undefined}
               muted
               playsInline
               loop
