@@ -5,7 +5,6 @@ import * as oauth from '../lib/oauth'
 import type { AppBskyActorDefs } from '@atproto/api'
 import styles from '../pages/LoginPage.module.css'
 
-const BLUESKY_SIGNIN_URL = 'https://account.bsky.app/signin'
 const BLUESKY_SIGNUP_URL = 'https://bsky.app'
 const DEBOUNCE_MS = 250
 
@@ -16,9 +15,11 @@ export interface LoginCardProps {
   initialMode?: LoginMode
   /** Called after successful login or account creation. */
   onSuccess?: () => void
+  /** When provided, shows a close button in the top-left of the card (e.g. in modal). */
+  onClose?: () => void
 }
 
-export default function LoginCard({ initialMode = 'signin', onSuccess }: LoginCardProps) {
+export default function LoginCard({ initialMode = 'signin', onSuccess, onClose }: LoginCardProps) {
   const { login, refreshSession } = useSession()
   const [mode, setMode] = useState<LoginMode>(initialMode)
   useEffect(() => {
@@ -27,6 +28,7 @@ export default function LoginCard({ initialMode = 'signin', onSuccess }: LoginCa
 
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
+  const [showAppPassword, setShowAppPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -102,9 +104,9 @@ export default function LoginCard({ initialMode = 'signin', onSuccess }: LoginCa
     }
 
     setLoading(true)
-    setError('')
     try {
       await oauth.signInWithOAuthRedirect(id)
+      onSuccess?.()
     } catch (err: unknown) {
       const message =
         err && typeof err === 'object' && 'message' in err
@@ -148,45 +150,49 @@ export default function LoginCard({ initialMode = 'signin', onSuccess }: LoginCa
 
   return (
     <div className={styles.card}>
+      {onClose && (
+        <button
+          type="button"
+          className={styles.cardCloseBtn}
+          onClick={onClose}
+          aria-label="Close"
+        >
+          ×
+        </button>
+      )}
+      <div className={onClose ? styles.cardContentWithClose : undefined}>
       <h1 className={styles.title}>ArtSky</h1>
       <p className={styles.subtitle}>Bluesky feed & artboards</p>
 
-      <div className={styles.tabs} role="tablist" aria-label="Log in or create account">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === 'signin'}
-          aria-controls="signin-panel"
-          id="tab-signin"
-          className={mode === 'signin' ? styles.tabActive : styles.tab}
-          onClick={() => {
-            setMode('signin')
-            setError('')
-          }}
-        >
-          Log in
-        </button>
-        <a
-          href="https://bsky.app"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.tab}
-          id="tab-create"
-        >
-          Create Account
-        </a>
-      </div>
+      {mode === 'create' && (
+        <div className={styles.tabs} role="tablist" aria-label="Create account or log in">
+          <button
+            type="button"
+            role="tab"
+            className={styles.tab}
+            onClick={() => {
+              setMode('signin')
+              setError('')
+            }}
+          >
+            Log in
+          </button>
+          <span className={`${styles.tab} ${styles.tabActive}`} role="tab" aria-selected id="tab-create">
+            Create Account
+          </span>
+        </div>
+      )}
 
       {mode === 'signin' ? (
-        <form id="signin-panel" onSubmit={handleSignIn} className={styles.form} aria-label="Log in" role="tabpanel" aria-labelledby="tab-signin">
+        <form id="signin-panel" onSubmit={handleSignIn} className={styles.form} aria-label="Log in">
           <div ref={wrapperRef} className={styles.inputWrap}>
             <label htmlFor="login-identifier" className={styles.srOnly}>
-              Handle or email
+              username.bsky.social or email
             </label>
             <input
               id="login-identifier"
               type="text"
-              placeholder="Handle or email"
+              placeholder="username.bsky.social or email"
               value={identifier}
               onChange={(e) => {
                 setIdentifier(e.target.value)
@@ -247,33 +253,46 @@ export default function LoginCard({ initialMode = 'signin', onSuccess }: LoginCa
               </ul>
             )}
           </div>
-          <label htmlFor="login-password" className={styles.srOnly}>
-            App password (optional)
-          </label>
-          <input
-            id="login-password"
-            type="password"
-            placeholder="App password (optional — leave blank to log in with Bluesky)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={styles.input}
-            autoComplete="current-password"
-            aria-describedby={error ? 'login-error' : undefined}
-          />
+          {showAppPassword && (
+            <>
+              <label htmlFor="login-password" className={styles.srOnly}>
+                App password
+              </label>
+              <input
+                id="login-password"
+                type="password"
+                placeholder="App password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={styles.input}
+                autoComplete="current-password"
+                aria-describedby={error ? 'login-error login-app-password-hint' : 'login-app-password-hint'}
+              />
+              <p id="login-app-password-hint" className={styles.hint}>
+                Create an App Password in Bluesky: Settings → App passwords, then enter it above.
+              </p>
+            </>
+          )}
           {error && <p id="login-error" className={styles.error} role="alert">{error}</p>}
           <button type="submit" className={styles.button} disabled={loading}>
-            {password.trim() ? (loading ? 'Logging in…' : 'Log in') : 'Log in with Bluesky'}
+            {loading ? 'Logging in…' : password.trim() ? 'Log in' : 'Log in with Bluesky'}
           </button>
-          <p className={styles.hint}>
-            Create an App Password in Bluesky: Settings → App passwords, then enter it above.
-          </p>
+          {!showAppPassword ? (
+            <button
+              type="button"
+              className={styles.buttonSecondary}
+              onClick={() => setShowAppPassword(true)}
+            >
+              Login with app password
+            </button>
+          ) : null}
           <a
-            href={BLUESKY_SIGNIN_URL}
+            href={BLUESKY_SIGNUP_URL}
             target="_blank"
             rel="noopener noreferrer"
             className={styles.signupLink}
           >
-            Log in on Bluesky →
+            Create account
           </a>
         </form>
       ) : (
@@ -331,6 +350,7 @@ export default function LoginCard({ initialMode = 'signin', onSuccess }: LoginCa
           </a>
         </form>
       )}
+      </div>
     </div>
   )
 }

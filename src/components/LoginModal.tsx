@@ -30,7 +30,7 @@ export default function LoginModal({ isOpen, mode, onClose, onSuccess }: LoginMo
       />
       <div className={styles.center} role="dialog" aria-modal="true" aria-label="Log in or create account">
         <div className={styles.cardWrap} onClick={(e) => e.stopPropagation()}>
-          <LoginCard initialMode={mode} onSuccess={onSuccess} />
+          <LoginCard initialMode={mode} onSuccess={onSuccess} onClose={onClose} />
         </div>
       </div>
     </>

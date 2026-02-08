@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import {
   agent,
-  publicAgent,
   getPostMediaInfo,
   getGuestFeed,
   getSavedFeedsFromPreferences,
@@ -13,14 +12,11 @@ import {
   isPostNsfw,
   type TimelineItem,
 } from '../lib/bsky'
-import { GUEST_FEED_ACCOUNTS } from '../config/guestFeed'
 import type { FeedSource } from '../types'
 import FeedSelector from '../components/FeedSelector'
 import PostCard from '../components/PostCard'
-import ProfileLink from '../components/ProfileLink'
 import Layout from '../components/Layout'
 import { useProfileModal } from '../context/ProfileModalContext'
-import { useLoginModal } from '../context/LoginModalContext'
 import { useSession } from '../context/SessionContext'
 import { useHiddenPosts } from '../context/HiddenPostsContext'
 import { useMediaOnly } from '../context/MediaOnlyContext'
@@ -39,6 +35,67 @@ function sameSource(a: FeedSource, b: FeedSource): boolean {
   return (a.uri ?? a.label) === (b.uri ?? b.label)
 }
 
+/** Nominal column width for height estimation (px). */
+const ESTIMATE_COL_WIDTH = 280
+const CARD_CHROME = 100
+
+function estimateItemHeight(item: TimelineItem): number {
+  const media = getPostMediaInfo(item.post)
+  if (!media) return CARD_CHROME + 80
+  if (media.aspectRatio != null && media.aspectRatio > 0) {
+    return CARD_CHROME + ESTIMATE_COL_WIDTH / media.aspectRatio
+  }
+  return CARD_CHROME + 220
+}
+
+/** Distribute items across columns so each column's estimated total height is roughly equal. */
+function distributeByHeight(
+  items: TimelineItem[],
+  numCols: number
+): Array<Array<{ item: TimelineItem; originalIndex: number }>> {
+  const columns: Array<Array<{ item: TimelineItem; originalIndex: number }>> = Array.from(
+    { length: numCols },
+    () => []
+  )
+  const columnHeights: number[] = Array(numCols).fill(0)
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    const h = estimateItemHeight(item)
+    let shortest = 0
+    for (let c = 1; c < numCols; c++) {
+      if (columnHeights[c] < columnHeights[shortest]) shortest = c
+    }
+    columns[shortest].push({ item, originalIndex: i })
+    columnHeights[shortest] += h
+  }
+  return columns
+}
+
+/** Given columns from distributeByHeight, return the index of the card directly above or below the one at currentIndex, or currentIndex if none. */
+function indexAbove(
+  columns: Array<Array<{ item: TimelineItem; originalIndex: number }>>,
+  currentIndex: number
+): number {
+  for (let c = 0; c < columns.length; c++) {
+    const row = columns[c].findIndex((e) => e.originalIndex === currentIndex)
+    if (row > 0) return columns[c][row - 1].originalIndex
+    if (row === 0) return currentIndex
+  }
+  return currentIndex
+}
+
+function indexBelow(
+  columns: Array<Array<{ item: TimelineItem; originalIndex: number }>>,
+  currentIndex: number
+): number {
+  for (let c = 0; c < columns.length; c++) {
+    const row = columns[c].findIndex((e) => e.originalIndex === currentIndex)
+    if (row >= 0 && row < columns[c].length - 1) return columns[c][row + 1].originalIndex
+    if (row >= 0) return currentIndex
+  }
+  return currentIndex
+}
+
 export default function FeedPage() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -52,14 +109,11 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [guestProfiles, setGuestProfiles] = useState<Record<string, { avatar?: string; displayName?: string }>>({})
-  const [followedGuestHandles, setFollowedGuestHandles] = useState<string[]>([])
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
   const loadingMoreRef = useRef(false)
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
   const [keyboardAddOpen, setKeyboardAddOpen] = useState(false)
   const { openPostModal, isModalOpen } = useProfileModal()
-  const { openLoginModal } = useLoginModal()
   const cardRefsRef = useRef<(HTMLDivElement | null)[]>([])
   const mediaItemsRef = useRef<TimelineItem[]>([])
   const keyboardFocusIndexRef = useRef(0)
@@ -107,47 +161,6 @@ export default function FeedPage() {
   useEffect(() => {
     if (navigationType !== 'POP') window.scrollTo(0, 0)
   }, [navigationType])
-
-  // When logged in, see which guest accounts the user follows (so we can show the preview section for those).
-  useEffect(() => {
-    if (!session) {
-      setFollowedGuestHandles([])
-      return
-    }
-    const followed: string[] = []
-    let done = 0
-    GUEST_FEED_ACCOUNTS.forEach((a) => {
-      agent.getProfile({ actor: a.handle }).then((res) => {
-        const v = (res.data as { viewer?: { following?: string } }).viewer
-        if (v?.following) followed.push(a.handle)
-        done += 1
-        if (done === GUEST_FEED_ACCOUNTS.length) setFollowedGuestHandles(followed)
-      }).catch(() => {
-        done += 1
-        if (done === GUEST_FEED_ACCOUNTS.length) setFollowedGuestHandles(followed)
-      })
-    })
-  }, [session])
-
-  const showGuestSection =
-    (!session && GUEST_FEED_ACCOUNTS.length > 0) ||
-    (!!session && followedGuestHandles.length > 0)
-  const guestHandlesToShow = !session
-    ? GUEST_FEED_ACCOUNTS.map((a) => a.handle)
-    : followedGuestHandles
-
-  useEffect(() => {
-    if (!showGuestSection || guestHandlesToShow.length === 0) return
-    guestHandlesToShow.forEach((handle) => {
-      publicAgent.getProfile({ actor: handle }).then((res) => {
-        const d = res.data
-        setGuestProfiles((prev) => ({
-          ...prev,
-          [handle]: { avatar: d.avatar, displayName: d.displayName },
-        }))
-      }).catch(() => {})
-    })
-  }, [showGuestSection, guestHandlesToShow.join(',')])
 
   useEffect(() => {
     const stateSource = (location.state as { feedSource?: FeedSource })?.feedSource
@@ -365,13 +378,19 @@ export default function FeedPage() {
       if (key === 'w' || e.key === 'ArrowUp') {
         mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
-        setKeyboardFocusIndex(Math.max(0, i - cols))
+        const next = cols >= 2
+          ? indexAbove(distributeByHeight(items, cols), i)
+          : Math.max(0, i - 1)
+        setKeyboardFocusIndex(next)
         return
       }
       if (key === 's' || e.key === 'ArrowDown') {
         mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
-        setKeyboardFocusIndex(Math.min(items.length - 1, i + cols))
+        const next = cols >= 2
+          ? indexBelow(distributeByHeight(items, cols), i)
+          : Math.min(items.length - 1, i + 1)
+        setKeyboardFocusIndex(next)
         return
       }
       if (key === 'a' || e.key === 'ArrowLeft') {
@@ -507,73 +526,6 @@ export default function FeedPage() {
             }}
           />
         )}
-        {showGuestSection && (
-          <section className={styles.guestSection} aria-label={session ? 'Accounts you follow' : 'Guest feed'}>
-            {session ? (
-              <p className={styles.guestHint}>Quick access to accounts you follow:</p>
-            ) : (
-              <>
-                <p className={styles.guestHint}>Showing posts from these accounts:</p>
-                <div className={styles.guestPreview}>
-                  {guestHandlesToShow.map((handle) => {
-                    const a = GUEST_FEED_ACCOUNTS.find((x) => x.handle === handle)
-                    if (!a) return null
-                    const profile = guestProfiles[a.handle]
-                    return (
-                      <ProfileLink
-                        key={a.handle}
-                        handle={a.handle}
-                        className={styles.guestPreviewCard}
-                      >
-                        {profile?.avatar ? (
-                          <img src={profile.avatar} alt="" className={styles.guestPreviewAvatar} loading="lazy" />
-                        ) : (
-                          <span className={styles.guestPreviewAvatarPlaceholder} aria-hidden>@{a.handle.slice(0, 1)}</span>
-                        )}
-                        <div className={styles.guestPreviewText}>
-                          <span className={styles.guestPreviewLabel}>@{a.handle}</span>
-                          <span className={styles.guestPreviewName}>{profile?.displayName ?? a.label}</span>
-                        </div>
-                      </ProfileLink>
-                    )
-                  })}
-                </div>
-                <div className={styles.guestSignInRow}>
-                  <button type="button" className={styles.guestSignInBtn} onClick={() => openLoginModal()}>
-                    Log in
-                  </button>
-                  <span className={styles.guestSignInSuffix}> to see your feed</span>
-                </div>
-              </>
-            )}
-            {session && (
-              <div className={styles.guestPreview}>
-                {guestHandlesToShow.map((handle) => {
-                  const a = GUEST_FEED_ACCOUNTS.find((x) => x.handle === handle)
-                  if (!a) return null
-                  const profile = guestProfiles[a.handle]
-                  return (
-                    <ProfileLink
-                      key={a.handle}
-                      handle={a.handle}
-                      className={styles.guestPreviewCard}
-                    >
-                      {profile?.avatar ? (
-                        <img src={profile.avatar} alt="" className={styles.guestPreviewAvatar} loading="lazy" />
-                      ) : (
-                        <span className={styles.guestPreviewAvatarPlaceholder} aria-hidden>@{a.handle.slice(0, 1)}</span>
-                      )}
-                      <div className={styles.guestPreviewText}>
-                        <span className={styles.guestPreviewLabel}>@{a.handle}</span>
-                        <span className={styles.guestPreviewName}>{profile?.displayName ?? a.label}</span>
-                      </div>
-                    </ProfileLink>
-                  )
-                })}
-              </div>
-            )}
-          </section>
-        )}
         {error && <p className={styles.error}>{error}</p>}
         {loading ? (
           <div className={styles.loading}>Loading…</div>
@@ -585,41 +537,38 @@ export default function FeedPage() {
           <>
             {cols >= 2 ? (
               <div className={`${styles.gridColumns} ${styles[`gridView${viewMode}`]}`}>
-                {Array.from({ length: cols }, (_, colIndex) => (
+                {distributeByHeight(displayItems, cols).map((column, colIndex) => (
                   <div key={colIndex} className={styles.gridColumn}>
-                    {displayItems
-                      .map((item, index) => ({ item, index }))
-                      .filter(({ index }) => index % cols === colIndex)
-                      .map(({ item, index }) => (
-                        <div
-                          key={item.post.uri}
-                          className={styles.gridItem}
-                          onMouseEnter={() => {
-                            if (mouseMovedRef.current) {
-                              mouseMovedRef.current = false
-                              setKeyboardFocusIndex(index)
-                            }
-                          }}
-                        >
-                          <PostCard
-                            item={item}
-                            isSelected={index === keyboardFocusIndex}
-                            cardRef={(el) => { cardRefsRef.current[index] = el }}
-                            openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
-                            onAddClose={() => setKeyboardAddOpen(false)}
-                            onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
-                            feedLabel={(item as { _feedSource?: { label?: string } })._feedSource?.label ?? feedLabel}
-                            openActionsMenu={openMenuIndex === index}
-                            onActionsMenuOpen={() => setOpenMenuIndex(index)}
-                            onActionsMenuClose={() => setOpenMenuIndex(null)}
-                            onAspectRatio={undefined}
-                            fillCell={false}
-                            nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
-                            onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
-                            likedUriOverride={likeOverrides[item.post.uri]}
-                          />
-                        </div>
-                      ))}
+                    {column.map(({ item, originalIndex }) => (
+                      <div
+                        key={item.post.uri}
+                        className={styles.gridItem}
+                        onMouseEnter={() => {
+                          if (mouseMovedRef.current) {
+                            mouseMovedRef.current = false
+                            setKeyboardFocusIndex(originalIndex)
+                          }
+                        }}
+                      >
+                        <PostCard
+                          item={item}
+                          isSelected={originalIndex === keyboardFocusIndex}
+                          cardRef={(el) => { cardRefsRef.current[originalIndex] = el }}
+                          openAddDropdown={originalIndex === keyboardFocusIndex && keyboardAddOpen}
+                          onAddClose={() => setKeyboardAddOpen(false)}
+                          onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
+                          feedLabel={(item as { _feedSource?: { label?: string } })._feedSource?.label ?? feedLabel}
+                          openActionsMenu={openMenuIndex === originalIndex}
+                          onActionsMenuOpen={() => setOpenMenuIndex(originalIndex)}
+                          onActionsMenuClose={() => setOpenMenuIndex(null)}
+                          onAspectRatio={undefined}
+                          fillCell={false}
+                          nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
+                          onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
+                          likedUriOverride={likeOverrides[item.post.uri]}
+                        />
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>

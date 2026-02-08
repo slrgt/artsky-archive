@@ -1,5 +1,13 @@
 # artsky
 
+---
+
+# 🚨🚨🚨 WEE WOO WEE WOO WARNING 🚨🚨🚨
+
+**THIS WAS ENTIRELY VIBE CODED BY A BLENDER ANIMATOR WITHOUT THE CODING SKILLS TO MAKE THIS BY HAND YET BUT WANTED IT TO EXIST SOOOO YEAH IT MIGHT DISAPPEAR TOMORROW USE ANY OF THE IDEAS TO MAKE A BETTER HAND MADE VERSION IF YA CAN K THX BYE LOVE YA**
+
+---
+
 A **PWA** (Progressive Web App) that works as an app-style view for [Bluesky](https://bsky.app) (AT Protocol). Use it on your phone or desktop: masonry feed of images and videos, artboards to save posts, and comment on posts with your Bluesky account.
 
 ## Features

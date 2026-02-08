@@ -12,6 +12,8 @@ export const GUEST_FEED_ACCOUNTS = [
   { handle: 'studio.blender.org', label: 'Blender' },
   { handle: 'godotengine.org', label: 'Godot Engine' },
   { handle: 'stsci.edu', label: 'NASA / STScI' },
+  { handle: 'oseanworld.bsky.social', label: 'Osean World' },
+  { handle: 'osean.world', label: 'Osean' },
 ] as const
 
 export type GuestFeedAccount = (typeof GUEST_FEED_ACCOUNTS)[number]
