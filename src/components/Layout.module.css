@@ -80,14 +80,6 @@
 }
 
 @media (max-width: 767px) {
-  /* Transparent header so nothing solid at top when scrolling (native iOS feel) */
-  .header {
-    background: transparent;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    border-bottom-color: transparent;
-    box-shadow: none;
-  }
   .headerHidden {
     transform: translateY(-100%);
   }
@@ -919,16 +911,6 @@
   border-top: 1px solid var(--glass-border);
   z-index: 20;
   transition: transform 0.25s ease;
-}
-
-@media (max-width: 767px) {
-  /* Transparent bottom nav so nothing behind Safari URL bar (native iOS feel) */
-  .nav {
-    background: transparent;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    border-top: none;
-  }
 }
 
 @media (min-width: 768px) {
