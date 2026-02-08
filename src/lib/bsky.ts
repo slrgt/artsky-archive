@@ -282,7 +282,7 @@ export async function logoutCurrentAccount(): Promise<boolean> {
       // ignore
     }
     setOAuthAgent(null, null)
-    removeOAuthDid(currentDid)
+    if (currentDid) removeOAuthDid(currentDid)
     const next = getOAuthAccounts()
     if (next.activeDid) {
       const session = await oauth.restoreOAuthSession(next.activeDid)

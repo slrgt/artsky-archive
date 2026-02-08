@@ -74,7 +74,7 @@ export async function initOAuth(options?: {
   }
   if (options?.preferredRestoreDid) {
     try {
-      const session = await oauth.restore(options.preferredRestoreDid, 'auto')
+      const session = await oauth.restore(options.preferredRestoreDid, true)
       return { session }
     } catch {
       return undefined
@@ -89,7 +89,7 @@ export async function initOAuth(options?: {
 export async function restoreOAuthSession(did: string): Promise<OAuthSession | null> {
   try {
     const oauth = await getOAuthClient()
-    const session = await oauth.restore(did, 'auto')
+    const session = await oauth.restore(did, true)
     return session
   } catch {
     return null

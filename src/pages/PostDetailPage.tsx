@@ -1246,7 +1246,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
     if (item.type === 'comment') {
       el = Array.from(commentsSectionRef.current.querySelectorAll('[data-comment-uri]')).find(
         (n) => n.getAttribute('data-comment-uri') === item.commentUri
-      )
+      ) ?? null
     } else {
       const commentEl = Array.from(commentsSectionRef.current.querySelectorAll('[data-comment-uri]')).find(
         (n) => n.getAttribute('data-comment-uri') === item.commentUri

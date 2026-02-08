@@ -341,15 +341,6 @@ export default function FeedPage() {
     },
     [mixEntries.length, source, addEntry, toggleSource]
   )
-  const feedLabel =
-    mixEntries.length >= 2
-      ? 'Feed mix'
-      : mixEntries.length === 1
-        ? mixEntries[0].source.label
-        : source.kind === 'timeline'
-          ? 'Following'
-          : source.label ?? undefined
-
   const load = useCallback(async (nextCursor?: string) => {
     const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
     const limit = cols >= 2 ? cols * 10 : 30
