@@ -57,8 +57,9 @@
   gap: 0.1rem;
 }
 
-/* Portaled dropdown: position set inline (fixed above trigger) so it stays in view in scrollable columns */
+/* Portaled dropdown: position set inline (fixed above trigger) so it stays in view in scrollable columns; above modal (z 1000) */
 .dropdownFixed {
+  z-index: 1001;
   /* position, bottom, right set via inline style */
 }
 
