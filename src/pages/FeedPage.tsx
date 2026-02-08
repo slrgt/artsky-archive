@@ -72,11 +72,12 @@ function estimateItemHeight(item: TimelineItem): number {
   return CARD_CHROME + 220
 }
 
-/** Distribute items across columns so each column's estimated total height is roughly equal. Tie-break by fewest items. */
+/** Distribute items so no column is much longer than others: cap count difference at 1, then pick by smallest estimated height. */
 function distributeByHeight(
   items: TimelineItem[],
   numCols: number
 ): Array<Array<{ item: TimelineItem; originalIndex: number }>> {
+  if (numCols < 1) return []
   const columns: Array<Array<{ item: TimelineItem; originalIndex: number }>> = Array.from(
     { length: numCols },
     () => []
@@ -85,14 +86,17 @@ function distributeByHeight(
   for (let i = 0; i < items.length; i++) {
     const item = items[i]
     const h = estimateItemHeight(item)
-    let shortest = 0
-    for (let c = 1; c < numCols; c++) {
-      const heightDiff = columnHeights[c] - columnHeights[shortest]
-      if (heightDiff < 0) shortest = c
-      else if (heightDiff === 0 && columns[c].length < columns[shortest].length) shortest = c
+    const lengths = columns.map((col) => col.length)
+    const minCount = lengths.length === 0 ? 0 : Math.min(...lengths)
+    let best = -1
+    for (let c = 0; c < numCols; c++) {
+      if (columns[c].length > minCount + 1) continue
+      if (best === -1 || columnHeights[c] < columnHeights[best]) best = c
+      else if (columnHeights[c] === columnHeights[best] && columns[c].length < columns[best].length) best = c
     }
-    columns[shortest].push({ item, originalIndex: i })
-    columnHeights[shortest] += h
+    if (best === -1) best = 0
+    columns[best].push({ item, originalIndex: i })
+    columnHeights[best] += h
   }
   return columns
 }
@@ -257,6 +261,8 @@ export default function FeedPage() {
   /** Snapshot of seen URIs at last “reset” (refresh or navigate to feed); only these are hidden from the list. Newly seen posts while scrolling stay visible (darkened). */
   const [seenUrisAtReset, setSeenUrisAtReset] = useState<Set<string>>(() => new Set(loadSeenUris()))
   const prevPathnameRef = useRef(location.pathname)
+  const seenUrisRef = useRef(seenUris)
+  seenUrisRef.current = seenUris
   const seenPostsContext = useSeenPosts()
 
   // Register clear-seen handler so that long-press on Home can bring back all hidden (seen) items.
@@ -268,11 +274,27 @@ export default function FeedPage() {
       } catch {
         // ignore
       }
+      seenUrisRef.current = new Set()
       setSeenUris(new Set())
       setSeenUrisAtReset(new Set())
     })
     return () => {
       seenPostsContext.setClearSeenHandler(null)
+    }
+  }, [seenPostsContext])
+
+  // When Home/logo is clicked while already on feed: hide seen posts (take snapshot) and scroll to top.
+  // Defer to next frame so any IntersectionObserver callbacks from the same tick run first and seenUrisRef is up to date (fixes "two clicks" on logo/Home).
+  useEffect(() => {
+    if (!seenPostsContext) return
+    seenPostsContext.setHomeClickHandler(() => {
+      requestAnimationFrame(() => {
+        setSeenUrisAtReset(new Set(seenUrisRef.current))
+        window.scrollTo(0, 0)
+      })
+    })
+    return () => {
+      seenPostsContext.setHomeClickHandler(null)
     }
   }, [seenPostsContext])
 
@@ -449,7 +471,11 @@ export default function FeedPage() {
         for (const entry of entries) {
           if (!entry.isIntersecting && entry.boundingClientRect.top < 0) {
             const uri = (entry.target as HTMLElement).getAttribute('data-post-uri')
-            if (uri) setSeenUris((prev) => new Set(prev).add(uri))
+            if (uri) {
+              const next = new Set(seenUrisRef.current).add(uri)
+              seenUrisRef.current = next
+              setSeenUris(next)
+            }
           }
         }
       },

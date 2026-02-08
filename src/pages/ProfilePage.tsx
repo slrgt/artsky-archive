@@ -35,11 +35,12 @@ function estimateItemHeight(item: TimelineItem): number {
   return CARD_CHROME + 220
 }
 
-/** Distribute items across columns so each column's estimated total height is roughly equal. */
+/** Distribute items so no column is much longer than others: cap count difference at 1, then pick by smallest estimated height. */
 function distributeByHeight(
   items: TimelineItem[],
   numCols: number
 ): Array<Array<{ item: TimelineItem; originalIndex: number }>> {
+  if (numCols < 1) return []
   const columns: Array<Array<{ item: TimelineItem; originalIndex: number }>> = Array.from(
     { length: numCols },
     () => []
@@ -48,14 +49,17 @@ function distributeByHeight(
   for (let i = 0; i < items.length; i++) {
     const item = items[i]
     const h = estimateItemHeight(item)
-    let shortest = 0
-    for (let c = 1; c < numCols; c++) {
-      const heightDiff = columnHeights[c] - columnHeights[shortest]
-      if (heightDiff < 0) shortest = c
-      else if (heightDiff === 0 && columns[c].length < columns[shortest].length) shortest = c
+    const lengths = columns.map((col) => col.length)
+    const minCount = lengths.length === 0 ? 0 : Math.min(...lengths)
+    let best = -1
+    for (let c = 0; c < numCols; c++) {
+      if (columns[c].length > minCount + 1) continue
+      if (best === -1 || columnHeights[c] < columnHeights[best]) best = c
+      else if (columnHeights[c] === columnHeights[best] && columns[c].length < columns[best].length) best = c
     }
-    columns[shortest].push({ item, originalIndex: i })
-    columnHeights[shortest] += h
+    if (best === -1) best = 0
+    columns[best].push({ item, originalIndex: i })
+    columnHeights[best] += h
   }
   return columns
 }

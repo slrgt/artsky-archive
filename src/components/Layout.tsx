@@ -362,8 +362,13 @@ export default function Layout({ title, children, showNav }: Props) {
     if (homeLongPressTriggeredRef.current) {
       e.preventDefault()
       homeLongPressTriggeredRef.current = false
+      return
     }
-  }, [])
+    if (path === '/feed') {
+      e.preventDefault()
+      seenPosts?.onHomeClick()
+    }
+  }, [path, seenPosts])
 
   useEffect(() => {
     document.title = title ? `${title} · ArtSky` : 'ArtSky'
@@ -1052,12 +1057,12 @@ export default function Layout({ title, children, showNav }: Props) {
                 to="/feed"
                 className={styles.logoLink}
                 aria-label="ArtSky – back to feed"
-                onClick={(e) => {
-                  if (path === '/feed') {
-                    e.preventDefault()
-                    window.scrollTo({ top: 0, behavior: 'smooth' })
-                  }
-                }}
+                title={path === '/feed' ? 'Home (hold to show all seen posts)' : 'Back to feed'}
+                onPointerDown={startHomeHold}
+                onPointerUp={endHomeHold}
+                onPointerLeave={endHomeHold}
+                onPointerCancel={endHomeHold}
+                onClick={homeLinkClick}
               >
                 <img src={`${import.meta.env.BASE_URL || '/'}icon.svg`} alt="" className={styles.logoIcon} />
                 <span className={styles.logoText}>ArtSky</span>
