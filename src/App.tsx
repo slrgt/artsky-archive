@@ -1,6 +1,7 @@
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
+import * as bsky from './lib/bsky'
 import { SessionProvider } from './context/SessionContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { ViewModeProvider } from './context/ViewModeContext'
@@ -31,10 +32,17 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('App error:', error, info.componentStack)
+    const msg = error?.message ?? ''
+    if (/session was deleted by another process|TokenRefreshError/i.test(msg)) {
+      const oauth = bsky.getOAuthAccountsSnapshot()
+      if (oauth.activeDid) bsky.removeOAuthDid(oauth.activeDid)
+    }
   }
 
   render() {
     if (this.state.error) {
+      const isSessionDeleted =
+        /session was deleted by another process|TokenRefreshError/i.test(this.state.error.message)
       return (
         <div
           style={{
@@ -45,13 +53,26 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
             fontFamily: 'system-ui, sans-serif',
           }}
         >
-          <h1 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Something went wrong</h1>
-          <pre style={{ margin: 0, fontSize: '0.85rem', color: 'var(--error)', overflow: 'auto' }}>
-            {this.state.error.message}
-          </pre>
-          <p style={{ margin: '1rem 0 0', fontSize: '0.9rem', color: 'var(--muted)' }}>
-            Check the browser console for details.
+          <h1 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>
+            {isSessionDeleted ? 'You were logged out' : 'Something went wrong'}
+          </h1>
+          <p style={{ margin: 0, fontSize: '0.95rem' }}>
+            {isSessionDeleted
+              ? 'Your session was ended (for example by signing out in another tab or device). Please sign in again.'
+              : this.state.error.message}
           </p>
+          {isSessionDeleted && (
+            <p style={{ margin: '1rem 0 0', fontSize: '0.9rem' }}>
+              <a href="#/feed" style={{ color: 'var(--accent)' }}>
+                Back to feed
+              </a>
+            </p>
+          )}
+          {!isSessionDeleted && (
+            <p style={{ margin: '1rem 0 0', fontSize: '0.9rem', color: 'var(--muted)' }}>
+              Check the browser console for details.
+            </p>
+          )}
         </div>
       )
     }

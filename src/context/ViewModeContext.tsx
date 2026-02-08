@@ -50,7 +50,10 @@ export function ViewModeProvider({ children }: { children: React.ReactNode }) {
   const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
   const stored = getStored()
   const defaultMode: ViewMode = !session && isDesktop ? '3' : '2'
-  const [viewMode, setViewModeState] = useState<ViewMode>(() => stored ?? defaultMode)
+  const [viewMode, setViewModeState] = useState<ViewMode>(() => {
+    const v = stored ?? defaultMode
+    return v === '1' || v === '2' || v === '3' ? v : defaultMode
+  })
 
   useEffect(() => {
     if (getStored() !== null) return
@@ -59,9 +62,10 @@ export function ViewModeProvider({ children }: { children: React.ReactNode }) {
   }, [session, isDesktop])
 
   const setViewMode = useCallback((mode: ViewMode) => {
-    setViewModeState(mode)
+    const safe: ViewMode = mode === '1' || mode === '2' || mode === '3' ? mode : '2'
+    setViewModeState(safe)
     try {
-      localStorage.setItem(STORAGE_KEY, mode)
+      localStorage.setItem(STORAGE_KEY, safe)
     } catch {
       // ignore
     }

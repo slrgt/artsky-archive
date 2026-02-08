@@ -38,6 +38,40 @@
   box-shadow: var(--shadow-card);
 }
 
+/* Light blue ring when post is in an artboard */
+.cardInArtboard {
+  outline: 2px solid #7dd3fc;
+  outline-offset: -2px;
+  box-shadow: var(--shadow-card);
+}
+
+/* Trans flag outline (blue, pink, white, pink, blue) when liked + in artboard + following author */
+.cardTransFlag {
+  outline: none;
+  box-shadow: var(--shadow-card);
+}
+.cardTransFlag::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  z-index: -1;
+  border-radius: calc(var(--glass-radius) + 2px);
+  background: linear-gradient(
+    to bottom,
+    #5bcefa 0%,
+    #5bcefa 20%,
+    #f5a9b8 20%,
+    #f5a9b8 40%,
+    #ffffff 40%,
+    #ffffff 60%,
+    #f5a9b8 60%,
+    #f5a9b8 80%,
+    #5bcefa 80%,
+    #5bcefa 100%
+  );
+  pointer-events: none;
+}
+
 /* Darken card when marked as seen (scrolled past) */
 .cardSeen {
   filter: brightness(0.82);
@@ -62,6 +96,14 @@ html[data-theme="dark"] .cardSeen {
   outline: 2px solid #ec4899;
   outline-offset: -2px;
   box-shadow: var(--shadow-card);
+}
+[data-feed-cards][data-keyboard-nav] .card.cardInArtboard:hover:not(.cardSelected) {
+  outline: 2px solid #7dd3fc;
+  outline-offset: -2px;
+  box-shadow: var(--shadow-card);
+}
+[data-feed-cards][data-keyboard-nav] .card.cardTransFlag:hover:not(.cardSelected) {
+  outline: none;
 }
 
 /* Liked + hover: keep pink outline, add purple ring outside via box-shadow */

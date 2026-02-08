@@ -177,6 +177,7 @@
   }
 }
 
+
 /* Logged-out: show Log in + Create account in header on mobile and desktop */
 .headerLoggedOut .headerRight {
   display: flex;
@@ -220,6 +221,30 @@
   filter: brightness(0.92);
   color: var(--text-on-accent);
   text-decoration: none;
+}
+
+/* Log in in account menu – same look as header Log in, larger for menu */
+.menuAuthLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  margin-top: 0.25rem;
+  border: none;
+  border-radius: var(--glass-radius-sm);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-on-accent);
+  background: var(--accent-gradient);
+  cursor: pointer;
+  transition: filter 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menuAuthLink:hover {
+  filter: brightness(0.92);
+  color: var(--text-on-accent);
 }
 
 @media (min-width: 768px) {

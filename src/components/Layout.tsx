@@ -124,19 +124,18 @@ function ArtOnlyEyeIcon({ mode }: { mode: 'open' | 'half' | 'closed' }) {
       )}
       {mode === 'half' && (
         <>
-          <path d="M12 15 A3 3 0 0 1 9 12 A3 3 0 0 1 15 12 A3 3 0 0 1 12 15" />
-          <path d="M4 9.5 Q12 13 20 9.5" />
-          <line x1="6" y1="9" x2="5" y2="7" />
-          <line x1="12" y1="8" x2="12" y2="5.5" />
-          <line x1="18" y1="9" x2="19" y2="7" />
-        </>
-      )}
-      {mode === 'closed' && (
-        <>
           <path d="M4 12 Q12 16 20 12" />
           <line x1="6" y1="13" x2="5" y2="15" />
           <line x1="12" y1="14.5" x2="12" y2="17" />
           <line x1="18" y1="13" x2="19" y2="15" />
+        </>
+      )}
+      {mode === 'closed' && (
+        <>
+          <path d="M5 19 Q12 21 19 19" />
+          <line x1="7" y1="19" x2="6" y2="22" />
+          <line x1="12" y1="19" x2="12" y2="23" />
+          <line x1="17" y1="19" x2="18" y2="22" />
         </>
       )}
     </svg>
@@ -816,7 +815,7 @@ export default function Layout({ title, children, showNav }: Props) {
             className={!mediaOnly ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
             onClick={() => toggleMediaOnly()}
           >
-            Include text posts
+            Media & Text
           </button>
         </div>
       </section>
@@ -842,7 +841,6 @@ export default function Layout({ title, children, showNav }: Props) {
                 <span>Profile</span>
               </button>
               <div className={styles.menuAccountsBlock}>
-                <span className={styles.menuSectionTitle}>Accounts</span>
                 {sessionsList.map((s) => {
             const profile = accountProfiles[s.did]
             const handle = profile?.handle ?? (s as { handle?: string }).handle ?? s.did
@@ -888,28 +886,35 @@ export default function Layout({ title, children, showNav }: Props) {
       )}
       {!session && (
         <section className={styles.menuSection}>
-          <button
-            type="button"
-            className={styles.menuActionBtn}
-            onClick={() => {
-              setAccountMenuOpen(false)
-              setAccountSheetOpen(false)
-              openLoginModal()
-            }}
-          >
-            Log in
-          </button>
-          <button
-            type="button"
-            className={styles.menuCreateAccountBtn}
-            onClick={() => {
-              setAccountMenuOpen(false)
-              setAccountSheetOpen(false)
-              openLoginModal('create')
-            }}
-          >
-            Create account
-          </button>
+          <div className={styles.menuProfileAndAccounts}>
+            <button
+              type="button"
+              className={styles.menuProfileBtn}
+              onClick={() => {
+                setAccountMenuOpen(false)
+                setAccountSheetOpen(false)
+                openLoginModal('create')
+              }}
+            >
+              <span className={styles.menuProfileIconWrap} aria-hidden>
+                <AccountIcon />
+              </span>
+              <span>Create account</span>
+            </button>
+            <div className={styles.menuAccountsBlock}>
+              <button
+                type="button"
+                className={styles.menuAuthLink}
+                onClick={() => {
+                  setAccountMenuOpen(false)
+                  setAccountSheetOpen(false)
+                  openLoginModal()
+                }}
+              >
+                Log in
+              </button>
+            </div>
+          </div>
         </section>
       )}
     </>
@@ -1038,7 +1043,7 @@ export default function Layout({ title, children, showNav }: Props) {
           className={!mediaOnly ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
           onClick={() => toggleMediaOnly()}
         >
-          Include text posts
+          Media & Text
         </button>
       </div>
     </>
@@ -1093,15 +1098,6 @@ export default function Layout({ title, children, showNav }: Props) {
               )}
             </div>
             <div className={styles.headerRight}>
-              {!session && isDesktop && (
-                <button
-                  type="button"
-                  className={styles.headerAuthLink}
-                  onClick={() => openLoginModal()}
-                >
-                  Log in
-                </button>
-              )}
               {!session && !isDesktop && (
                 <button
                   type="button"
@@ -1124,17 +1120,15 @@ export default function Layout({ title, children, showNav }: Props) {
                   <span className={styles.headerBtnLabel}>New</span>
                 </button>
               )}
-              {(session || !isDesktop) && (
-                <button
-                  type="button"
-                  className={`${styles.headerBtn} ${cardViewMode !== 'default' ? styles.headerBtnActive : ''}`}
-                  onClick={cycleCardView}
-                  aria-label={cardViewMode === 'default' ? 'Minimalist' : cardViewMode === 'minimalist' ? 'Art only' : 'Show all'}
-                  title={cardViewMode === 'default' ? 'Minimalist' : cardViewMode === 'minimalist' ? 'Art only' : 'Show all'}
-                >
-                  <ArtOnlyEyeIcon mode={cardViewMode === 'default' ? 'open' : cardViewMode === 'minimalist' ? 'half' : 'closed'} />
-                </button>
-              )}
+              <button
+                type="button"
+                className={`${styles.headerBtn} ${cardViewMode !== 'default' ? styles.headerBtnActive : ''}`}
+                onClick={cycleCardView}
+                aria-label={cardViewMode === 'default' ? 'Minimalist' : cardViewMode === 'minimalist' ? 'Art only' : 'Show all'}
+                title={cardViewMode === 'default' ? 'Minimalist' : cardViewMode === 'minimalist' ? 'Art only' : 'Show all'}
+              >
+                <ArtOnlyEyeIcon mode={cardViewMode === 'default' ? 'open' : cardViewMode === 'minimalist' ? 'half' : 'closed'} />
+              </button>
               {session && (
                 <div className={styles.headerBtnWrap}>
                   <button
@@ -1156,29 +1150,40 @@ export default function Layout({ title, children, showNav }: Props) {
                 </div>
               )}
               {isDesktop && (
-                <div className={styles.headerBtnWrap}>
-                  <button
-                    ref={accountBtnRef}
-                    type="button"
-                    className={styles.headerBtn}
-                    onClick={() => setAccountMenuOpen((o) => !o)}
-                    aria-label="Accounts and settings"
-                    aria-expanded={accountMenuOpen}
-                  >
-                    <span className={styles.navIcon}>
-                      {currentAccountAvatar ? (
-                        <img src={currentAccountAvatar} alt="" className={styles.headerAccountAvatar} loading="lazy" />
-                      ) : (
-                        <AccountIcon />
-                      )}
-                    </span>
-                  </button>
-                  {accountMenuOpen && (
-                    <div ref={accountMenuRef} className={styles.accountMenu} role="menu" aria-label="Accounts and settings">
-                      {accountPanelContent}
-                    </div>
+                <>
+                  {!session && (
+                    <button
+                      type="button"
+                      className={styles.headerAuthLink}
+                      onClick={() => openLoginModal()}
+                    >
+                      Log in
+                    </button>
                   )}
-                </div>
+                  <div className={styles.headerBtnWrap}>
+                    <button
+                      ref={accountBtnRef}
+                      type="button"
+                      className={styles.headerBtn}
+                      onClick={() => setAccountMenuOpen((o) => !o)}
+                      aria-label="Accounts and settings"
+                      aria-expanded={accountMenuOpen}
+                    >
+                      <span className={styles.navIcon}>
+                        {currentAccountAvatar ? (
+                          <img src={currentAccountAvatar} alt="" className={styles.headerAccountAvatar} loading="lazy" />
+                        ) : (
+                          <AccountIcon />
+                        )}
+                      </span>
+                    </button>
+                    {accountMenuOpen && (
+                      <div ref={accountMenuRef} className={styles.accountMenu} role="menu" aria-label="Accounts and settings">
+                        {accountPanelContent}
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
               {/* Mobile: account button in header (right of Log in when logged out, same spot when logged in) */}
               {!isDesktop && (

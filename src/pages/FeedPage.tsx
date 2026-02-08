@@ -77,19 +77,20 @@ function distributeByHeight(
   items: TimelineItem[],
   numCols: number
 ): Array<Array<{ item: TimelineItem; originalIndex: number }>> {
-  if (numCols < 1) return []
+  const cols = Math.min(3, Math.max(1, Math.floor(numCols)))
+  if (cols < 1) return []
   const columns: Array<Array<{ item: TimelineItem; originalIndex: number }>> = Array.from(
-    { length: numCols },
+    { length: cols },
     () => []
   )
-  const columnHeights: number[] = Array(numCols).fill(0)
+  const columnHeights: number[] = Array(cols).fill(0)
   for (let i = 0; i < items.length; i++) {
     const item = items[i]
     const h = estimateItemHeight(item)
     const lengths = columns.map((col) => col.length)
     const minCount = lengths.length === 0 ? 0 : Math.min(...lengths)
     let best = -1
-    for (let c = 0; c < numCols; c++) {
+    for (let c = 0; c < cols; c++) {
       if (columns[c].length > minCount + 1) continue
       if (best === -1 || columnHeights[c] < columnHeights[best]) best = c
       else if (columnHeights[c] === columnHeights[best] && columns[c].length < columns[best].length) best = c
@@ -364,7 +365,7 @@ export default function FeedPage() {
     [mixEntries.length, source, addEntry, toggleSource]
   )
   const load = useCallback(async (nextCursor?: string) => {
-    const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
+    const cols = Math.min(3, Math.max(1, viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3))
     const limit = cols >= 2 ? cols * 10 : 30
     try {
       if (nextCursor) setLoadingMore(true)
@@ -452,7 +453,7 @@ export default function FeedPage() {
     .filter((item) => (mediaOnly ? getPostMediaInfo(item.post) : true))
     .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
   const emptyBecauseAllSeen = displayItems.length === 0 && itemsAfterOtherFilters.length > 0
-  const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
+  const cols = Math.min(3, Math.max(1, viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3))
   mediaItemsRef.current = displayItems
   keyboardFocusIndexRef.current = keyboardFocusIndex
 
@@ -729,72 +730,40 @@ export default function FeedPage() {
           </div>
         ) : (
           <>
-            {cols >= 2 ? (
-              <div className={`${styles.gridColumns} ${styles[`gridView${viewMode}`]}`} data-feed-cards data-keyboard-nav={keyboardNavActive || undefined}>
-                {distributeByHeight(displayItems, cols).map((column, colIndex) => (
-                  <div key={colIndex} className={styles.gridColumn}>
-                    {column.map(({ item, originalIndex }) => (
-                      <div
-                        key={item.post.uri}
-                        className={styles.gridItem}
-                        onMouseEnter={() => {
-                          if (mouseMovedRef.current) {
-                            mouseMovedRef.current = false
-                            setKeyboardNavActive(false)
-                            setKeyboardFocusIndex(originalIndex)
-                          }
-                        }}
-                      >
-                        <PostCard
-                          item={item}
-                          isSelected={originalIndex === keyboardFocusIndex}
-                          cardRef={(el) => { cardRefsRef.current[originalIndex] = el }}
-                          openAddDropdown={originalIndex === keyboardFocusIndex && keyboardAddOpen}
-                          onAddClose={() => setKeyboardAddOpen(false)}
-                          onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
-                          onAspectRatio={undefined}
-                          fillCell={false}
-                          nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
-                          onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
-                          likedUriOverride={likeOverrides[item.post.uri]}
-                          seen={seenUris.has(item.post.uri)}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`} data-feed-cards data-keyboard-nav={keyboardNavActive || undefined}>
-                {displayItems.map((item, index) => (
-                  <div
-                    key={item.post.uri}
-                    onMouseEnter={() => {
-                      if (mouseMovedRef.current) {
-                        mouseMovedRef.current = false
-                        setKeyboardNavActive(false)
-                        setKeyboardFocusIndex(index)
-                      }
-                    }}
-                  >
-                    <PostCard
-                      item={item}
-                      isSelected={index === keyboardFocusIndex}
-                      cardRef={(el) => { cardRefsRef.current[index] = el }}
-                      openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
-                      onAddClose={() => setKeyboardAddOpen(false)}
-                      onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
-                      onAspectRatio={undefined}
-                      fillCell={false}
-                      nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
-                      onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
-                      likedUriOverride={likeOverrides[item.post.uri]}
-                      seen={seenUris.has(item.post.uri)}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className={`${styles.gridColumns} ${styles[`gridView${viewMode}`]}`} data-feed-cards data-keyboard-nav={keyboardNavActive || undefined}>
+              {distributeByHeight(displayItems, cols).map((column, colIndex) => (
+                <div key={colIndex} className={styles.gridColumn}>
+                  {column.map(({ item, originalIndex }) => (
+                    <div
+                      key={item.post.uri}
+                      className={styles.gridItem}
+                      onMouseEnter={() => {
+                        if (mouseMovedRef.current) {
+                          mouseMovedRef.current = false
+                          setKeyboardNavActive(false)
+                          setKeyboardFocusIndex(originalIndex)
+                        }
+                      }}
+                    >
+                      <PostCard
+                        item={item}
+                        isSelected={originalIndex === keyboardFocusIndex}
+                        cardRef={(el) => { cardRefsRef.current[originalIndex] = el }}
+                        openAddDropdown={originalIndex === keyboardFocusIndex && keyboardAddOpen}
+                        onAddClose={() => setKeyboardAddOpen(false)}
+                        onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
+                        onAspectRatio={undefined}
+                        fillCell={false}
+                        nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
+                        onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
+                        likedUriOverride={likeOverrides[item.post.uri]}
+                        seen={seenUris.has(item.post.uri)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
             {cursor && (
               <>
                 <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />

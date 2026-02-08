@@ -108,3 +108,9 @@ export function isPostInArtboard(boardId: string, postUri: string): boolean {
   const board = getArtboard(boardId)
   return board?.posts.some((p) => p.uri === postUri) ?? false
 }
+
+/** True if the post is in at least one artboard (for card outline). */
+export function isPostInAnyArtboard(postUri: string): boolean {
+  const boards = load()
+  return boards.some((b) => b.posts.some((p) => p.uri === postUri))
+}

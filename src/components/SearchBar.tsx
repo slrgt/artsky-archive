@@ -39,7 +39,7 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
   const [loading, setLoading] = useState(false)
   const [actors, setActors] = useState<AppBskyActorDefs.ProfileViewBasic[]>([])
   const [suggestedFeeds, setSuggestedFeeds] = useState<AppBskyFeedDefs.GeneratorView[]>([])
-  const [activeIndex, setActiveIndex] = useState(0)
+  const [activeIndex, setActiveIndex] = useState(-1)
   const [filterOpen, setFilterOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const internalInputRef = useRef<HTMLInputElement>(null)
@@ -104,7 +104,7 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
   if ((filter === 'feeds' || filter === 'all') && (!trimmed && suggestedFeeds.length)) suggestedFeeds.forEach((f) => options.push({ type: 'feed', view: f }))
 
   useEffect(() => {
-    setActiveIndex(0)
+    setActiveIndex(-1)
   }, [query, actors.length, suggestedFeeds.length, hashtagOption])
 
   function handleSelect(index: number) {
@@ -145,13 +145,13 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
     if (!open || options.length === 0) return
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setActiveIndex((i) => (i + 1) % options.length)
+      setActiveIndex((i) => (i < 0 ? 0 : (i + 1) % options.length))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setActiveIndex((i) => (i - 1 + options.length) % options.length)
+      setActiveIndex((i) => (i <= 0 ? options.length - 1 : i - 1))
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      handleSelect(activeIndex)
+      if (activeIndex >= 0) handleSelect(activeIndex)
     }
   }
 

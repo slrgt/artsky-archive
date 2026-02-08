@@ -75,7 +75,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             finish(true)
             return
           }
-        } catch {
+        } catch (err) {
+          // If session was deleted elsewhere (e.g. another tab/device), clear it so user can sign in again
+          const msg = err instanceof Error ? err.message : String(err)
+          if (/session was deleted|TokenRefreshError/i.test(msg) && oauthAccounts.activeDid) {
+            bsky.removeOAuthDid(oauthAccounts.activeDid)
+          }
           // OAuth init failed; fall back to credential
         }
       }
