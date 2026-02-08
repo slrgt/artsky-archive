@@ -180,10 +180,11 @@
   border: none;
   border-radius: 0.4rem;
   cursor: pointer;
+  transition: filter 0.15s ease;
 }
 
 .addBoardSubmit:hover:not(:disabled) {
-  opacity: 0.95;
+  filter: brightness(0.92);
 }
 
 .addBoardSubmit:disabled {
@@ -212,6 +213,14 @@
   justify-content: center;
   /* Round top to match card so media doesn’t stick out of corners */
   border-radius: var(--glass-radius) var(--glass-radius) 0 0;
+}
+
+/* Art only: no meta row, so round the bottom so corners don't stick through the focus ring */
+.cardArtOnly .mediaWrap {
+  border-radius: var(--glass-radius);
+}
+.cardArtOnly .nsfwOverlay {
+  border-radius: var(--glass-radius);
 }
 
 /* Single-col profile/feed: fixed height from the start so media doesn't resize when image loads */

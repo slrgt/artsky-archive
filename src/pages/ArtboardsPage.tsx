@@ -44,7 +44,7 @@ export default function ArtboardsPage() {
         refresh()
       })
       .catch((err) => {
-        setPdsError(err instanceof Error ? err.message : 'Failed to sync artboards')
+        setPdsError(err instanceof Error ? err.message : 'Failed to sync collections')
       })
       .finally(() => setSyncing(false))
   }, [session?.did])
@@ -67,7 +67,7 @@ export default function ArtboardsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Delete this artboard?')) return
+    if (!confirm('Delete this collection?')) return
     if (session?.did) {
       try {
         await deleteArtboardFromPds(agent, session.did, id)
@@ -102,14 +102,14 @@ export default function ArtboardsPage() {
   }
 
   return (
-    <Layout title="Artboards" showNav>
+    <Layout title="Collections" showNav>
       <div className={styles.wrap}>
-        {syncing && <p className={styles.syncing}>Syncing artboards…</p>}
+        {syncing && <p className={styles.syncing}>Syncing collections…</p>}
         {pdsError && <p className={styles.pdsError}>{pdsError}</p>}
         <form onSubmit={handleCreate} className={styles.createForm}>
           <input
             type="text"
-            placeholder="New artboard name"
+            placeholder="New collection name"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             className={styles.input}
@@ -118,7 +118,7 @@ export default function ArtboardsPage() {
         </form>
         {boards.length === 0 ? (
           <p className={styles.empty}>
-            No artboards yet. Open a post from the feed and use “Add to artboard” to save it here.
+            No collections yet. Open a post from the feed and use "Collect" to save it here.
           </p>
         ) : (
           <div className={styles.bento}>

@@ -89,7 +89,7 @@ export default function FeedSelector({
                     type="button"
                     className={styles.feedPillWithFill}
                     style={{
-                      background: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${entry.percent}%, var(--glass-highlight) ${entry.percent}%)`,
+                      background: `linear-gradient(to right, transparent 0%, transparent ${entry.percent}%, var(--glass-highlight) ${entry.percent}%), var(--accent-gradient)`,
                     }}
                     onClick={() => onToggle(s)}
                   >

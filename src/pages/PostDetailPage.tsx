@@ -1303,7 +1303,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
                     aria-expanded={showBoardDropdown}
                     aria-haspopup="true"
                   >
-                    Add to artboard {showBoardDropdown ? '▾' : '▸'}
+                    Collect {showBoardDropdown ? '▾' : '▸'}
                   </button>
                   {showBoardDropdown && (
                     <div className={styles.boardDropdown}>

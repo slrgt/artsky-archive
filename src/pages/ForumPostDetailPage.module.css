@@ -103,10 +103,11 @@
   background: var(--accent-gradient);
   border-color: var(--accent);
   color: var(--text-on-accent);
+  transition: filter 0.15s ease;
 }
 
 .actionBtnPrimary:hover:not(:disabled) {
-  opacity: 0.9;
+  filter: brightness(0.92);
   color: var(--text-on-accent);
 }
 
@@ -366,10 +367,11 @@
   background: var(--accent-gradient);
   color: var(--text-on-accent);
   cursor: pointer;
+  transition: filter 0.15s ease;
 }
 
 .replySubmit:hover:not(:disabled) {
-  opacity: 0.9;
+  filter: brightness(0.92);
 }
 
 .replySubmit:disabled {

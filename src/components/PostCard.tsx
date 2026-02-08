@@ -416,13 +416,17 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   )
 
   return (
-    <div ref={setCardRef} className={`${styles.card} ${isSelected ? styles.cardSelected : ''} ${fillCell ? styles.cardFillCell : ''}`}>
+    <div ref={setCardRef} className={`${styles.card} ${isSelected ? styles.cardSelected : ''} ${fillCell ? styles.cardFillCell : ''} ${artOnly ? styles.cardArtOnly : ''}`}>
       <div
         role="button"
         tabIndex={0}
         className={styles.cardLink}
         onClick={handleCardClick}
-        onKeyDown={(e) => e.key === 'Enter' && navigate(`/post/${encodeURIComponent(post.uri)}`)}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter') return
+          if (onPostClick) onPostClick(post.uri)
+          else navigate(`/post/${encodeURIComponent(post.uri)}`)
+        }}
         onMouseDown={(e) => startLongPressTimer(e)}
         onMouseUp={clearLongPressTimer}
         onMouseLeave={clearLongPressTimer}
@@ -643,7 +647,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                     e.stopPropagation()
                     setAddOpen((o) => !o)
                   }}
-                  aria-label="Add to artboard"
+                  aria-label="Collect"
                   aria-expanded={addOpen}
                 >
                   +

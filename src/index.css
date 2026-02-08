@@ -185,15 +185,17 @@ button {
   font-family: inherit;
 }
 
-/* Visible focus for keyboard users (a11y); many components add accent outline */
-a:focus-visible,
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-[tabindex="0"]:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+/* Visible focus for keyboard/mouse users (a11y); no outline on mobile tap */
+@media (hover: hover) {
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex="0"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
 }
 
 /* Use --touch-min in component CSS for primary nav/CTAs on touch devices */

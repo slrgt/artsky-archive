@@ -300,10 +300,11 @@
   background: var(--accent-gradient);
   border-radius: var(--glass-radius-sm);
   text-decoration: none;
+  transition: filter 0.15s ease;
 }
 
 .guestSignInBtn:hover {
-  background: color-mix(in srgb, var(--accent) 90%, black);
+  filter: brightness(0.92);
   color: var(--text-on-accent);
   text-decoration: none;
 }

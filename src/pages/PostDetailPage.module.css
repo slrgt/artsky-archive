@@ -54,6 +54,11 @@
   margin-bottom: 0.75rem;
 }
 
+/* Nested comments: no border when unfocused; focused comment uses .commentFocused outline */
+.postBlock:not(.rootPostBlock) {
+  border: none;
+}
+
 /* Root post on detail page: media on top, username and text below */
 .rootPostBlock {
   flex-direction: column;
@@ -772,6 +777,11 @@
   border-radius: 0.5rem;
   font-size: 0.9rem;
   cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.addBtn:hover {
+  filter: brightness(0.92);
 }
 
 .added {
@@ -1079,6 +1089,11 @@
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.submit:hover:not(:disabled) {
+  filter: brightness(0.92);
 }
 
 .submit:disabled {

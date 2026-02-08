@@ -184,10 +184,11 @@
   background: var(--accent-gradient);
   border-color: var(--accent);
   color: var(--text-on-accent);
+  transition: filter 0.15s ease;
 }
 
 .tabs button:not(.ratioBtnSide).active:hover {
-  filter: brightness(1.08);
+  filter: brightness(0.92);
 }
 
 .customForm {
@@ -220,6 +221,11 @@
   border-radius: 0.4rem;
   font-size: 0.9rem;
   cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.btn:hover {
+  filter: brightness(0.92);
 }
 
 .btnSecondary {

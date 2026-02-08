@@ -201,7 +201,7 @@ export default function LoginCard({ initialMode = 'signin', onSuccess, onClose }
       )}
       <div className={onClose ? styles.cardContentWithClose : undefined}>
       <h1 className={styles.title}>ArtSky</h1>
-      <p className={styles.subtitle}>Bluesky feed & artboards</p>
+      <p className={styles.subtitle}>Bluesky feed & collections</p>
 
       {mode === 'create' && (
         <div className={styles.tabs} role="tablist" aria-label="Create account or log in">

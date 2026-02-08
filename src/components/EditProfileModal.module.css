@@ -149,10 +149,11 @@
   background: var(--accent-gradient);
   color: var(--text-on-accent);
   border: none;
+  transition: filter 0.15s ease;
 }
 
 .avatarBtn:hover {
-  opacity: 0.95;
+  filter: brightness(0.92);
 }
 
 .avatarBtnSecondary {
@@ -248,10 +249,11 @@
   border: none;
   border-radius: 0.35rem;
   cursor: pointer;
+  transition: filter 0.15s ease;
 }
 
 .submitBtn:hover:not(:disabled) {
-  opacity: 0.95;
+  filter: brightness(0.92);
 }
 
 .submitBtn:disabled {

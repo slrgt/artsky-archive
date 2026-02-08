@@ -226,6 +226,7 @@ export default function FeedPage() {
   const blockConfirmRef = useRef<HTMLButtonElement>(null)
   const [openMenuIndex, setOpenMenuIndex] = useState<number | null>(null)
   const [likeOverrides, setLikeOverrides] = useState<Record<string, string | null>>({})
+  const prevPathnameRef = useRef(location.pathname)
 
   const presetUris = new Set((PRESET_SOURCES.map((s) => s.uri).filter(Boolean) as string[]))
   const savedDeduped = savedFeedSources.filter((s) => !s.uri || !presetUris.has(s.uri))
@@ -256,10 +257,12 @@ export default function FeedPage() {
     loadSavedFeeds()
   }, [loadSavedFeeds])
 
-  // Scroll to top when landing on the feed (e.g. clicking logo), but not when returning via back/Q
+  // Scroll to top when landing on the feed from another page (e.g. clicking logo), not when only search params change (e.g. opening post modal adds ?post=)
   useEffect(() => {
-    if (navigationType !== 'POP') window.scrollTo(0, 0)
-  }, [navigationType])
+    const pathnameChanged = prevPathnameRef.current !== location.pathname
+    prevPathnameRef.current = location.pathname
+    if (navigationType !== 'POP' && pathnameChanged) window.scrollTo(0, 0)
+  }, [navigationType, location.pathname])
 
   useEffect(() => {
     const stateSource = (location.state as { feedSource?: FeedSource })?.feedSource

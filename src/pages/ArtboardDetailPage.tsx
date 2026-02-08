@@ -16,18 +16,18 @@ export default function ArtboardDetailPage() {
 
   if (!id) {
     return (
-      <Layout title="Artboard" showNav>
+      <Layout title="Collection" showNav>
         <div className={styles.wrap}>
-          <p className={styles.empty}>Artboard not found.</p>
+          <p className={styles.empty}>Collection not found.</p>
         </div>
       </Layout>
     )
   }
   if (!board) {
     return (
-      <Layout title="Artboard" showNav>
+      <Layout title="Collection" showNav>
         <div className={styles.wrap}>
-          <p className={styles.empty}>Artboard not found.</p>
+          <p className={styles.empty}>Collection not found.</p>
         </div>
       </Layout>
     )
@@ -35,7 +35,7 @@ export default function ArtboardDetailPage() {
 
   const boardId = board.id
   async function handleRemove(postUri: string) {
-    if (!confirm('Remove this post from the artboard?')) return
+    if (!confirm('Remove this post from the collection?')) return
     removePostFromArtboard(boardId, postUri)
     setTick((t) => t + 1)
     if (session?.did) {
@@ -83,7 +83,7 @@ export default function ArtboardDetailPage() {
                   type="button"
                   className={styles.remove}
                   onClick={() => handleRemove(p.uri)}
-                  title="Remove from artboard"
+                  title="Remove from collection"
                 >
                   Remove
                 </button>

@@ -9,9 +9,29 @@ import { useLoginModal } from '../context/LoginModalContext'
 import { useEditProfile } from '../context/EditProfileContext'
 import { useModeration } from '../context/ModerationContext'
 import { useMediaOnly } from '../context/MediaOnlyContext'
+import { useScrollLock } from '../context/ScrollLockContext'
 import { publicAgent, createPost, getNotifications } from '../lib/bsky'
 import SearchBar from './SearchBar'
 import styles from './Layout.module.css'
+
+/** NSFW preference row – subscribes to ModerationContext so it stays in sync in account menu and compact sheet. */
+function NsfwPreferenceRow({ rowClassName }: { rowClassName: string }) {
+  const { nsfwPreference, setNsfwPreference } = useModeration()
+  return (
+    <div className={rowClassName} role="group" aria-label="Adult content preference">
+      {(['blurred', 'nsfw', 'sfw'] as const).map((p) => (
+        <button
+          key={p}
+          type="button"
+          className={nsfwPreference === p ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
+          onClick={() => setNsfwPreference(p)}
+        >
+          {p === 'nsfw' ? 'NSFW' : p === 'sfw' ? 'SFW' : 'Blurred'}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 interface Props {
   title: string
@@ -71,7 +91,7 @@ function AccountIcon() {
 
 function BellIcon() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
       <path d="M13.73 21a2 2 0 0 1-3.46 0" />
     </svg>
@@ -263,10 +283,10 @@ export default function Layout({ title, children, showNav }: Props) {
   )
   const { viewMode, setViewMode, viewOptions } = useViewMode()
   const { artOnly, toggleArtOnly } = useArtOnly()
-  const { nsfwPreference, setNsfwPreference } = useModeration()
   const { mediaOnly, toggleMediaOnly } = useMediaOnly()
   const path = loc.pathname
   const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
+  const scrollLock = useScrollLock()
   const [accountSheetOpen, setAccountSheetOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
@@ -308,7 +328,8 @@ export default function Layout({ title, children, showNav }: Props) {
         return
       }
       if (e.ctrlKey || e.metaKey) return
-      if (e.key.toLowerCase() !== 'q') return
+      const key = e.key.toLowerCase()
+      if (key !== 'q' && e.key !== 'Backspace') return
       e.preventDefault()
       navigate(-1)
     }
@@ -346,6 +367,14 @@ export default function Layout({ title, children, showNav }: Props) {
       .catch(() => setNotifications([]))
       .finally(() => setNotificationsLoading(false))
   }, [notificationsOpen, session])
+
+  /* When any full-screen popup is open, lock body scroll so only the popup scrolls */
+  const anyPopupOpen = (mobileSearchOpen && !isDesktop) || (accountSheetOpen && !isDesktop) || (notificationsOpen && !isDesktop) || composeOpen
+  useEffect(() => {
+    if (!scrollLock || !anyPopupOpen) return
+    scrollLock.lockScroll()
+    return () => scrollLock.unlockScroll()
+  }, [anyPopupOpen, scrollLock])
 
   const scrollThreshold = 8
   useEffect(() => {
@@ -542,7 +571,7 @@ export default function Layout({ title, children, showNav }: Props) {
           aria-current={path === '/artboards' ? 'page' : undefined}
         >
           <span className={styles.navIcon}><ArtboardsIcon /></span>
-          <span className={styles.navLabel}>Artboards</span>
+          <span className={styles.navLabel}>Collections</span>
         </Link>
       )}
       <button
@@ -607,7 +636,7 @@ export default function Layout({ title, children, showNav }: Props) {
             aria-current={path === '/artboards' ? 'page' : undefined}
           >
             <span className={styles.navIcon}><ArtboardsIcon /></span>
-            <span className={styles.navLabel}>Artboards</span>
+            <span className={styles.navLabel}>Collections</span>
           </Link>
         </>
       )}
@@ -618,6 +647,72 @@ export default function Layout({ title, children, showNav }: Props) {
     setAccountMenuOpen(false)
     setAccountSheetOpen(false)
   }
+
+  const notificationsPanelContent = (
+    <>
+      <h2 className={styles.menuTitle}>Notifications</h2>
+      <div className={styles.notificationFilters}>
+        <button type="button" className={notificationFilter === 'all' ? styles.notificationFilterActive : styles.notificationFilter} onClick={() => setNotificationFilter('all')}>All</button>
+        <button type="button" className={notificationFilter === 'reply' ? styles.notificationFilterActive : styles.notificationFilter} onClick={() => setNotificationFilter('reply')}>Replies</button>
+        <button type="button" className={notificationFilter === 'follow' ? styles.notificationFilterActive : styles.notificationFilter} onClick={() => setNotificationFilter('follow')}>Follows</button>
+      </div>
+      {notificationsLoading ? (
+        <p className={styles.notificationsLoading}>Loading…</p>
+      ) : (() => {
+        const filtered = notificationFilter === 'all' ? notifications : notifications.filter((n) => n.reason === notificationFilter)
+        return filtered.length === 0 ? (
+          <p className={styles.notificationsEmpty}>
+            {notificationFilter === 'all' ? 'No notifications yet.' : 'No matching notifications.'}
+          </p>
+        ) : (
+          <ul className={styles.notificationsList}>
+            {filtered.map((n) => {
+              const handle = n.author.handle ?? n.author.did
+              const isFollow = n.reason === 'follow'
+              const href = isFollow ? `/profile/${encodeURIComponent(handle)}` : `/post/${encodeURIComponent(n.reasonSubject ?? n.uri)}`
+              const reasonLabel =
+                n.reason === 'like' ? 'liked your post' :
+                n.reason === 'repost' ? 'reposted your post' :
+                n.reason === 'follow' ? 'followed you' :
+                n.reason === 'mention' ? 'mentioned you' :
+                n.reason === 'reply' ? 'replied to you' :
+                n.reason === 'quote' ? 'quoted your post' :
+                n.reason
+              return (
+                <li key={n.uri}>
+                  <Link
+                    to={href}
+                    className={styles.notificationItem}
+                    onClick={(e) => {
+                      if (isFollow) {
+                        e.preventDefault()
+                        openProfileModal(handle)
+                      }
+                      setNotificationsOpen(false)
+                    }}
+                  >
+                    {n.author.avatar ? (
+                      <img src={n.author.avatar} alt="" className={styles.notificationAvatar} loading="lazy" />
+                    ) : (
+                      <span className={styles.notificationAvatarPlaceholder} aria-hidden>{handle.slice(0, 1).toUpperCase()}</span>
+                    )}
+                    <span className={styles.notificationTextWrap}>
+                      <span className={styles.notificationText}>
+                        <strong>@{handle}</strong> {reasonLabel}
+                      </span>
+                      {n.replyPreview && (
+                        <span className={styles.notificationReplyPreview}>{n.replyPreview}</span>
+                      )}
+                    </span>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        )
+      })()}
+    </>
+  )
 
   const accountPanelContent = (
     <>
@@ -641,18 +736,7 @@ export default function Layout({ title, children, showNav }: Props) {
             ))}
           </div>
         </div>
-        <div className={styles.menuNsfwRow} role="group" aria-label="Adult content preference">
-          {(['blurred', 'nsfw', 'sfw'] as const).map((p) => (
-            <button
-              key={p}
-              type="button"
-              className={nsfwPreference === p ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
-              onClick={() => setNsfwPreference(p)}
-            >
-              {p === 'nsfw' ? 'NSFW' : p === 'sfw' ? 'SFW' : 'Blurred'}
-            </button>
-          ))}
-        </div>
+        <NsfwPreferenceRow rowClassName={styles.menuNsfwRow} />
         <div className={styles.menuNsfwRow} role="group" aria-label="Feed content">
           <button
             type="button"
@@ -726,6 +810,17 @@ export default function Layout({ title, children, showNav }: Props) {
           >
             Log in
           </button>
+          <button
+            type="button"
+            className={styles.menuCreateAccountBtn}
+            onClick={() => {
+              setAccountMenuOpen(false)
+              setAccountSheetOpen(false)
+              openLoginModal('create')
+            }}
+          >
+            Create account
+          </button>
         </section>
       )}
     </>
@@ -733,15 +828,6 @@ export default function Layout({ title, children, showNav }: Props) {
 
   const accountPanelContentCompact = (
     <>
-      <Link
-        to="/artboards"
-        className={path === '/artboards' ? styles.menuCompactItemActive : styles.menuCompactItem}
-        onClick={closeAccountPanel}
-        aria-current={path === '/artboards' ? 'page' : undefined}
-      >
-        <span className={styles.navIcon}><ArtboardsIcon /></span>
-        <span className={styles.menuCompactHandle}>Artboards</span>
-      </Link>
       {session && (
         <>
           <div className={styles.menuCompactAccounts}>
@@ -801,16 +887,17 @@ export default function Layout({ title, children, showNav }: Props) {
             <LogInIcon />
             <span>Log in</span>
           </button>
-          <a
-            href="https://bsky.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.menuCompactAuthBtnPrimary}
-            onClick={() => setAccountSheetOpen(false)}
+          <button
+            type="button"
+            className={styles.menuCreateAccountBtn}
+            onClick={() => {
+              setAccountSheetOpen(false)
+              openLoginModal('create')
+            }}
           >
             <UserPlusIcon />
             <span>Create account</span>
-          </a>
+          </button>
         </div>
       )}
       <div className={styles.menuCompactRow}>
@@ -830,18 +917,7 @@ export default function Layout({ title, children, showNav }: Props) {
           </button>
         ))}
       </div>
-      <div className={styles.menuCompactNsfwRow} role="group" aria-label="Adult content preference">
-        {(['blurred', 'nsfw', 'sfw'] as const).map((p) => (
-          <button
-            key={p}
-            type="button"
-            className={nsfwPreference === p ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
-            onClick={() => setNsfwPreference(p)}
-          >
-            {p === 'nsfw' ? 'NSFW' : p === 'sfw' ? 'SFW' : 'Blurred'}
-          </button>
-        ))}
-      </div>
+      <NsfwPreferenceRow rowClassName={styles.menuCompactNsfwRow} />
       <div className={styles.menuCompactNsfwRow} role="group" aria-label="Feed content">
         <button
           type="button"
@@ -892,15 +968,15 @@ export default function Layout({ title, children, showNav }: Props) {
               {isDesktop ? (
                 <div className={styles.headerSearchRow}>
                   <div className={styles.headerSearchSide}>
-                    <Link to="/artboards" className={styles.headerArtboardsLink} aria-label="Artboards">
-                      Artboards
+                    <Link to="/artboards" className={styles.headerArtboardsLink} aria-label="Collections">
+                      Collections
                     </Link>
                   </div>
                   <div className={styles.headerSearchBarWrap}>
                     <SearchBar inputRef={searchInputRef} compact={isDesktop} />
                   </div>
                   <div className={styles.headerSearchSide}>
-                    <Link to="/forum" className={styles.headerArtboardsLink} aria-label="Forum">
+                    <Link to="/forum" className={styles.headerForumLink} aria-label="Forum">
                       Forum
                     </Link>
                   </div>
@@ -941,7 +1017,7 @@ export default function Layout({ title, children, showNav }: Props) {
                   <span className={styles.headerBtnLabel}>New</span>
                 </button>
               )}
-              {session && !isDesktop && (
+              {session && (
                 <button
                   type="button"
                   className={`${styles.headerBtn} ${artOnly ? styles.headerBtnActive : ''}`}
@@ -965,69 +1041,9 @@ export default function Layout({ title, children, showNav }: Props) {
                   >
                     <BellIcon />
                   </button>
-                  {notificationsOpen && (
+                  {notificationsOpen && isDesktop && (
                     <div ref={notificationsMenuRef} className={styles.notificationsMenu} role="dialog" aria-label="Notifications">
-                      <h2 className={styles.menuTitle}>Notifications</h2>
-                      <div className={styles.notificationFilters}>
-                        <button type="button" className={notificationFilter === 'all' ? styles.notificationFilterActive : styles.notificationFilter} onClick={() => setNotificationFilter('all')}>All</button>
-                        <button type="button" className={notificationFilter === 'reply' ? styles.notificationFilterActive : styles.notificationFilter} onClick={() => setNotificationFilter('reply')}>Replies</button>
-                        <button type="button" className={notificationFilter === 'follow' ? styles.notificationFilterActive : styles.notificationFilter} onClick={() => setNotificationFilter('follow')}>Follows</button>
-                      </div>
-                      {notificationsLoading ? (
-                        <p className={styles.notificationsLoading}>Loading…</p>
-                      ) : (() => {
-                        const filtered = notificationFilter === 'all' ? notifications : notifications.filter((n) => n.reason === notificationFilter)
-                        return filtered.length === 0 ? (
-                          <p className={styles.notificationsEmpty}>
-                            {notificationFilter === 'all' ? 'No notifications yet.' : 'No matching notifications.'}
-                          </p>
-                        ) : (
-                        <ul className={styles.notificationsList}>
-                          {filtered.map((n) => {
-                            const handle = n.author.handle ?? n.author.did
-                            const isFollow = n.reason === 'follow'
-                            const href = isFollow ? `/profile/${encodeURIComponent(handle)}` : `/post/${encodeURIComponent(n.reasonSubject ?? n.uri)}`
-                            const reasonLabel =
-                              n.reason === 'like' ? 'liked your post' :
-                              n.reason === 'repost' ? 'reposted your post' :
-                              n.reason === 'follow' ? 'followed you' :
-                              n.reason === 'mention' ? 'mentioned you' :
-                              n.reason === 'reply' ? 'replied to you' :
-                              n.reason === 'quote' ? 'quoted your post' :
-                              n.reason
-                            return (
-                              <li key={n.uri}>
-                                <Link
-                                  to={href}
-                                  className={styles.notificationItem}
-                                  onClick={(e) => {
-                                    if (isFollow) {
-                                      e.preventDefault()
-                                      openProfileModal(handle)
-                                    }
-                                    setNotificationsOpen(false)
-                                  }}
-                                >
-                                  {n.author.avatar ? (
-                                    <img src={n.author.avatar} alt="" className={styles.notificationAvatar} loading="lazy" />
-                                  ) : (
-                                    <span className={styles.notificationAvatarPlaceholder} aria-hidden>{handle.slice(0, 1).toUpperCase()}</span>
-                                  )}
-                                  <span className={styles.notificationTextWrap}>
-                                    <span className={styles.notificationText}>
-                                      <strong>@{handle}</strong> {reasonLabel}
-                                    </span>
-                                    {n.replyPreview && (
-                                      <span className={styles.notificationReplyPreview}>{n.replyPreview}</span>
-                                    )}
-                                  </span>
-                                </Link>
-                              </li>
-                            )
-                          })}
-                        </ul>
-                        )
-                      })()}
+                      {notificationsPanelContent}
                     </div>
                   )}
                 </div>
@@ -1073,7 +1089,6 @@ export default function Layout({ title, children, showNav }: Props) {
                       <AccountIcon />
                     )}
                   </span>
-                  <span className={styles.navLabel}>Accounts</span>
                 </button>
               )}
             </div>
@@ -1120,6 +1135,25 @@ export default function Layout({ title, children, showNav }: Props) {
               <div className={styles.accountPopup} role="dialog" aria-label="Accounts and settings">
                 <div className={styles.accountPopupContentCompact}>
                   {accountPanelContentCompact}
+                </div>
+              </div>
+            </>
+          )}
+          {notificationsOpen && !isDesktop && (
+            <>
+              <div
+                className={styles.searchOverlayBackdrop}
+                onClick={() => setNotificationsOpen(false)}
+                aria-hidden
+              />
+              <div
+                className={`${styles.notificationsOverlay} ${styles.notificationsOverlayMobile}`}
+                role="dialog"
+                aria-label="Notifications"
+                onClick={() => setNotificationsOpen(false)}
+              >
+                <div className={styles.notificationsCard} onClick={(e) => e.stopPropagation()}>
+                  {notificationsPanelContent}
                 </div>
               </div>
             </>

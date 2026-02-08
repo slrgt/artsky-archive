@@ -267,6 +267,11 @@
   cursor: pointer;
   margin-top: 0.25rem;
   -webkit-tap-highlight-color: transparent;
+  transition: filter 0.15s ease;
+}
+
+.button:hover:not(:disabled) {
+  filter: brightness(0.92);
 }
 
 .button:disabled {
