@@ -1236,63 +1236,6 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
                   />
                 </div>
               )}
-              <div
-                ref={descriptionSectionRef}
-                className={styles.rootPostDescription}
-                tabIndex={-1}
-                onFocus={() => setKeyboardFocusIndex(rootMediaForNav.length)}
-              >
-                <div className={styles.postHead}>
-                  {thread.post.author.avatar && (
-                    <img src={thread.post.author.avatar} alt="" className={styles.avatar} loading="lazy" />
-                  )}
-                  <div className={styles.authorRow}>
-                    <ProfileLink
-                      handle={thread.post.author.handle ?? thread.post.author.did}
-                      className={styles.handleLink}
-                    >
-                      @{thread.post.author.handle ?? thread.post.author.did}
-                    </ProfileLink>
-                    {!isOwnPost && (
-                      alreadyFollowing ? (
-                        <button
-                          type="button"
-                          className={`${styles.followBtn} ${styles.followBtnFollowing}`}
-                          onClick={handleUnfollowAuthor}
-                          disabled={followLoading}
-                          title="Unfollow"
-                        >
-                          <span className={styles.followLabelDefault}>Following</span>
-                          <span className={styles.followLabelHover}>Unfollow</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className={styles.followBtn}
-                          onClick={handleFollowAuthor}
-                          disabled={followLoading}
-                        >
-                          {followLoading ? 'Following…' : 'Follow'}
-                        </button>
-                      )
-                    )}
-                    {(thread.post.record as { createdAt?: string })?.createdAt && (
-                      <span
-                        className={styles.postTimestamp}
-                        title={formatRelativeTimeTitle((thread.post.record as { createdAt: string }).createdAt)}
-                      >
-                        {formatRelativeTime((thread.post.record as { createdAt: string }).createdAt)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {(thread.post.record as { text?: string })?.text && (
-                  <p className={styles.postText}>
-                    <PostText text={(thread.post.record as { text?: string }).text!} facets={(thread.post.record as { facets?: unknown[] })?.facets} />
-                  </p>
-                )}
-              </div>
-            </article>
             <section className={styles.actions} aria-label="Post actions">
               <div className={styles.actionRow}>
                 <div className={styles.addToBoardWrap}>
@@ -1393,6 +1336,63 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
                 </p>
               )}
             </section>
+              <div
+                ref={descriptionSectionRef}
+                className={styles.rootPostDescription}
+                tabIndex={-1}
+                onFocus={() => setKeyboardFocusIndex(rootMediaForNav.length)}
+              >
+                <div className={styles.postHead}>
+                  {thread.post.author.avatar && (
+                    <img src={thread.post.author.avatar} alt="" className={styles.avatar} loading="lazy" />
+                  )}
+                  <div className={styles.authorRow}>
+                    <ProfileLink
+                      handle={thread.post.author.handle ?? thread.post.author.did}
+                      className={styles.handleLink}
+                    >
+                      @{thread.post.author.handle ?? thread.post.author.did}
+                    </ProfileLink>
+                    {!isOwnPost && (
+                      alreadyFollowing ? (
+                        <button
+                          type="button"
+                          className={`${styles.followBtn} ${styles.followBtnFollowing}`}
+                          onClick={handleUnfollowAuthor}
+                          disabled={followLoading}
+                          title="Unfollow"
+                        >
+                          <span className={styles.followLabelDefault}>Following</span>
+                          <span className={styles.followLabelHover}>Unfollow</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className={styles.followBtn}
+                          onClick={handleFollowAuthor}
+                          disabled={followLoading}
+                        >
+                          {followLoading ? 'Following…' : 'Follow'}
+                        </button>
+                      )
+                    )}
+                    {(thread.post.record as { createdAt?: string })?.createdAt && (
+                      <span
+                        className={styles.postTimestamp}
+                        title={formatRelativeTimeTitle((thread.post.record as { createdAt: string }).createdAt)}
+                      >
+                        {formatRelativeTime((thread.post.record as { createdAt: string }).createdAt)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {(thread.post.record as { text?: string })?.text && (
+                  <p className={styles.postText}>
+                    <PostText text={(thread.post.record as { text?: string }).text!} facets={(thread.post.record as { facets?: unknown[] })?.facets} />
+                  </p>
+                )}
+              </div>
+            </article>
             {'replies' in thread && Array.isArray(thread.replies) && thread.replies.length > 0 && (
               <div
                 ref={commentsSectionRef}

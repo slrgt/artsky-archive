@@ -246,7 +246,6 @@ a:hover {
 
 /* Light theme: force #root and main to use theme so all content is readable */
 html[data-theme="light"] #root {
-  background: var(--bg);
   color: var(--text);
 }
 
@@ -255,6 +254,15 @@ html[data-theme="light"] #root p {
 }
 
 html[data-theme="light"] main {
-  background: var(--bg);
   color: var(--text);
+}
+
+/* Background only on desktop; on mobile #root::before paints grey inside safe area only */
+@media (min-width: 768px) {
+  html[data-theme="light"] #root {
+    background: var(--bg);
+  }
+  html[data-theme="light"] main {
+    background: var(--bg);
+  }
 }

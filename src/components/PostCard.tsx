@@ -99,10 +99,16 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const isFollowingAuthor = !!authorViewer?.following
   const isOwnPost = session?.did === post.author.did
   const showNotFollowingGreen = !!session && !isOwnPost && !isFollowingAuthor
-  const postViewer = (post as { viewer?: { like?: string } })
-  const initialLikedUri = postViewer.viewer?.like
+  const postViewer = (post as { viewer?: { like?: string; repost?: string } }).viewer
+  const initialLikedUri = postViewer?.like
+  const initialRepostedUri = postViewer?.repost
   const [likedUri, setLikedUri] = useState<string | undefined>(initialLikedUri)
+  const [repostedUri, setRepostedUri] = useState<string | undefined>(initialRepostedUri)
+  const [likeLoading, setLikeLoading] = useState(false)
+  const [repostLoading, setRepostLoading] = useState(false)
   const effectiveLikedUri = likedUriOverride !== undefined ? (likedUriOverride ?? undefined) : likedUri
+  const isLiked = !!effectiveLikedUri
+  const isReposted = !!repostedUri
 
   const [imageIndex, setImageIndex] = useState(0)
   const [multiImageExpanded, setMultiImageExpanded] = useState(false)
@@ -133,6 +139,50 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
       setLikedUri(initialLikedUri)
     }
   }, [post.uri, initialLikedUri, likedUriOverride])
+
+  useEffect(() => {
+    setRepostedUri(initialRepostedUri)
+  }, [post.uri, initialRepostedUri])
+
+  async function handleLikeClick(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (likeLoading) return
+    setLikeLoading(true)
+    try {
+      if (effectiveLikedUri) {
+        await agent.deleteLike(effectiveLikedUri)
+        setLikedUri(undefined)
+      } else {
+        const res = await agent.like(post.uri, post.cid)
+        setLikedUri(res.uri)
+      }
+    } catch {
+      // leave state unchanged
+    } finally {
+      setLikeLoading(false)
+    }
+  }
+
+  async function handleRepostClick(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (repostLoading) return
+    setRepostLoading(true)
+    try {
+      if (repostedUri) {
+        await agent.deleteRepost(repostedUri)
+        setRepostedUri(undefined)
+      } else {
+        const res = await agent.repost(post.uri, post.cid)
+        setRepostedUri(res.uri)
+      }
+    } catch {
+      // leave state unchanged
+    } finally {
+      setRepostLoading(false)
+    }
+  }
 
   const clearLongPressTimer = useCallback(() => {
     if (longPressTimerRef.current !== null) {
@@ -606,6 +656,108 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
         </div>
         {!artOnly && (
         <div className={styles.meta}>
+          <div className={styles.cardActionRow} onClick={(e) => e.stopPropagation()}>
+            <div
+              className={`${styles.addWrap} ${addOpen ? styles.addWrapOpen : ''}`}
+              ref={addRef}
+            >
+              <button
+                type="button"
+                className={styles.addToBoardBtn}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setAddOpen((o) => !o)
+                }}
+                aria-label="Collect"
+                aria-expanded={addOpen}
+              >
+                +
+              </button>
+              {addOpen && (
+                <div className={styles.addDropdown}>
+                  {boards.length === 0 ? null : (
+                    <>
+                      {boards.map((b) => {
+                        const alreadyIn = isPostInArtboard(b.id, post.uri)
+                        const selected = addToBoardIds.has(b.id)
+                        return (
+                          <label key={b.id} className={styles.addBoardLabel}>
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              onChange={() => !alreadyIn && toggleBoardSelection(b.id)}
+                              disabled={alreadyIn}
+                              className={styles.addBoardCheckbox}
+                            />
+                            <span className={styles.addBoardText}>
+                              {alreadyIn ? <>✓ {b.name}</> : b.name}
+                            </span>
+                          </label>
+                        )
+                      })}
+                    </>
+                  )}
+                  <div className={styles.addDropdownNew}>
+                    <input
+                      type="text"
+                      placeholder="New collection name"
+                      value={newBoardName}
+                      onChange={(e) => setNewBoardName(e.target.value)}
+                      className={styles.addBoardInput}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddToArtboard())}
+                    />
+                  </div>
+                  <div className={styles.addDropdownActions}>
+                    <button
+                      type="button"
+                      className={styles.addBoardSubmit}
+                      onClick={handleAddToArtboard}
+                      disabled={addToBoardIds.size === 0 && !newBoardName.trim()}
+                    >
+                      Add to selected
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              className={`${styles.cardLikeRepostBtn} ${isLiked ? styles.cardLikeRepostBtnActive : ''}`}
+              onClick={handleLikeClick}
+              disabled={likeLoading}
+              title={isLiked ? 'Remove like' : 'Like'}
+              aria-label={isLiked ? 'Remove like' : 'Like'}
+            >
+              {likeLoading ? '…' : isLiked ? '♥' : '♡'}
+            </button>
+            <button
+              type="button"
+              className={`${styles.cardLikeRepostBtn} ${isReposted ? styles.cardLikeRepostBtnActive : ''}`}
+              onClick={handleRepostClick}
+              disabled={repostLoading}
+              title={isReposted ? 'Remove repost' : 'Repost'}
+              aria-label={isReposted ? 'Remove repost' : 'Repost'}
+            >
+              <RepostIcon />
+            </button>
+            <div
+              className={styles.actionsMenuWrap}
+              data-open={openActionsMenu === true ? 'true' : undefined}
+            >
+              <PostActionsMenu
+                postUri={post.uri}
+                postCid={post.cid}
+                authorDid={post.author.did}
+                rootUri={post.uri}
+                isOwnPost={isOwnPost}
+                feedLabel={feedLabel}
+                openTrigger={openActionsMenu === undefined && isSelected ? openActionsMenuTrigger : undefined}
+                open={openActionsMenu}
+                onOpenChange={onActionsMenuClose !== undefined ? (o) => { if (o) onActionsMenuOpen?.(); else onActionsMenuClose() } : undefined}
+              />
+            </div>
+          </div>
           <div className={styles.handleBlock}>
             <div className={styles.handleRow}>
               {post.author.avatar && (
@@ -634,94 +786,12 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                 )}
               </span>
               <span className={styles.handleRowMeta}>
-                <div
-                  className={`${styles.addWrap} ${addOpen ? styles.addWrapOpen : ''}`}
-                  ref={addRef}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                <button
-                  type="button"
-                  className={styles.addToBoardBtn}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    setAddOpen((o) => !o)
-                  }}
-                  aria-label="Collect"
-                  aria-expanded={addOpen}
-                >
-                  +
-                </button>
-                {addOpen && (
-                  <div className={styles.addDropdown}>
-                    {boards.length === 0 ? null : (
-                      <>
-                        {boards.map((b) => {
-                          const alreadyIn = isPostInArtboard(b.id, post.uri)
-                          const selected = addToBoardIds.has(b.id)
-                          return (
-                            <label key={b.id} className={styles.addBoardLabel}>
-                              <input
-                                type="checkbox"
-                                checked={selected}
-                                onChange={() => !alreadyIn && toggleBoardSelection(b.id)}
-                                disabled={alreadyIn}
-                                className={styles.addBoardCheckbox}
-                              />
-                              <span className={styles.addBoardText}>
-                                {alreadyIn ? <>✓ {b.name}</> : b.name}
-                              </span>
-                            </label>
-                          )
-                        })}
-                      </>
-                    )}
-                    <div className={styles.addDropdownNew}>
-                      <input
-                        type="text"
-                        placeholder="New collection name"
-                        value={newBoardName}
-                        onChange={(e) => setNewBoardName(e.target.value)}
-                        className={styles.addBoardInput}
-                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddToArtboard())}
-                      />
-                    </div>
-                    <div className={styles.addDropdownActions}>
-                      <button
-                        type="button"
-                        className={styles.addBoardSubmit}
-                        onClick={handleAddToArtboard}
-                        disabled={addToBoardIds.size === 0 && !newBoardName.trim()}
-                      >
-                        Add to selected
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
                 {(post.record as { createdAt?: string })?.createdAt && (
                   <span className={styles.postTime} title={formatRelativeTimeTitle((post.record as { createdAt: string }).createdAt)}>
                     {formatRelativeTime((post.record as { createdAt: string }).createdAt)}
                   </span>
                 )}
-                <div
-                  className={styles.actionsMenuWrap}
-                  onClick={(e) => e.stopPropagation()}
-                  data-open={openActionsMenu === true ? 'true' : undefined}
-                >
-                  <PostActionsMenu
-                    postUri={post.uri}
-                    postCid={post.cid}
-                    authorDid={post.author.did}
-                    rootUri={post.uri}
-                    isOwnPost={isOwnPost}
-                    feedLabel={feedLabel}
-                    openTrigger={openActionsMenu === undefined && isSelected ? openActionsMenuTrigger : undefined}
-                    open={openActionsMenu}
-                    onOpenChange={onActionsMenuClose !== undefined ? (o) => { if (o) onActionsMenuOpen?.(); else onActionsMenuClose() } : undefined}
-                  />
-                </div>
-            </span>
+              </span>
             </div>
           </div>
           {hasMedia && text ? (
