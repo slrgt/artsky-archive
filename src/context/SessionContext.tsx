@@ -55,17 +55,21 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // On localhost, skip OAuth init so the app doesn't redirect to 127.0.0.1 (library behavior).
       if (!isLocalhost()) {
         try {
-          // If URL has OAuth callback params, allow more time for token exchange (no short timeout).
           const search = typeof window !== 'undefined' ? window.location.search : ''
           const params = new URLSearchParams(search)
           const hasCallback = params.has('state') && (params.has('code') || params.has('error'))
           const waitMs = hasCallback ? 12_000 : oauthTimeoutMs
+          const oauthAccounts = bsky.getOAuthAccountsSnapshot()
           const oauthResult = await Promise.race([
-            oauth.initOAuth(),
+            oauth.initOAuth({
+              hasCallback,
+              preferredRestoreDid: !hasCallback ? oauthAccounts.activeDid ?? undefined : undefined,
+            }),
             new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), waitMs)),
           ])
           if (cancelled) return
           if (oauthResult?.session) {
+            bsky.addOAuthDid(oauthResult.session.did)
             const agent = new Agent(oauthResult.session)
             bsky.setOAuthAgent(agent, oauthResult.session)
             finish(true)

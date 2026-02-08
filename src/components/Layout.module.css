@@ -34,7 +34,7 @@
   height: auto;
   margin: 0;
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
 @media (min-width: 768px) {
@@ -831,6 +831,52 @@
   .menuActionBtn:hover {
     filter: brightness(0.92);
   }
+  .menuProfileAndAccounts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+  }
+  .menuAccountsBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .menuProfileBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    margin: 0;
+    padding: 0.4rem 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--text);
+    background: var(--glass-highlight);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-radius-sm);
+    cursor: pointer;
+    box-sizing: border-box;
+  }
+  .menuProfileBtn:hover {
+    background: var(--glass-hover);
+    border-color: var(--muted);
+  }
+  .menuProfileIconWrap {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+  }
+  .menuProfileIconWrap svg {
+    width: 24px;
+    height: 24px;
+  }
   .menuActionSecondary {
     padding: 0.4rem 0.75rem;
     font-size: 0.8rem;
@@ -883,13 +929,14 @@
 .menuNsfwRow .menuNsfwBtn:hover {
   border-color: var(--accent);
 }
+/* Active: match theme/column pill (accent border + muted fill + accent text) */
 .menuNsfwRow .menuNsfwBtnActive {
   border-color: var(--accent);
-  background: var(--accent-gradient);
-  color: var(--text-on-accent);
+  background: var(--accent-muted);
+  color: var(--accent);
 }
 .menuNsfwRow .menuNsfwBtnActive:hover {
-  filter: brightness(0.92);
+  filter: brightness(0.97);
 }
 
 /* iOS-style tab bar with icons; hides on scroll down; hidden on desktop; half height */
@@ -1602,6 +1649,50 @@
   line-height: 1;
 }
 
+.menuCompactProfileAndAccounts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+.menuCompactProfileBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text);
+  background: var(--glass-highlight);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+.menuCompactProfileBtn:hover {
+  background: var(--glass-hover);
+  border-color: var(--muted);
+}
+.menuProfileIconWrapCompact {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+.menuProfileIconWrapCompact svg {
+  width: 24px;
+  height: 24px;
+}
+
 .menuCompactAccounts {
   display: flex;
   flex-direction: column;
@@ -1690,11 +1781,11 @@
 
 .menuCompactNsfwRow .menuNsfwBtnActive {
   border-color: var(--accent);
-  background: var(--accent-gradient);
-  color: var(--text-on-accent);
+  background: var(--accent-muted);
+  color: var(--accent);
 }
 .menuCompactNsfwRow .menuNsfwBtnActive:hover {
-  filter: brightness(0.92);
+  filter: brightness(0.97);
 }
 
 .menuCompactActions {

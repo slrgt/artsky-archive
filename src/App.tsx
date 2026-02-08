@@ -11,8 +11,8 @@ import { ProfileModalProvider } from './context/ProfileModalContext'
 import { LoginModalProvider } from './context/LoginModalContext'
 import { EditProfileProvider } from './context/EditProfileContext'
 import { ScrollLockProvider } from './context/ScrollLockContext'
-import { HiddenPostsProvider } from './context/HiddenPostsContext'
 import { ModerationProvider } from './context/ModerationContext'
+import { SeenPostsProvider } from './context/SeenPostsContext'
 import FeedPage from './pages/FeedPage'
 import ArtboardsPage from './pages/ArtboardsPage'
 import ArtboardDetailPage from './pages/ArtboardDetailPage'
@@ -87,17 +87,17 @@ export default function App() {
               <ArtOnlyProvider>
                 <MediaOnlyProvider>
                   <FeedMixProvider>
+                    <SeenPostsProvider>
                       <EditProfileProvider>
                     <ModerationProvider>
                     <ProfileModalProvider>
                     <LoginModalProvider>
-                  <HiddenPostsProvider>
                       <AppRoutes />
-                  </HiddenPostsProvider>
                     </LoginModalProvider>
                     </ProfileModalProvider>
                     </ModerationProvider>
                       </EditProfileProvider>
+                    </SeenPostsProvider>
                   </FeedMixProvider>
                 </MediaOnlyProvider>
               </ArtOnlyProvider>

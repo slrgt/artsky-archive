@@ -26,9 +26,49 @@
 }
 
 .cardSelected {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: 3px solid var(--accent);
+  outline-offset: 0px;
   z-index: 1;
+}
+
+/* Pink ring when post is liked; negative offset so it sits on the card edge (overlaps 1px border) */
+.cardLiked {
+  outline: 2px solid #ec4899;
+  outline-offset: -2px;
+  box-shadow: var(--shadow-card);
+}
+
+/* Darken card when marked as seen (scrolled past) */
+.cardSeen {
+  filter: brightness(0.82);
+}
+/* Dark mode: stronger seen dimming so the difference from unseen is clear */
+html[data-theme="dark"] .cardSeen {
+  filter: brightness(0.68);
+}
+
+/* Purple ring on hover */
+.card:hover {
+  outline: 3px solid var(--accent);
+  outline-offset: 0px;
+}
+
+/* When navigating with keyboard (W/S/A/D), only the selected card gets the outline – not the card under the mouse */
+[data-feed-cards][data-keyboard-nav] .card:hover:not(.cardSelected) {
+  outline: none;
+  box-shadow: var(--shadow-card);
+}
+[data-feed-cards][data-keyboard-nav] .card.cardLiked:hover:not(.cardSelected) {
+  outline: 2px solid #ec4899;
+  outline-offset: -2px;
+  box-shadow: var(--shadow-card);
+}
+
+/* Liked + hover: keep pink outline, add purple ring outside via box-shadow */
+.card.cardLiked:hover {
+  outline: 2px solid #ec4899;
+  outline-offset: -2px;
+  box-shadow: var(--shadow-card), 0 0 0 1px transparent, 0 0 0 3px var(--accent);
 }
 
 /* Bento grid: card fills cell height */
@@ -57,8 +97,8 @@
 }
 
 .cardLink:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: 3px solid var(--accent);
+  outline-offset: 0px;
 }
 
 .addWrap {
@@ -95,30 +135,107 @@
   margin-left: 0;
 }
 
+/* Profile picture in action row between collect and like (all viewports) */
+.cardActionRowAvatar {
+  display: block;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: visible;
+  line-height: 0;
+  position: relative;
+}
+.cardActionRowAvatar img {
+  width: 2rem;
+  height: 2rem;
+  object-fit: cover;
+  display: block;
+  border-radius: 50%;
+}
+.cardActionRowAvatarFollow {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 50%;
+  -webkit-tap-highlight-color: transparent;
+}
+.cardActionRowAvatarFollow:hover:not(:disabled) {
+  opacity: 0.9;
+}
+.cardActionRowAvatarFollow:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+.cardActionRowAvatarPlus {
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  transform: translateX(-50%);
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  flex-shrink: 0;
+}
+@media (max-width: 767px) {
+  .handleRow .authorAvatar {
+    display: none;
+  }
+}
+
+/* Minimalist: only collect + like; no handle/text so trim meta spacing */
+.cardMinimalist .meta {
+  margin-bottom: 0;
+}
+.cardMinimalist .cardActionRow {
+  margin-bottom: 0;
+}
+
 .cardLikeRepostBtn {
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.85rem;
+  height: 1.85rem;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
+  font-size: 1.35rem;
   line-height: 1;
   background: transparent;
   color: var(--muted);
-  border: 1px solid var(--border);
+  border: none;
   border-radius: 50%;
   cursor: pointer;
+  outline: none;
 }
 
 .cardLikeRepostBtn:hover:not(:disabled) {
   color: var(--accent);
-  border-color: var(--accent);
+}
+
+.cardLikeRepostBtn:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .cardLikeRepostBtnActive {
-  color: var(--accent);
-  border-color: var(--accent);
+  background: linear-gradient(135deg, #db2777 0%, #ec4899 50%, #f472b6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.cardLikeRepostBtnActive:hover:not(:disabled) {
+  color: transparent;
+  filter: brightness(0.85);
+}
+.cardLikeRepostBtnActive::selection {
+  color: #fff;
 }
 
 .cardLikeRepostBtn:disabled {
@@ -126,35 +243,36 @@
   cursor: default;
 }
 
-/* ... menu in meta row: out of flow so Collect/Like/Repost stay truly centered */
-.actionsMenuWrap {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 1;
-}
-
 .addToBoardBtn {
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 2rem;
+  height: 2rem;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   line-height: 1;
   font-weight: 600;
   color: var(--muted);
   background: transparent;
-  border: 1px solid var(--border);
+  border: none;
   border-radius: 50%;
   cursor: pointer;
+  outline: none;
 }
 
 .addToBoardBtn:hover {
   color: var(--accent);
-  border-color: var(--accent);
+}
+
+.addToBoardBtn:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.collectIcon {
+  width: 1.1rem;
+  height: 1.1rem;
 }
 
 .addDropdown {
@@ -254,6 +372,21 @@
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
+}
+
+.authorAvatarPlaceholder {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: var(--muted);
+  color: var(--text);
+  font-size: 0.65rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 .mediaWrap {
@@ -610,77 +743,6 @@
   opacity: 0.9;
 }
 
-/* Long-press action menu: buttons around touch point with clearance so finger doesn't cover them */
-.longPressOverlay {
-  position: fixed;
-  transform: translate(-50%, -50%);
-  width: 0;
-  height: 0;
-  z-index: 100;
-  pointer-events: none;
-}
-
-.longPressOverlay button {
-  position: absolute;
-  width: 2.5rem;
-  height: 2.5rem;
-  min-width: var(--touch-min);
-  min-height: var(--touch-min);
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--glass-bg-strong);
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
-  backdrop-filter: blur(var(--glass-blur-strong));
-  border: 1px solid var(--glass-border);
-  border-radius: 50%;
-  color: var(--text);
-  cursor: pointer;
-  box-shadow: var(--shadow-dropdown);
-  -webkit-tap-highlight-color: transparent;
-  pointer-events: auto;
-}
-
-/* Offset so buttons sit around the finger/mouse with comfortable clearance (~2.75rem from center) */
-.longPressBtnTop {
-  left: 50%;
-  bottom: 100%;
-  transform: translate(-50%, -2.75rem);
-}
-
-.longPressBtnBottom {
-  left: 50%;
-  top: 100%;
-  transform: translate(-50%, 2.75rem);
-}
-
-.longPressBtnLeft {
-  right: 100%;
-  top: 50%;
-  transform: translate(-2.75rem, -50%);
-}
-
-.longPressOverlay button:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: var(--accent-strong);
-}
-
-.longPressOverlay button:focus {
-  outline: none;
-}
-
-.longPressOverlay button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.longPressIcon {
-  width: 1.1rem;
-  height: 1.1rem;
-}
-
 .handle {
   font-size: 0.8rem;
   color: var(--muted);
@@ -692,16 +754,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.handleLinkWrapRepost {
-  display: inline;
-  text-shadow: 0 0 12px rgba(34, 197, 94, 0.75), 0 1px 4px rgba(34, 197, 94, 0.6);
-}
-
-.handleLinkWrapNotFollowing {
-  display: inline;
-  text-shadow: 0 0 12px rgba(34, 197, 94, 0.75), 0 1px 4px rgba(34, 197, 94, 0.6);
 }
 
 .handleLinkWrapLiked {

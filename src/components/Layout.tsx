@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useSyncExternalStore } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../context/SessionContext'
 import { useTheme } from '../context/ThemeContext'
@@ -10,6 +10,7 @@ import { useEditProfile } from '../context/EditProfileContext'
 import { useModeration } from '../context/ModerationContext'
 import { useMediaOnly } from '../context/MediaOnlyContext'
 import { useScrollLock } from '../context/ScrollLockContext'
+import { useSeenPosts } from '../context/SeenPostsContext'
 import { publicAgent, createPost, getNotifications } from '../lib/bsky'
 import SearchBar from './SearchBar'
 import styles from './Layout.module.css'
@@ -39,11 +40,20 @@ interface Props {
   showNav?: boolean
 }
 
-function FeedIcon() {
+function HomeIcon({ active }: { active?: boolean }) {
+  const viewBox = '0 0 24 24'
+  const houseOutline = 'M12 3L4 9v12h5v-7h6v7h5V9L12 3z'
+  const houseFill = 'M12 3L4 9L4 21h5v-7h6v7h5L20 9L12 3z'
+  if (active) {
+    return (
+      <svg width="24" height="24" viewBox={viewBox} fill="currentColor" stroke="none" aria-hidden>
+        <path d={houseFill} />
+      </svg>
+    )
+  }
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="2" y="3" width="20" height="14" rx="2" />
-      <path d="M8 21h8M12 17v4" />
+    <svg width="24" height="24" viewBox={viewBox} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d={houseOutline} />
     </svg>
   )
 }
@@ -98,23 +108,40 @@ function BellIcon() {
   )
 }
 
-function EyeIcon({ off }: { off?: boolean }) {
-  if (off) {
-    return (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-        <line x1="1" y1="1" x2="23" y2="23" />
-      </svg>
-    )
-  }
+/** Same eye shape for all states; mode = open | half | closed. 3 simple lashes per state. */
+function ArtOnlyEyeIcon({ mode }: { mode: 'open' | 'half' | 'closed' }) {
+  const eyePath = 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
+      <path d={eyePath} />
+      {mode === 'open' && (
+        <>
+          <circle cx="12" cy="12" r="3" />
+          <line x1="6" y1="5" x2="5" y2="3" />
+          <line x1="12" y1="4" x2="12" y2="2" />
+          <line x1="18" y1="5" x2="19" y2="3" />
+        </>
+      )}
+      {mode === 'half' && (
+        <>
+          <path d="M12 15 A3 3 0 0 1 9 12 A3 3 0 0 1 15 12 A3 3 0 0 1 12 15" />
+          <path d="M4 9.5 Q12 13 20 9.5" />
+          <line x1="6" y1="9" x2="5" y2="7" />
+          <line x1="12" y1="8" x2="12" y2="5.5" />
+          <line x1="18" y1="9" x2="19" y2="7" />
+        </>
+      )}
+      {mode === 'closed' && (
+        <>
+          <path d="M4 12 Q12 16 20 12" />
+          <line x1="6" y1="13" x2="5" y2="15" />
+          <line x1="12" y1="14.5" x2="12" y2="17" />
+          <line x1="18" y1="13" x2="19" y2="15" />
+        </>
+      )}
     </svg>
   )
 }
-
 function Column1Icon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -218,7 +245,7 @@ function subscribeDesktop(cb: () => void) {
 export default function Layout({ title, children, showNav }: Props) {
   const loc = useLocation()
   const navigate = useNavigate()
-  const { openProfileModal } = useProfileModal()
+  const { openProfileModal, isModalOpen } = useProfileModal()
   const { openLoginModal } = useLoginModal()
   const editProfile = useEditProfile()
   const { session, sessionsList, logout, switchAccount } = useSession()
@@ -282,7 +309,7 @@ export default function Layout({ title, children, showNav }: Props) {
     </div>
   )
   const { viewMode, setViewMode, viewOptions } = useViewMode()
-  const { artOnly, toggleArtOnly } = useArtOnly()
+  const { cardViewMode, cycleCardView } = useArtOnly()
   const { mediaOnly, toggleMediaOnly } = useMediaOnly()
   const path = loc.pathname
   const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
@@ -311,14 +338,41 @@ export default function Layout({ title, children, showNav }: Props) {
   const accountMenuRef = useRef<HTMLDivElement>(null)
   const notificationsMenuRef = useRef<HTMLDivElement>(null)
   const notificationsBtnRef = useRef<HTMLButtonElement>(null)
+  const homeLongPressTriggeredRef = useRef(false)
+  const homeHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const seenPosts = useSeenPosts()
+  const HOME_HOLD_MS = 500
+
+  const startHomeHold = useCallback(() => {
+    homeHoldTimerRef.current = setTimeout(() => {
+      homeLongPressTriggeredRef.current = true
+      seenPosts?.clearSeenAndShowAll()
+      homeHoldTimerRef.current = null
+    }, HOME_HOLD_MS)
+  }, [seenPosts])
+
+  const endHomeHold = useCallback(() => {
+    if (homeHoldTimerRef.current) {
+      clearTimeout(homeHoldTimerRef.current)
+      homeHoldTimerRef.current = null
+    }
+  }, [])
+
+  const homeLinkClick = useCallback((e: React.MouseEvent) => {
+    if (homeLongPressTriggeredRef.current) {
+      e.preventDefault()
+      homeLongPressTriggeredRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     document.title = title ? `${title} · ArtSky` : 'ArtSky'
   }, [title])
 
-  /* Global keyboard: Q = back (works on all pages when not typing). Ctrl/Cmd+key never handled so browser (e.g. Ctrl+R) and Cmd+Enter submit work. */
+  /* Global keyboard: Q = back (works on all pages when not typing). Do not handle when a popup is open so the popup gets shortcuts and scroll. */
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (isModalOpen) return
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) {
         if (e.key === 'Escape') {
@@ -335,7 +389,7 @@ export default function Layout({ title, children, showNav }: Props) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [navigate])
+  }, [navigate, isModalOpen])
 
   useEffect(() => {
     if (!accountMenuOpen) return
@@ -560,9 +614,15 @@ export default function Layout({ title, children, showNav }: Props) {
         to="/feed"
         className={path === '/feed' ? styles.navActive : ''}
         aria-current={path === '/feed' ? 'page' : undefined}
+        onPointerDown={startHomeHold}
+        onPointerUp={endHomeHold}
+        onPointerLeave={endHomeHold}
+        onPointerCancel={endHomeHold}
+        onClick={homeLinkClick}
+        title="Home (hold to show all seen posts)"
       >
-        <span className={styles.navIcon}><FeedIcon /></span>
-        <span className={styles.navLabel}>Feed</span>
+        <span className={styles.navIcon}><HomeIcon active={path === '/feed'} /></span>
+        <span className={styles.navLabel}>Home</span>
       </Link>
       {isDesktop && (
         <Link
@@ -610,9 +670,15 @@ export default function Layout({ title, children, showNav }: Props) {
             to="/feed"
             className={path === '/feed' ? styles.navActive : ''}
             aria-current={path === '/feed' ? 'page' : undefined}
+            onPointerDown={startHomeHold}
+            onPointerUp={endHomeHold}
+            onPointerLeave={endHomeHold}
+            onPointerCancel={endHomeHold}
+            onClick={homeLinkClick}
+            title="Home (hold to show all seen posts)"
           >
-            <span className={styles.navIcon}><FeedIcon /></span>
-            <span className={styles.navLabel}>Feed</span>
+<span className={styles.navIcon}><HomeIcon active={path === '/feed'} /></span>
+            <span className={styles.navLabel}>Home</span>
           </Link>
           <Link
             to="/forum"
@@ -750,9 +816,29 @@ export default function Layout({ title, children, showNav }: Props) {
         </div>
       </section>
       {session && (
-        <section className={styles.menuSection}>
-          <span className={styles.menuSectionTitle}>Accounts</span>
-          {sessionsList.map((s) => {
+        <>
+          <section className={styles.menuSection}>
+            <div className={styles.menuProfileAndAccounts}>
+              <button
+                type="button"
+                className={styles.menuProfileBtn}
+                onClick={() => {
+                  setAccountMenuOpen(false)
+                  setAccountSheetOpen(false)
+                  const currentProfile = accountProfiles[session.did]
+                  const currentHandle = currentProfile?.handle ?? (session as { handle?: string }).handle ?? session.did
+                  openProfileModal(currentHandle)
+                }}
+                title="View my profile"
+              >
+                <span className={styles.menuProfileIconWrap} aria-hidden>
+                  <AccountIcon />
+                </span>
+                <span>Profile</span>
+              </button>
+              <div className={styles.menuAccountsBlock}>
+                <span className={styles.menuSectionTitle}>Accounts</span>
+                {sessionsList.map((s) => {
             const profile = accountProfiles[s.did]
             const handle = profile?.handle ?? (s as { handle?: string }).handle ?? s.did
             const isCurrent = s.did === session?.did
@@ -782,15 +868,18 @@ export default function Layout({ title, children, showNav }: Props) {
               </button>
             )
           })}
-          <div className={styles.menuActions}>
-            <button type="button" className={styles.menuActionBtn} onClick={handleAddAccount}>
-              Add account
-            </button>
-            <button type="button" className={styles.menuActionSecondary} onClick={handleLogout}>
-              Log out
-            </button>
-          </div>
-        </section>
+              </div>
+            </div>
+            <div className={styles.menuActions}>
+              <button type="button" className={styles.menuActionBtn} onClick={handleAddAccount}>
+                Add account
+              </button>
+              <button type="button" className={styles.menuActionSecondary} onClick={handleLogout}>
+                Log out
+              </button>
+            </div>
+          </section>
+        </>
       )}
       {!session && (
         <section className={styles.menuSection}>
@@ -825,7 +914,24 @@ export default function Layout({ title, children, showNav }: Props) {
     <>
       {session && (
         <>
-          <div className={styles.menuCompactAccounts}>
+          <div className={styles.menuCompactProfileAndAccounts}>
+            <button
+              type="button"
+              className={styles.menuCompactProfileBtn}
+              onClick={() => {
+                setAccountSheetOpen(false)
+                const currentProfile = accountProfiles[session.did]
+                const currentHandle = currentProfile?.handle ?? (session as { handle?: string }).handle ?? session.did
+                openProfileModal(currentHandle)
+              }}
+              title="View my profile"
+            >
+              <span className={styles.menuProfileIconWrapCompact} aria-hidden>
+                <AccountIcon />
+              </span>
+              <span>Profile</span>
+            </button>
+            <div className={styles.menuCompactAccounts}>
             {sessionsList.map((s) => {
               const profile = accountProfiles[s.did]
               const handle = profile?.handle ?? (s as { handle?: string }).handle ?? s.did
@@ -854,6 +960,7 @@ export default function Layout({ title, children, showNav }: Props) {
                 </button>
               )
             })}
+            </div>
           </div>
           <div className={styles.menuCompactActions}>
             <div className={styles.menuCompactActionsRow}>
@@ -1012,15 +1119,15 @@ export default function Layout({ title, children, showNav }: Props) {
                   <span className={styles.headerBtnLabel}>New</span>
                 </button>
               )}
-              {session && (
+              {(session || !isDesktop) && (
                 <button
                   type="button"
-                  className={`${styles.headerBtn} ${artOnly ? styles.headerBtnActive : ''}`}
-                  onClick={toggleArtOnly}
-                  aria-label={artOnly ? 'Show text on feed' : 'Hide text, focus on art'}
-                  title={artOnly ? 'Show text' : 'Art only'}
+                  className={`${styles.headerBtn} ${cardViewMode !== 'default' ? styles.headerBtnActive : ''}`}
+                  onClick={cycleCardView}
+                  aria-label={cardViewMode === 'default' ? 'Minimalist' : cardViewMode === 'minimalist' ? 'Art only' : 'Show all'}
+                  title={cardViewMode === 'default' ? 'Minimalist' : cardViewMode === 'minimalist' ? 'Art only' : 'Show all'}
                 >
-                  <EyeIcon off={artOnly} />
+                  <ArtOnlyEyeIcon mode={cardViewMode === 'default' ? 'open' : cardViewMode === 'minimalist' ? 'half' : 'closed'} />
                 </button>
               )}
               {session && (

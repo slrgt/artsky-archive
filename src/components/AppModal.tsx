@@ -116,14 +116,14 @@ export default function AppModal({
     <ModalTopBarSlotContext.Provider value={{ centerSlot: topBarSlotEl, rightSlot: topBarRightSlotEl }}>
       <div
         ref={overlayRef}
-        className={styles.overlay}
+        className={`${styles.overlay}${transparentTopBar ? ` ${styles.overlayFlushTop}` : ''}`}
         onClick={handleBackdropClick}
         role="dialog"
         aria-modal="true"
         aria-label={ariaLabel}
       >
         <div
-          className={`${styles.pane}${swipe.isReturning ? ` ${styles.paneSwipeReturning}` : ''}`}
+          className={`${styles.pane}${swipe.isReturning ? ` ${styles.paneSwipeReturning}` : ''}${transparentTopBar ? ` ${styles.paneNoRightBorder}` : ''}`}
           style={swipe.style}
           onTouchStart={swipe.onTouchStart}
           onTouchMove={swipe.onTouchMove}

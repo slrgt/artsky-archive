@@ -1,14 +1,17 @@
 import { Agent, AtpAgent, RichText, type AtpSessionData, type AtpSessionEvent } from '@atproto/api'
 import type { AppBskyActorDefs, AppBskyFeedDefs } from '@atproto/api'
 import { GUEST_FEED_ACCOUNTS } from '../config/guestFeed'
+import * as oauth from './oauth'
 
 const BSKY_SERVICE = 'https://bsky.social'
 /** Public AppView for unauthenticated reads (profiles, feeds). */
 const PUBLIC_BSKY = 'https://public.api.bsky.app'
 const SESSION_KEY = 'artsky-bsky-session'
 const ACCOUNTS_KEY = 'artsky-accounts'
+const OAUTH_ACCOUNTS_KEY = 'artsky-oauth-accounts'
 
 type AccountsStore = { activeDid: string | null; sessions: Record<string, AtpSessionData> }
+type OAuthAccountsStore = { activeDid: string | null; dids: string[] }
 
 function getAccounts(): AccountsStore {
   try {
@@ -27,6 +30,52 @@ function saveAccounts(accounts: AccountsStore) {
   } catch {
     // ignore
   }
+}
+
+function getOAuthAccounts(): OAuthAccountsStore {
+  try {
+    const raw = localStorage.getItem(OAUTH_ACCOUNTS_KEY)
+    if (!raw) return { activeDid: null, dids: [] }
+    const parsed = JSON.parse(raw) as OAuthAccountsStore
+    return { activeDid: parsed.activeDid ?? null, dids: Array.isArray(parsed.dids) ? parsed.dids : [] }
+  } catch {
+    return { activeDid: null, dids: [] }
+  }
+}
+
+function saveOAuthAccounts(store: OAuthAccountsStore) {
+  try {
+    localStorage.setItem(OAUTH_ACCOUNTS_KEY, JSON.stringify(store))
+  } catch {
+    // ignore
+  }
+}
+
+/** Register an OAuth DID (e.g. after callback) and optionally set as active. */
+export function addOAuthDid(did: string, setActive = true): void {
+  const store = getOAuthAccounts()
+  if (!store.dids.includes(did)) store.dids = [...store.dids, did]
+  if (setActive) store.activeDid = did
+  saveOAuthAccounts(store)
+}
+
+/** Remove an OAuth DID from the list. */
+export function removeOAuthDid(did: string): void {
+  const store = getOAuthAccounts()
+  store.dids = store.dids.filter((d) => d !== did)
+  if (store.activeDid === did) store.activeDid = store.dids[0] ?? null
+  saveOAuthAccounts(store)
+}
+
+/** Set which OAuth account is active (caller must then restore that session). */
+export function setActiveOAuthDid(did: string | null): void {
+  const store = getOAuthAccounts()
+  store.activeDid = did
+  saveOAuthAccounts(store)
+}
+
+export function getOAuthAccountsSnapshot(): OAuthAccountsStore {
+  return getOAuthAccounts()
 }
 
 function persistSession(_evt: AtpSessionEvent, session: AtpSessionData | undefined) {
@@ -81,10 +130,11 @@ function getStoredSession(): AtpSessionData | null {
   return accounts.sessions[accounts.activeDid] ?? null
 }
 
-/** All stored sessions (for account switcher). When OAuth is active, returns single OAuth session. */
+/** All stored sessions (for account switcher). OAuth: all OAuth DIDs. Credential: all app-password sessions. */
 export function getSessionsList(): AtpSessionData[] {
-  if (oauthAgentInstance?.did) {
-    return [{ did: oauthAgentInstance.did } as AtpSessionData]
+  const oauth = getOAuthAccounts()
+  if (oauth.dids.length > 0) {
+    return oauth.dids.map((did) => ({ did } as AtpSessionData))
   }
   const accounts = getAccounts()
   if (Object.keys(accounts.sessions).length === 0) {
@@ -95,8 +145,21 @@ export function getSessionsList(): AtpSessionData[] {
   return Object.values(accounts.sessions)
 }
 
-/** Switch active account to the given did; resumes that session on the agent. Only applies to credential (app password) accounts. */
+/** Switch active account to the given did. OAuth: restore that DID's session (caller may need to use restoreOAuthSession). Credential: resume on agent. Returns false if did is OAuth (caller should restore OAuth session). */
 export async function switchAccount(did: string): Promise<boolean> {
+  const oauthAccounts = getOAuthAccounts()
+  if (oauthAccounts.dids.includes(did)) {
+    const session = await oauth.restoreOAuthSession(did)
+    if (!session) return false
+    try {
+      const agent = new Agent(session)
+      setOAuthAgent(agent, session)
+      setActiveOAuthDid(did)
+      return true
+    } catch {
+      return false
+    }
+  }
   const accounts = getAccounts()
   const session = accounts.sessions[did]
   if (!session?.accessJwt) return false
@@ -212,12 +275,23 @@ export async function createAccount(opts: {
 /** Remove current account from the list. If another account exists, switch to it. Returns true if still logged in (switched to another). */
 export async function logoutCurrentAccount(): Promise<boolean> {
   if (oauthAgentInstance && oauthSessionRef) {
+    const currentDid = oauthAgentInstance.did
     try {
       await oauthSessionRef.signOut()
     } catch {
       // ignore
     }
     setOAuthAgent(null, null)
+    removeOAuthDid(currentDid)
+    const next = getOAuthAccounts()
+    if (next.activeDid) {
+      const session = await oauth.restoreOAuthSession(next.activeDid)
+      if (session) {
+        const agent = new Agent(session)
+        setOAuthAgent(agent, session)
+        return true
+      }
+    }
     return false
   }
   const accounts = getAccounts()
@@ -464,6 +538,79 @@ export function getPostMediaUrl(post: PostView): { url: string; type: 'image' | 
   return info ? { url: info.url, type: info.type } : null
 }
 
+/**
+ * Media for display: uses the post's own media, or for quote posts with no outer media, the quoted post's media.
+ * Use for profile grid and cards so text-only quote posts show the quoted post's media.
+ */
+export function getPostMediaInfoForDisplay(post: PostView): PostMediaInfo | null {
+  const info = getPostMediaInfo(post)
+  if (info) return info
+  const quoted = getQuotedPostView(post)
+  return quoted ? getPostMediaInfo(quoted) : null
+}
+
+/** All media for display: same fallback as getPostMediaInfoForDisplay (quoted post's media when outer has none). */
+export function getPostAllMediaForDisplay(post: PostView): Array<{ url: string; type: 'image' | 'video'; videoPlaylist?: string; aspectRatio?: number }> {
+  const outer = getPostAllMedia(post)
+  if (outer.length) return outer
+  const quoted = getQuotedPostView(post)
+  return quoted ? getPostAllMedia(quoted) : []
+}
+
+/** First media URL for display (e.g. thumb); uses quoted post's media when outer has none. */
+export function getPostMediaUrlForDisplay(post: PostView): { url: string; type: 'image' | 'video' } | null {
+  const info = getPostMediaInfoForDisplay(post)
+  return info ? { url: info.url, type: info.type } : null
+}
+
+/** Quoted post view when the embed is app.bsky.embed.record#view or recordWithMedia#view; compatible with PostView for rendering. */
+export type QuotedPostView = PostView
+
+/**
+ * Returns the quoted post from a post's embed when present (quote post).
+ * Handles app.bsky.embed.record#view and app.bsky.embed.recordWithMedia#view.
+ * Returns null if not a quote, or if the embedded record is blocked/not found.
+ */
+export function getQuotedPostView(post: PostView): QuotedPostView | null {
+  const embed = post.embed as
+    | {
+        $type?: string
+        record?: {
+          $type?: string
+          uri?: string
+          author?: { did?: string; handle?: string; avatar?: string; displayName?: string }
+          value?: { text?: string; createdAt?: string; facets?: unknown[] }
+          embed?: unknown
+        }
+      }
+    | undefined
+  if (!embed) return null
+  if (embed.$type !== 'app.bsky.embed.record#view' && embed.$type !== 'app.bsky.embed.recordWithMedia#view')
+    return null
+  const rec = embed.record as {
+    $type?: string
+    uri?: string
+    cid?: string
+    author?: { did?: string; handle?: string; avatar?: string; displayName?: string }
+    value?: { text?: string; createdAt?: string; facets?: unknown[] }
+    record?: { text?: string; createdAt?: string; facets?: unknown[] }
+    embed?: unknown
+    embeds?: unknown[]
+  }
+  if (!rec || !rec.uri || rec.$type === 'app.bsky.embed.record#blocked' || rec.$type === 'app.bsky.embed.record#notFound')
+    return null
+  const author = rec.author
+  if (!author?.did) return null
+  const recordContent = rec.value ?? (rec as { record?: { text?: string; createdAt?: string; facets?: unknown[] } }).record ?? { text: '', createdAt: new Date().toISOString() }
+  return {
+    uri: rec.uri,
+    cid: rec.cid ?? '',
+    author: { did: author.did, handle: author.handle ?? author.did, avatar: author.avatar, displayName: author.displayName },
+    record: recordContent,
+    embed: rec.embed ?? (rec.embeds?.[0] as unknown),
+  } as QuotedPostView
+}
+
 /** Typeahead search for actors (usernames). Uses public API when not logged in (e.g. login page). */
 export async function searchActorsTypeahead(q: string, limit = 10) {
   const term = q.trim()
@@ -481,6 +628,25 @@ export async function getSuggestedFeeds(limit = 8) {
   } catch {
     return []
   }
+}
+
+/** Get feeds (feed generators) created by an actor. Uses public API so it works logged in or out. */
+export type ActorFeedView = {
+  uri: string
+  displayName: string
+  description?: string
+  avatar?: string
+  likeCount?: number
+}
+
+export async function getActorFeeds(actor: string, limit = 50): Promise<ActorFeedView[]> {
+  const params = new URLSearchParams()
+  params.set('actor', actor)
+  params.set('limit', String(limit))
+  const res = await fetch(`${PUBLIC_BSKY}/xrpc/app.bsky.feed.getActorFeeds?${params.toString()}`)
+  const data = (await res.json()) as { feeds?: ActorFeedView[]; message?: string }
+  if (!res.ok) throw new Error(data.message ?? 'Failed to load feeds')
+  return data.feeds ?? []
 }
 
 /** Search posts by hashtag (tag without #). When logged out uses direct fetch to public API to avoid CORS. Returns PostView[]; use with cursor for pagination. */
@@ -1479,6 +1645,46 @@ export async function createPost(
       }),
     )
     embed = { $type: 'app.bsky.embed.images', images: uploaded }
+  }
+  const rt = new RichText({ text: t || '' })
+  await rt.detectFacets(agent)
+  const res = await agent.post({
+    text: rt.text,
+    facets: rt.facets,
+    embed,
+    createdAt: new Date().toISOString(),
+  })
+  return { uri: res.uri, cid: res.cid }
+}
+
+/** Create a quote post: embeds the given post (uri/cid) with optional text and images. */
+export async function createQuotePost(
+  quotedUri: string,
+  quotedCid: string,
+  text: string,
+  imageFiles?: File[],
+  altTexts?: string[],
+): Promise<{ uri: string; cid: string }> {
+  const t = text.trim()
+  const images = (imageFiles ?? []).filter((f) => COMPOSE_IMAGE_TYPES.includes(f.type)).slice(0, COMPOSE_IMAGE_MAX)
+  if (!t && images.length === 0) throw new Error('Quote post needs text or at least one image')
+  const recordEmbed = { $type: 'app.bsky.embed.record' as const, record: { uri: quotedUri, cid: quotedCid } }
+  let embed: { $type: 'app.bsky.embed.record'; record: { uri: string; cid: string } } | { $type: 'app.bsky.embed.recordWithMedia'; record: { $type: 'app.bsky.embed.record'; record: { uri: string; cid: string } }; media: { $type: 'app.bsky.embed.images'; images: { image: unknown; alt: string }[] } }
+  if (images.length > 0) {
+    const alts = (altTexts ?? []).slice(0, images.length).map((a) => (a ?? '').trim().slice(0, 1000))
+    const uploaded = await Promise.all(
+      images.map(async (file, i) => {
+        const { data } = await agent.uploadBlob(file, { encoding: file.type })
+        return { image: data.blob, alt: alts[i] ?? '' }
+      }),
+    )
+    embed = {
+      $type: 'app.bsky.embed.recordWithMedia',
+      record: recordEmbed,
+      media: { $type: 'app.bsky.embed.images', images: uploaded },
+    }
+  } else {
+    embed = recordEmbed
   }
   const rt = new RichText({ text: t || '' })
   await rt.detectFacets(agent)

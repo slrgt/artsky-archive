@@ -1,7 +1,8 @@
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState, useCallback, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import Hls from 'hls.js'
-import { getPostMediaInfo, getPostAllMedia, getPostMediaUrl, agent, type TimelineItem } from '../lib/bsky'
+import { getPostMediaInfoForDisplay, getPostAllMediaForDisplay, getPostMediaUrlForDisplay, agent, type TimelineItem } from '../lib/bsky'
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard, getArtboard } from '../lib/artboards'
 import { putArtboardOnPds } from '../lib/artboardsPds'
 import { useSession } from '../context/SessionContext'
@@ -9,12 +10,7 @@ import { useArtOnly } from '../context/ArtOnlyContext'
 import { formatRelativeTime, formatRelativeTimeTitle } from '../lib/date'
 import PostText from './PostText'
 import ProfileLink from './ProfileLink'
-import PostActionsMenu from './PostActionsMenu'
 import styles from './PostCard.module.css'
-
-const LONG_PRESS_MS = 350
-const LONG_PRESS_MS_TOUCH = 550
-const LONG_PRESS_MOVE_THRESHOLD = 14
 
 interface Props {
   item: TimelineItem
@@ -30,16 +26,6 @@ interface Props {
   onAddClose?: () => void
   /** When provided, opening the post calls this instead of navigating to /post/:uri (e.g. open in modal) */
   onPostClick?: (uri: string, options?: { openReply?: boolean }) => void
-  /** Feed name to show in ... menu (e.g. "Following", feed label) */
-  feedLabel?: string
-  /** When this changes, open the ... menu (e.g. M key). Unused if openActionsMenu is provided. */
-  openActionsMenuTrigger?: number
-  /** Controlled: when true, menu is open; use with onActionsMenuClose and onActionsMenuOpen */
-  openActionsMenu?: boolean
-  /** Called when the ... menu is opened (so parent can set which card's menu is open) */
-  onActionsMenuOpen?: () => void
-  /** Called when the ... menu closes (so parent can clear open state) */
-  onActionsMenuClose?: () => void
   /** Called when media aspect ratio is known (for bento layout) */
   onAspectRatio?: (aspect: number) => void
   /** When true, card fills grid cell height and media uses object-fit: cover (bento mode) */
@@ -52,6 +38,8 @@ interface Props {
   constrainMediaHeight?: boolean
   /** Override liked state (e.g. from F key toggle); string = liked, null = unliked, undefined = use post.viewer.like */
   likedUriOverride?: string | null
+  /** When true, card is marked as seen (e.g. scrolled past); shown darkened */
+  seen?: boolean
 }
 
 function RepostIcon() {
@@ -62,18 +50,10 @@ function RepostIcon() {
   )
 }
 
-function HeartIcon({ filled }: { filled?: boolean }) {
+function CollectIcon() {
   return (
-    <svg className={styles.longPressIcon} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-    </svg>
-  )
-}
-
-function CollectionIcon() {
-  return (
-    <svg className={styles.longPressIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M19 11H5v-2h14v2zm0 4H5v-2h14v2zm0-8H5V5h14v2z" />
+    <svg className={styles.collectIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
     </svg>
   )
 }
@@ -82,33 +62,32 @@ function isHlsUrl(url: string): boolean {
   return /\.m3u8(\?|$)/i.test(url) || url.includes('m3u8')
 }
 
-export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, feedLabel, openActionsMenuTrigger, openActionsMenu, onActionsMenuOpen, onActionsMenuClose, onAspectRatio, fillCell, nsfwBlurred, onNsfwUnblur, constrainMediaHeight, likedUriOverride }: Props) {
+export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, onAspectRatio, fillCell, nsfwBlurred, onNsfwUnblur, constrainMediaHeight, likedUriOverride, seen }: Props) {
   const navigate = useNavigate()
   const { session } = useSession()
-  const { artOnly } = useArtOnly()
+  const { artOnly, minimalist } = useArtOnly()
   const videoRef = useRef<HTMLVideoElement>(null)
   const mediaWrapRef = useRef<HTMLDivElement>(null)
   const hlsRef = useRef<Hls | null>(null)
   const { post, reason } = item as { post: typeof item.post; reason?: { $type?: string; by?: { handle?: string; did?: string } } }
-  const media = getPostMediaInfo(post)
+  const media = getPostMediaInfoForDisplay(post)
   const hasMedia = !!media
   const text = (post.record as { text?: string })?.text ?? ''
   const handle = post.author.handle ?? post.author.did
   const repostedByHandle = reason?.by ? (reason.by.handle ?? reason.by.did) : null
   const authorViewer = (post.author as { viewer?: { following?: string } }).viewer
-  const isFollowingAuthor = !!authorViewer?.following
+  const initialFollowingUri = authorViewer?.following
+  const [followUriOverride, setFollowUriOverride] = useState<string | null>(initialFollowingUri ?? null)
+  const effectiveFollowingUri = followUriOverride ?? initialFollowingUri ?? null
+  const isFollowingAuthor = !!effectiveFollowingUri
   const isOwnPost = session?.did === post.author.did
-  const showNotFollowingGreen = !!session && !isOwnPost && !isFollowingAuthor
-  const postViewer = (post as { viewer?: { like?: string; repost?: string } }).viewer
+  const [followLoading, setFollowLoading] = useState(false)
+  const postViewer = (post as { viewer?: { like?: string } }).viewer
   const initialLikedUri = postViewer?.like
-  const initialRepostedUri = postViewer?.repost
   const [likedUri, setLikedUri] = useState<string | undefined>(initialLikedUri)
-  const [repostedUri, setRepostedUri] = useState<string | undefined>(initialRepostedUri)
   const [likeLoading, setLikeLoading] = useState(false)
-  const [repostLoading, setRepostLoading] = useState(false)
   const effectiveLikedUri = likedUriOverride !== undefined ? (likedUriOverride ?? undefined) : likedUri
   const isLiked = !!effectiveLikedUri
-  const isReposted = !!repostedUri
 
   const [imageIndex, setImageIndex] = useState(0)
   const [multiImageExpanded, setMultiImageExpanded] = useState(false)
@@ -118,19 +97,16 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const [addOpen, setAddOpen] = useState(false)
   const [addToBoardIds, setAddToBoardIds] = useState<Set<string>>(new Set())
   const [newBoardName, setNewBoardName] = useState('')
-  const [showLongPressMenu, setShowLongPressMenu] = useState(false)
-  const [longPressViewport, setLongPressViewport] = useState({ x: 0, y: 0 })
   const addRef = useRef<HTMLDivElement>(null)
   const addRefMobile = useRef<HTMLDivElement>(null)
+  const addBtnRef = useRef<HTMLButtonElement>(null)
+  const addDropdownRef = useRef<HTMLDivElement>(null)
+  const [addDropdownPosition, setAddDropdownPosition] = useState<{ bottom: number; left: number } | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
-  const longPressMenuRef = useRef<HTMLDivElement>(null)
-  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const didLongPressRef = useRef(false)
-  const longPressPositionRef = useRef({ x: 0, y: 0 })
-  const longPressViewportRef = useRef({ x: 0, y: 0 })
-  const touchStartRef = useRef({ x: 0, y: 0 })
   const lastTapRef = useRef(0)
   const didDoubleTapRef = useRef(false)
+  const touchSessionRef = useRef(false)
+  const openDelayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (likedUriOverride !== undefined) {
@@ -141,8 +117,23 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   }, [post.uri, initialLikedUri, likedUriOverride])
 
   useEffect(() => {
-    setRepostedUri(initialRepostedUri)
-  }, [post.uri, initialRepostedUri])
+    setFollowUriOverride(initialFollowingUri ?? null)
+  }, [post.uri, initialFollowingUri])
+
+  async function handleFollowClick(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (followLoading || isOwnPost || !session?.did || isFollowingAuthor) return
+    setFollowLoading(true)
+    try {
+      const res = await agent.follow(post.author.did)
+      setFollowUriOverride(res.uri)
+    } catch {
+      // leave state unchanged
+    } finally {
+      setFollowLoading(false)
+    }
+  }
 
   async function handleLikeClick(e: React.MouseEvent) {
     e.preventDefault()
@@ -164,67 +155,18 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
     }
   }
 
-  async function handleRepostClick(e: React.MouseEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    if (repostLoading) return
-    setRepostLoading(true)
-    try {
-      if (repostedUri) {
-        await agent.deleteRepost(repostedUri)
-        setRepostedUri(undefined)
-      } else {
-        const res = await agent.repost(post.uri, post.cid)
-        setRepostedUri(res.uri)
-      }
-    } catch {
-      // leave state unchanged
-    } finally {
-      setRepostLoading(false)
-    }
-  }
-
-  const clearLongPressTimer = useCallback(() => {
-    if (longPressTimerRef.current !== null) {
-      clearTimeout(longPressTimerRef.current)
-      longPressTimerRef.current = null
-    }
-  }, [])
-
-  const startLongPressTimer = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
-    const isTouch = 'touches' in e
-    touchStartRef.current = { x: clientX, y: clientY }
-    if (cardRef.current) {
-      const rect = cardRef.current.getBoundingClientRect()
-      longPressPositionRef.current = { x: clientX - rect.left, y: clientY - rect.top }
-    }
-    longPressViewportRef.current = { x: clientX, y: clientY }
-    clearLongPressTimer()
-    const delay = isTouch ? LONG_PRESS_MS_TOUCH : LONG_PRESS_MS
-    longPressTimerRef.current = setTimeout(() => {
-      longPressTimerRef.current = null
-      didLongPressRef.current = true
-      setLongPressViewport(longPressViewportRef.current)
-      setShowLongPressMenu(true)
-    }, delay)
-  }, [clearLongPressTimer])
-
-  const checkTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 0) return
-    const dx = e.touches[0].clientX - touchStartRef.current.x
-    const dy = e.touches[0].clientY - touchStartRef.current.y
-    if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_THRESHOLD) clearLongPressTimer()
-  }, [clearLongPressTimer])
-
-  useEffect(() => {
-    return clearLongPressTimer
-  }, [clearLongPressTimer])
-
   useEffect(() => {
     if (openAddDropdown) setAddOpen(true)
   }, [openAddDropdown])
+
+  useEffect(() => {
+    return () => {
+      if (openDelayTimerRef.current) {
+        clearTimeout(openDelayTimerRef.current)
+        openDelayTimerRef.current = null
+      }
+    }
+  }, [])
 
   const prevAddOpenRef = useRef(addOpen)
   useEffect(() => {
@@ -232,28 +174,29 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
     prevAddOpenRef.current = addOpen
   }, [addOpen, onAddClose])
 
+  useLayoutEffect(() => {
+    if (!addOpen || !addRef.current) {
+      setAddDropdownPosition(null)
+      return
+    }
+    const rect = addRef.current.getBoundingClientRect()
+    setAddDropdownPosition({
+      bottom: window.innerHeight - rect.top,
+      left: rect.left + rect.width / 2,
+    })
+  }, [addOpen])
+
   useEffect(() => {
     if (!addOpen) return
     function onDocClick(e: MouseEvent) {
       const target = e.target as Node
       if (addRef.current?.contains(target) || addRefMobile.current?.contains(target)) return
+      if (addDropdownRef.current?.contains(target)) return
       setAddOpen(false)
     }
-    document.addEventListener('click', onDocClick)
-    return () => document.removeEventListener('click', onDocClick)
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
   }, [addOpen])
-
-  useEffect(() => {
-    if (!showLongPressMenu) return
-    function onDocClick(e: MouseEvent) {
-      if (longPressMenuRef.current && !longPressMenuRef.current.contains(e.target as Node)) {
-        setShowLongPressMenu(false)
-        didLongPressRef.current = false
-      }
-    }
-    document.addEventListener('click', onDocClick)
-    return () => document.removeEventListener('click', onDocClick)
-  }, [showLongPressMenu])
 
   const boards = getArtboards()
 
@@ -269,8 +212,8 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   async function handleAddToArtboard() {
     const hasSelection = addToBoardIds.size > 0 || newBoardName.trim().length > 0
     if (!hasSelection) return
-    const mediaUrl = getPostMediaUrl(post)
-    const allMedia = getPostAllMedia(post)
+    const mediaUrl = getPostMediaUrlForDisplay(post)
+    const allMedia = getPostAllMediaForDisplay(post)
     const thumbs = allMedia.length > 0 ? allMedia.map((m) => m.url) : undefined
     const payload = {
       uri: post.uri,
@@ -309,7 +252,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
 
   const isVideo = hasMedia && media!.type === 'video' && media!.videoPlaylist
   const isMultipleImages = hasMedia && media!.type === 'image' && (media!.imageCount ?? 0) > 1
-  const allMedia = getPostAllMedia(post)
+  const allMedia = getPostAllMediaForDisplay(post)
   const imageItems = allMedia.filter((m) => m.type === 'image')
   const currentImageUrl = isMultipleImages && imageItems.length ? imageItems[imageIndex]?.url : (media?.url ?? '')
   const n = imageItems.length
@@ -403,18 +346,14 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   }
 
   function handleCardClick(e: React.MouseEvent) {
-    if (didLongPressRef.current) {
-      e.preventDefault()
-      e.stopPropagation()
-      didLongPressRef.current = false
-      return
-    }
     if (didDoubleTapRef.current) {
       didDoubleTapRef.current = false
       e.preventDefault()
       e.stopPropagation()
       return
     }
+    /* On touch devices the synthetic click fires ~300ms after touchEnd; we delay open by 400ms so double-tap can register. Ignore this click and let the timer open. */
+    if (touchSessionRef.current) return
     if (onPostClick) {
       onPostClick(post.uri)
     } else {
@@ -422,36 +361,9 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
     }
   }
 
-  async function handleLongPressLike(e: React.MouseEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    setShowLongPressMenu(false)
-    didLongPressRef.current = false
-    try {
-      await agent.like(post.uri, post.cid)
-    } catch {
-      // ignore
-    }
-  }
-
-  async function handleLongPressRepost(e: React.MouseEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    setShowLongPressMenu(false)
-    didLongPressRef.current = false
-    try {
-      await agent.repost(post.uri, post.cid)
-    } catch {
-      // ignore
-    }
-  }
-
-  function handleLongPressAddToCollection(e: React.MouseEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    setShowLongPressMenu(false)
-    didLongPressRef.current = false
-    setAddOpen(true)
+  function openPost() {
+    if (onPostClick) onPostClick(post.uri)
+    else navigate(`/post/${encodeURIComponent(post.uri)}`)
   }
 
   const setCardRef = useCallback(
@@ -466,7 +378,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   )
 
   return (
-    <div ref={setCardRef} className={`${styles.card} ${isSelected ? styles.cardSelected : ''} ${fillCell ? styles.cardFillCell : ''} ${artOnly ? styles.cardArtOnly : ''}`}>
+    <div ref={setCardRef} data-post-uri={post.uri} className={`${styles.card} ${isSelected ? styles.cardSelected : ''} ${isLiked ? styles.cardLiked : ''} ${seen ? styles.cardSeen : ''} ${fillCell ? styles.cardFillCell : ''} ${artOnly ? styles.cardArtOnly : ''} ${minimalist ? styles.cardMinimalist : ''}`}>
       <div
         role="button"
         tabIndex={0}
@@ -477,24 +389,31 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
           if (onPostClick) onPostClick(post.uri)
           else navigate(`/post/${encodeURIComponent(post.uri)}`)
         }}
-        onMouseDown={(e) => startLongPressTimer(e)}
-        onMouseUp={clearLongPressTimer}
-        onMouseLeave={clearLongPressTimer}
-        onTouchStart={(e) => startLongPressTimer(e)}
-        onTouchMove={checkTouchMove}
-        onTouchEnd={() => {
-          clearLongPressTimer()
-          if (didLongPressRef.current) return
+        onTouchStart={() => {
+          touchSessionRef.current = true
+        }}
+        onTouchEnd={(e) => {
           const now = Date.now()
           if (now - lastTapRef.current < 400) {
             lastTapRef.current = 0
             didDoubleTapRef.current = true
-            agent.like(post.uri, post.cid).catch(() => {})
+            if (openDelayTimerRef.current) {
+              clearTimeout(openDelayTimerRef.current)
+              openDelayTimerRef.current = null
+            }
+            e.preventDefault()
+            agent.like(post.uri, post.cid).then((res) => setLikedUri(res.uri)).catch(() => {})
+            setTimeout(() => { touchSessionRef.current = false }, 500)
           } else {
             lastTapRef.current = now
+            if (openDelayTimerRef.current) clearTimeout(openDelayTimerRef.current)
+            openDelayTimerRef.current = setTimeout(() => {
+              openDelayTimerRef.current = null
+              touchSessionRef.current = false
+              openPost()
+            }, 400)
           }
         }}
-        onTouchCancel={clearLongPressTimer}
       >
         <div
           ref={mediaWrapRef}
@@ -656,7 +575,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
             </div>
           )}
         </div>
-        {!artOnly && (
+        {(!artOnly || minimalist) && (
         <div className={styles.meta}>
           <div className={styles.cardActionRow} onClick={(e) => e.stopPropagation()}>
             <div className={styles.cardActionRowCenter}>
@@ -665,6 +584,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                 ref={addRef}
               >
                 <button
+                  ref={addBtnRef}
                   type="button"
                   className={styles.addToBoardBtn}
                   onClick={(e) => {
@@ -675,55 +595,92 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                   aria-label="Collect"
                   aria-expanded={addOpen}
                 >
-                  +
+                  <CollectIcon />
                 </button>
-                {addOpen && (
-                  <div className={styles.addDropdown}>
-                    {boards.length === 0 ? null : (
-                      <>
-                        {boards.map((b) => {
-                          const alreadyIn = isPostInArtboard(b.id, post.uri)
-                          const selected = addToBoardIds.has(b.id)
-                          return (
-                            <label key={b.id} className={styles.addBoardLabel}>
-                              <input
-                                type="checkbox"
-                                checked={selected}
-                                onChange={() => !alreadyIn && toggleBoardSelection(b.id)}
-                                disabled={alreadyIn}
-                                className={styles.addBoardCheckbox}
-                              />
-                              <span className={styles.addBoardText}>
-                                {alreadyIn ? <>✓ {b.name}</> : b.name}
-                              </span>
-                            </label>
-                          )
-                        })}
-                      </>
-                    )}
-                    <div className={styles.addDropdownNew}>
-                      <input
-                        type="text"
-                        placeholder="New collection name"
-                        value={newBoardName}
-                        onChange={(e) => setNewBoardName(e.target.value)}
-                        className={styles.addBoardInput}
-                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddToArtboard())}
-                      />
-                    </div>
-                    <div className={styles.addDropdownActions}>
-                      <button
-                        type="button"
-                        className={styles.addBoardSubmit}
-                        onClick={handleAddToArtboard}
-                        disabled={addToBoardIds.size === 0 && !newBoardName.trim()}
-                      >
-                        Add to selected
-                      </button>
-                    </div>
-                  </div>
-                )}
+                {addOpen && addDropdownPosition &&
+                  createPortal(
+                    <div
+                      ref={addDropdownRef}
+                      className={styles.addDropdown}
+                      style={{
+                        position: 'fixed',
+                        bottom: addDropdownPosition.bottom,
+                        left: addDropdownPosition.left,
+                        transform: 'translateX(-50%)',
+                        marginBottom: '0.25rem',
+                        zIndex: 1001,
+                      }}
+                    >
+                      {boards.length === 0 ? null : (
+                        <>
+                          {boards.map((b) => {
+                            const alreadyIn = isPostInArtboard(b.id, post.uri)
+                            const selected = addToBoardIds.has(b.id)
+                            return (
+                              <label key={b.id} className={styles.addBoardLabel}>
+                                <input
+                                  type="checkbox"
+                                  checked={selected}
+                                  onChange={() => !alreadyIn && toggleBoardSelection(b.id)}
+                                  disabled={alreadyIn}
+                                  className={styles.addBoardCheckbox}
+                                />
+                                <span className={styles.addBoardText}>
+                                  {alreadyIn ? <>✓ {b.name}</> : b.name}
+                                </span>
+                              </label>
+                            )
+                          })}
+                        </>
+                      )}
+                      <div className={styles.addDropdownNew}>
+                        <input
+                          type="text"
+                          placeholder="New collection name"
+                          value={newBoardName}
+                          onChange={(e) => setNewBoardName(e.target.value)}
+                          className={styles.addBoardInput}
+                          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddToArtboard())}
+                        />
+                      </div>
+                      <div className={styles.addDropdownActions}>
+                        <button
+                          type="button"
+                          className={styles.addBoardSubmit}
+                          onClick={handleAddToArtboard}
+                          disabled={addToBoardIds.size === 0 && !newBoardName.trim()}
+                        >
+                          Add to selected
+                        </button>
+                      </div>
+                    </div>,
+                    document.body
+                  )}
               </div>
+              {post.author.avatar && (
+                isOwnPost || !session || isFollowingAuthor ? (
+                  <ProfileLink
+                    handle={handle}
+                    className={styles.cardActionRowAvatar}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`View @${handle} profile`}
+                  >
+                    <img src={post.author.avatar} alt="" loading="lazy" />
+                  </ProfileLink>
+                ) : (
+                  <button
+                    type="button"
+                    className={`${styles.cardActionRowAvatar} ${styles.cardActionRowAvatarFollow}`}
+                    onClick={handleFollowClick}
+                    disabled={followLoading}
+                    aria-label={`Follow @${handle}`}
+                    title={`Follow @${handle}`}
+                  >
+                    <img src={post.author.avatar} alt="" loading="lazy" />
+                    <span className={styles.cardActionRowAvatarPlus} aria-hidden>+</span>
+                  </button>
+                )
+              )}
               <button
                 type="button"
                 className={`${styles.cardLikeRepostBtn} ${isLiked ? styles.cardLikeRepostBtnActive : ''}`}
@@ -734,41 +691,20 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
               >
                 {likeLoading ? '…' : isLiked ? '♥' : '♡'}
               </button>
-              <button
-                type="button"
-                className={`${styles.cardLikeRepostBtn} ${isReposted ? styles.cardLikeRepostBtnActive : ''}`}
-                onClick={handleRepostClick}
-                disabled={repostLoading}
-                title={isReposted ? 'Remove repost' : 'Repost'}
-                aria-label={isReposted ? 'Remove repost' : 'Repost'}
-              >
-                <RepostIcon />
-              </button>
-            </div>
-            <div
-              className={styles.actionsMenuWrap}
-              data-open={openActionsMenu === true ? 'true' : undefined}
-            >
-              <PostActionsMenu
-                postUri={post.uri}
-                postCid={post.cid}
-                authorDid={post.author.did}
-                rootUri={post.uri}
-                isOwnPost={isOwnPost}
-                feedLabel={feedLabel}
-                openTrigger={openActionsMenu === undefined && isSelected ? openActionsMenuTrigger : undefined}
-                open={openActionsMenu}
-                onOpenChange={onActionsMenuClose !== undefined ? (o) => { if (o) onActionsMenuOpen?.(); else onActionsMenuClose() } : undefined}
-              />
             </div>
           </div>
+          {!minimalist && (
           <div className={styles.handleBlock}>
             <div className={styles.handleRow}>
-              {post.author.avatar && (
+              {post.author.avatar ? (
                 <img src={post.author.avatar} alt="" className={styles.authorAvatar} loading="lazy" />
-              )}
+              ) : post.author.did ? (
+                <span className={styles.authorAvatarPlaceholder} aria-hidden>
+                  {(handle || post.author.did).slice(0, 1).toUpperCase()}
+                </span>
+              ) : null}
               <span className={styles.handleRowMain}>
-                <span className={effectiveLikedUri ? styles.handleLinkWrapLiked : showNotFollowingGreen ? styles.handleLinkWrapNotFollowing : styles.handleLinkWrap}>
+                <span className={effectiveLikedUri ? styles.handleLinkWrapLiked : styles.handleLinkWrap}>
                   <ProfileLink
                     handle={handle}
                     className={styles.handleLink}
@@ -798,7 +734,8 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
               </span>
             </div>
           </div>
-          {hasMedia && text ? (
+          )}
+          {!minimalist && hasMedia && text ? (
             <p className={styles.text}>
               <PostText text={text} facets={(post.record as { facets?: unknown[] })?.facets} maxLength={80} stopPropagation />
             </p>
@@ -806,46 +743,6 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
         </div>
         )}
       </div>
-      {showLongPressMenu && (
-        <div
-          ref={longPressMenuRef}
-          className={styles.longPressOverlay}
-          role="menu"
-          aria-label="Post actions"
-          style={{
-            left: longPressViewport.x,
-            top: longPressViewport.y,
-          }}
-        >
-          <button
-            type="button"
-            className={styles.longPressBtnTop}
-            onClick={handleLongPressLike}
-            title="Like"
-            aria-label="Like"
-          >
-            <HeartIcon />
-          </button>
-          <button
-            type="button"
-            className={styles.longPressBtnBottom}
-            onClick={handleLongPressRepost}
-            title="Repost"
-            aria-label="Repost"
-          >
-            <RepostIcon />
-          </button>
-          <button
-            type="button"
-            className={styles.longPressBtnLeft}
-            onClick={handleLongPressAddToCollection}
-            title="Add to collection"
-            aria-label="Add to collection"
-          >
-            <CollectionIcon />
-          </button>
-        </div>
-      )}
     </div>
   )
 }

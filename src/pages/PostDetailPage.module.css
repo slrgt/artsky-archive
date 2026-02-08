@@ -12,9 +12,14 @@
   padding-left: 0;
   padding-right: 0;
 }
+.wrapInModal .galleryWrap {
+  margin-top: 0;
+}
+/* In modal (post and comments): focused media get purple border; !important overrides mobile focus reset */
 .wrapInModal .galleryImageBtn:focus,
 .wrapInModal .galleryVideoWrap:focus {
-  outline: none;
+  outline: 2px solid var(--accent) !important;
+  outline-offset: -2px;
 }
 
 /* In modal on mobile: media takes full width of popup */
@@ -50,14 +55,15 @@
   margin-bottom: 0.75rem;
 }
 
-/* Nested comments: no border when unfocused; focused comment uses .commentFocused outline */
+/* Nested comments: border around each comment to mark where it starts/ends */
 .postBlock:not(.rootPostBlock) {
-  border: none;
+  border: 1px solid var(--border);
 }
 
-/* Root post on detail page: media on top, username and text below */
+/* Root post on detail page: media on top, username and text below; no gap above media */
 .rootPostBlock {
   flex-direction: column;
+  padding-top: 0;
 }
 
 /* Description block is focusable for W/S nav; inset ring so it stays in view */
@@ -65,6 +71,106 @@
   outline: none;
   box-shadow: inset 0 0 0 2px var(--accent);
   border-radius: 0.75rem;
+}
+
+/* Quoted post (quote post) block */
+.quotedPostWrap {
+  margin-top: 1rem;
+}
+
+.quotedPostLabel {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin: 0 0 0.35rem;
+}
+
+.quotedPostCard {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.75rem;
+  background: var(--glass-highlight);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.quotedPostCard:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+}
+
+.quotedPostCard:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.quotedPostHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.quotedPostAvatar {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.quotedPostAvatarPlaceholder {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--muted);
+  color: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+}
+
+.quotedPostHandle {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.quotedPostTime {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+.quotedPostMedia {
+  margin-bottom: 0.5rem;
+  border-radius: 0.35rem;
+  overflow: hidden;
+  max-height: 12rem;
+}
+
+.quotedPostThumb {
+  width: 100%;
+  height: auto;
+  max-height: 12rem;
+  object-fit: cover;
+  display: block;
+}
+
+.quotedPostVideoThumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-size: cover;
+  background-position: center;
+}
+
+.quotedPostText {
+  font-size: 0.9375rem;
+  margin: 0;
+  color: var(--text);
+  line-height: 1.4;
 }
 
 .collapseColumn {
@@ -107,7 +213,7 @@
 
 .collapseBtn:focus {
   outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: -2px;
 }
 
 .collapseStrip {
@@ -128,7 +234,7 @@
 
 .collapseStrip:focus {
   outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: -2px;
 }
 
 .collapseIcon {
@@ -137,15 +243,17 @@
   font-weight: 600;
 }
 
-.sectionFocused,
-.commentFocused {
+.sectionFocused {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: -2px;
   border-radius: 0.75rem;
 }
 
+/* Focused comment: purple ring like preview cards; inset so it isn't clipped by scroll */
 .commentFocused {
   border-radius: 0.5rem;
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--accent);
 }
 
 .postBlockContent {
@@ -360,7 +468,7 @@
 
 .galleryImageBtn:focus {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
 .galleryMedia {
@@ -387,6 +495,11 @@
   background: var(--bg);
   border-radius: 0.25rem;
   scroll-margin-top: 5rem;
+}
+
+.galleryVideoWrap:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .galleryVideoWrap .galleryVideo {
@@ -526,9 +639,25 @@
   padding-right: 0;
 }
 
+/* Top-level comments only: darken the space between them so each new comment is clearly separated */
+.repliesTopLevel {
+  padding: 0.35rem 0;
+  background: var(--glass-highlight);
+  border-radius: 0.5rem;
+}
+
+.repliesTopLevel > .topLevelCommentWrap {
+  margin-bottom: 0.5rem;
+}
+
+.repliesTopLevel > .topLevelCommentWrap:last-child {
+  margin-bottom: 0;
+}
+
 .replies .postBlock {
   padding-left: 4px;
   padding-right: 4px;
+  margin-bottom: 0.35rem;
 }
 
 .collapsedCommentWrap {
@@ -632,13 +761,68 @@
 }
 
 .likeRepostBtnActive {
-  color: var(--accent);
-  border-color: var(--accent);
+  background: linear-gradient(135deg, #db2777 0%, #ec4899 50%, #f472b6 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  border-color: #ec4899;
+}
+.likeRepostBtnActive::selection {
+  color: #fff;
 }
 
 .likeRepostBtn:disabled {
   opacity: 0.7;
   cursor: default;
+}
+
+.repostWrap {
+  position: relative;
+}
+
+.repostTriggerOpen {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.repostDropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 0.25rem;
+  min-width: 160px;
+  padding: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  box-shadow: var(--shadow-dropdown);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.repostDropdownItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--text);
+  background: none;
+  border: none;
+  border-radius: 0.35rem;
+  cursor: pointer;
+}
+
+.repostDropdownItem:hover:not(:disabled) {
+  background: var(--glass-highlight);
+}
+
+.repostDropdownItem:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .addToBoardWrap {
@@ -661,9 +845,9 @@
 
 .boardDropdown {
   position: absolute;
-  top: 100%;
+  bottom: 100%;
   left: 0;
-  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
   min-width: 220px;
   padding: 0.5rem;
   background: var(--surface);
@@ -924,7 +1108,7 @@
 
 .replyAsHandleBtn:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
 .replyAsDropdown {
@@ -1095,4 +1279,270 @@
 .submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Quote post composer overlay */
+.quoteComposerBackdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  z-index: 22;
+}
+
+.quoteComposerOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 23;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  pointer-events: auto;
+}
+
+.quoteComposerCard {
+  width: 100%;
+  max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 1.25rem;
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+  backdrop-filter: blur(var(--glass-blur-strong));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  box-shadow: var(--shadow-dropdown);
+  pointer-events: auto;
+}
+
+.quoteComposerTitle {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.quoteComposerSignIn {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.quoteComposerTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem;
+  font-size: 1rem;
+  line-height: 1.4;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--glass-radius-sm);
+  resize: vertical;
+  min-height: 100px;
+  margin-bottom: 0.75rem;
+}
+
+.quoteComposerTextarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.quoteComposerTextarea::placeholder {
+  color: var(--muted);
+}
+
+.quoteComposerMediaSection {
+  margin-bottom: 0.75rem;
+}
+
+.quoteComposerPreviews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.quoteComposerPreviewWrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+}
+
+.quoteComposerPreviewImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--glass-radius-sm);
+  border: 1px solid var(--border);
+}
+
+.quoteComposerPreviewRemove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--text);
+  background: var(--media-control-bg);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quoteComposerPreviewRemove:hover:not(:disabled) {
+  background: var(--overlay-bg);
+}
+
+.quoteComposerPreviewRemove:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.quoteComposerAltPrompt {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.quoteComposerAltFields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.quoteComposerAltRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.quoteComposerAltLabel {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.quoteComposerAltInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: var(--glass-radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.quoteComposerAltInput:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.quoteComposerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+
+.quoteComposerFooterLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.quoteComposerFileInput {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.quoteComposerAddMedia {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--glass-radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.quoteComposerAddMedia:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+.quoteComposerAddMedia:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quoteComposerCount {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.quoteComposerActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.quoteComposerCancel,
+.quoteComposerSubmit {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: var(--glass-radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.quoteComposerCancel {
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.quoteComposerCancel:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+.quoteComposerSubmit {
+  color: var(--text-on-accent);
+  background: var(--accent-gradient);
+  border: none;
+}
+
+.quoteComposerSubmit:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.quoteComposerSubmit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.quoteComposerError {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--error);
 }

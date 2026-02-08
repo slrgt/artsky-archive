@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import type { AppBskyFeedDefs } from '@atproto/api'
 import type { AtpSessionData } from '@atproto/api'
-import { agent, publicAgent, postReply, getPostAllMedia, getPostMediaUrl, getSession, createDownvote, deleteDownvote, listMyDownvotes } from '../lib/bsky'
+import { agent, publicAgent, postReply, getPostAllMedia, getPostMediaUrl, getQuotedPostView, getSession, createQuotePost, createDownvote, deleteDownvote, listMyDownvotes } from '../lib/bsky'
 import { useSession } from '../context/SessionContext'
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard } from '../lib/artboards'
 import { formatRelativeTime, formatRelativeTimeTitle } from '../lib/date'
@@ -12,7 +12,6 @@ import VideoWithHls from '../components/VideoWithHls'
 import PostText from '../components/PostText'
 import PostActionsMenu from '../components/PostActionsMenu'
 import { useProfileModal } from '../context/ProfileModalContext'
-import { useHiddenPosts } from '../context/HiddenPostsContext'
 import styles from './PostDetailPage.module.css'
 
 export function ReplyAsRow({
@@ -319,7 +318,6 @@ function PostBlock({
   myDownvotes,
   likeLoadingUri,
   downvoteLoadingUri,
-  isHidden,
   openActionsMenuCommentUri,
   onActionsMenuOpenChange,
 }: {
@@ -349,14 +347,12 @@ function PostBlock({
   myDownvotes?: Record<string, string>
   likeLoadingUri?: string | null
   downvoteLoadingUri?: string | null
-  isHidden?: (uri: string) => boolean
   /** When set, which comment's actions menu is open (used to show like/downvote counts on that comment) */
   openActionsMenuCommentUri?: string | null
   onActionsMenuOpenChange?: (uri: string, open: boolean) => void
 }) {
   if (!isThreadViewPost(node)) return null
   const { post } = node
-  if (isHidden?.(post.uri)) return null
   const postViewer = post as { viewer?: { like?: string }; likeCount?: number; downvoteCount?: number }
   const likedUri = likeOverrides?.[post.uri] !== undefined ? likeOverrides[post.uri] : postViewer.viewer?.like
   const downvotedUri = myDownvotes?.[post.uri]
@@ -372,7 +368,7 @@ function PostBlock({
   const avatar = post.author.avatar ?? undefined
   const createdAt = (post.record as { createdAt?: string })?.createdAt
   const rawReplies = 'replies' in node && Array.isArray(node.replies) ? (node.replies as (typeof node)[]) : []
-  const replies = isHidden ? rawReplies.filter((r) => !isThreadViewPost(r) || !isHidden((r as AppBskyFeedDefs.ThreadViewPost).post.uri)) : rawReplies
+  const replies = rawReplies
   const hasReplies = replies.length > 0
   const isCollapsed = hasReplies && collapsedThreads?.has(post.uri)
   const canCollapse = !!onToggleCollapse
@@ -583,7 +579,6 @@ function PostBlock({
                     myDownvotes={myDownvotes}
                     likeLoadingUri={likeLoadingUri}
                     downvoteLoadingUri={downvoteLoadingUri}
-                    isHidden={isHidden}
                     openActionsMenuCommentUri={openActionsMenuCommentUri}
                     onActionsMenuOpenChange={onActionsMenuOpenChange}
                   />
@@ -610,7 +605,6 @@ export interface PostDetailContentProps {
 export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: PostDetailContentProps) {
   const navigate = useNavigate()
   const { openProfileModal } = useProfileModal()
-  const { isHidden } = useHiddenPosts()
   const decodedUri = uriProp
   const [thread, setThread] = useState<
     AppBskyFeedDefs.ThreadViewPost | AppBskyFeedDefs.NotFoundPost | AppBskyFeedDefs.BlockedPost | { $type: string } | null
@@ -637,6 +631,15 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
   const [openActionsMenuCommentUri, setOpenActionsMenuCommentUri] = useState<string | null>(null)
   const [newBoardName, setNewBoardName] = useState('')
   const [showBoardDropdown, setShowBoardDropdown] = useState(false)
+  const [showRepostDropdown, setShowRepostDropdown] = useState(false)
+  const [showQuoteComposer, setShowQuoteComposer] = useState(false)
+  const [quoteText, setQuoteText] = useState('')
+  const [quoteImages, setQuoteImages] = useState<File[]>([])
+  const [quoteImageAlts, setQuoteImageAlts] = useState<string[]>([])
+  const [quotePosting, setQuotePosting] = useState(false)
+  const [quoteError, setQuoteError] = useState<string | null>(null)
+  const quoteFileInputRef = useRef<HTMLInputElement>(null)
+  const repostDropdownRef = useRef<HTMLDivElement>(null)
   const [postSectionIndex, setPostSectionIndex] = useState(0)
   const commentFormRef = useRef<HTMLFormElement>(null)
   const commentFormWrapRef = useRef<HTMLDivElement>(null)
@@ -647,6 +650,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
   const [commentFormFocused, setCommentFormFocused] = useState(false)
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
   const keyboardFocusIndexRef = useRef(0)
+  const scrollIntoViewFromKeyboardRef = useRef(false)
   const prevSectionIndexRef = useRef(0)
   const boards = getArtboards()
   const session = getSession()
@@ -732,6 +736,10 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
     }
   }
 
+  const QUOTE_MAX_LENGTH = 300
+  const QUOTE_IMAGE_MAX = 4
+  const QUOTE_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+
   async function handleRepost() {
     if (!thread || !isThreadViewPost(thread) || repostLoading) return
     const { uri, cid } = thread.post
@@ -748,6 +756,57 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
       // leave state unchanged
     } finally {
       setRepostLoading(false)
+    }
+  }
+
+  function addQuoteImages(files: FileList | File[]) {
+    const list = Array.from(files).filter((f) => QUOTE_IMAGE_TYPES.includes(f.type))
+    const take = Math.min(list.length, QUOTE_IMAGE_MAX - quoteImages.length)
+    if (take <= 0) return
+    setQuoteImages((prev) => [...prev, ...list.slice(0, take)])
+    setQuoteImageAlts((prev) => [...prev, ...list.slice(0, take).map(() => '')])
+  }
+
+  function removeQuoteImage(index: number) {
+    setQuoteImages((prev) => prev.filter((_, i) => i !== index))
+    setQuoteImageAlts((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  function openQuoteComposer() {
+    setShowRepostDropdown(false)
+    setShowQuoteComposer(true)
+    setQuoteText('')
+    setQuoteImages([])
+    setQuoteImageAlts([])
+    setQuoteError(null)
+  }
+
+  function closeQuoteComposer() {
+    setShowQuoteComposer(false)
+    setQuoteError(null)
+  }
+
+  async function handleQuoteSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!thread || !isThreadViewPost(thread) || quotePosting || !session?.did) return
+    const canSubmit = quoteText.trim() || quoteImages.length > 0
+    if (!canSubmit) return
+    setQuoteError(null)
+    setQuotePosting(true)
+    try {
+      await createQuotePost(
+        thread.post.uri,
+        thread.post.cid,
+        quoteText,
+        quoteImages.length > 0 ? quoteImages : undefined,
+        quoteImageAlts.length > 0 ? quoteImageAlts : undefined,
+      )
+      closeQuoteComposer()
+      navigate('/feed')
+    } catch (err: unknown) {
+      setQuoteError(err instanceof Error ? err.message : 'Failed to post quote')
+    } finally {
+      setQuotePosting(false)
     }
   }
 
@@ -901,6 +960,25 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
     })
   }
 
+  const quotePreviewUrls = useMemo(
+    () => quoteImages.map((f) => URL.createObjectURL(f)),
+    [quoteImages],
+  )
+  useEffect(() => {
+    return () => quotePreviewUrls.forEach((u) => URL.revokeObjectURL(u))
+  }, [quotePreviewUrls])
+
+  useEffect(() => {
+    if (!showRepostDropdown) return
+    function onDocClick(e: MouseEvent) {
+      const target = e.target as Node
+      if (repostDropdownRef.current?.contains(target)) return
+      setShowRepostDropdown(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [showRepostDropdown])
+
   const rootMediaForNav =
     thread && isThreadViewPost(thread) ? getPostAllMedia(thread.post) : []
   const hasMediaSection = rootMediaForNav.length > 0
@@ -912,10 +990,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
   const threadReplies = thread && isThreadViewPost(thread) && 'replies' in thread && Array.isArray(thread.replies)
     ? (thread.replies as (typeof thread)[]).filter((r): r is AppBskyFeedDefs.ThreadViewPost => isThreadViewPost(r))
     : []
-  const threadRepliesVisible = useMemo(
-    () => threadReplies.filter((r) => !isHidden(r.post.uri)),
-    [threadReplies, isHidden]
-  )
+  const threadRepliesVisible = threadReplies
   const threadRepliesFlat = useMemo(
     () => flattenVisibleReplies(threadRepliesVisible, collapsedThreads),
     [threadRepliesVisible, collapsedThreads]
@@ -1026,7 +1101,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
       const totalItems = focusItems.length
       if (totalItems <= 0) return
 
-      const focusItemAtIndex = (idx: number) => {
+      const focusItemAtIndex = (idx: number, prevIndex?: number) => {
         const item = focusItems[idx]
         if (!item) return
         setCommentFormFocused(item.type === 'replyForm')
@@ -1063,16 +1138,43 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
             }
           })
         } else if (item.type === 'comment') {
+          const mediaCount = focusItems.filter((it) => it.type === 'commentMedia' && it.commentUri === item.commentUri).length
+          const prevItem = prevIndex !== undefined ? focusItems[prevIndex] : undefined
+          const cameFromSameCommentLastMedia =
+            prevItem?.type === 'commentMedia' &&
+            prevItem.commentUri === item.commentUri &&
+            mediaCount > 0 &&
+            prevItem.mediaIndex === mediaCount - 1
+          if (cameFromSameCommentLastMedia && idx + 1 < focusItems.length) {
+            setKeyboardFocusIndex(idx + 1)
+            focusItemAtIndex(idx + 1, idx)
+            return
+          }
           setPostSectionIndex(postSectionCount - 1)
           const commentIdx = threadRepliesFlat.findIndex((f) => f.uri === item.commentUri)
           setFocusedCommentIndex(commentIdx >= 0 ? commentIdx : 0)
+          const focusMediaInstead = mediaCount > 0 && prevIndex !== undefined
+          const mediaIndexToFocus = focusMediaInstead ? (idx < prevIndex ? mediaCount - 1 : 0) : -1
+          if (mediaIndexToFocus >= 0) {
+            const commentMediaIdx = focusItems.findIndex(
+              (it) => it.type === 'commentMedia' && it.commentUri === item.commentUri && it.mediaIndex === mediaIndexToFocus
+            )
+            if (commentMediaIdx >= 0) setKeyboardFocusIndex(commentMediaIdx)
+          }
           requestAnimationFrame(() => {
             const commentsSection = commentsSectionRef.current
             if (!commentsSection) return
-            const el = Array.from(commentsSection.querySelectorAll<HTMLElement>('[data-comment-uri]')).find((n) => n.getAttribute('data-comment-uri') === item.commentUri)
-            if (el) {
-              el.focus()
-              el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+            const commentEl = Array.from(commentsSection.querySelectorAll<HTMLElement>('[data-comment-uri]')).find((n) => n.getAttribute('data-comment-uri') === item.commentUri)
+            if (!commentEl) return
+            if (mediaIndexToFocus >= 0) {
+              const mediaEl = commentEl.querySelectorAll<HTMLElement>('[data-media-item]')?.[mediaIndexToFocus]
+              if (mediaEl) {
+                mediaEl.focus()
+                mediaEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+              }
+            } else {
+              commentEl.focus()
+              commentEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
             }
           })
         } else {
@@ -1089,8 +1191,9 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
       const next = key === 'w' ? Math.max(0, current - 1) : Math.min(totalItems - 1, current + 1)
       if (next !== current) {
         e.preventDefault()
+        scrollIntoViewFromKeyboardRef.current = true
         setKeyboardFocusIndex(next)
-        focusItemAtIndex(next)
+        focusItemAtIndex(next, current)
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -1123,7 +1226,6 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
   useEffect(() => {
     const inCommentsSection = hasRepliesSection && postSectionIndex === postSectionCount - 1
     if (!inCommentsSection || postSectionCount <= 1) return
-    /* Only scroll when focus is actually in the comments section (avoids scrolling to comment after W to description) */
     if (!commentsSectionRef.current?.contains(document.activeElement)) return
     const flat = threadRepliesFlatRef.current
     if (focusedCommentIndex < 0 || focusedCommentIndex >= flat.length) return
@@ -1133,6 +1235,31 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
     const el = Array.from(nodes).find((n) => n.getAttribute('data-comment-uri') === uri)
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [focusedCommentIndex, hasRepliesSection, postSectionIndex, postSectionCount])
+
+  /* Scroll focused comment into view when focus changed by keyboard (W/S), like homepage cards */
+  useEffect(() => {
+    if (!scrollIntoViewFromKeyboardRef.current) return
+    scrollIntoViewFromKeyboardRef.current = false
+    const item = focusItems[keyboardFocusIndex]
+    if (!item || (item.type !== 'comment' && item.type !== 'commentMedia') || !commentsSectionRef.current) return
+    let el: Element | null = null
+    if (item.type === 'comment') {
+      el = Array.from(commentsSectionRef.current.querySelectorAll('[data-comment-uri]')).find(
+        (n) => n.getAttribute('data-comment-uri') === item.commentUri
+      )
+    } else {
+      const commentEl = Array.from(commentsSectionRef.current.querySelectorAll('[data-comment-uri]')).find(
+        (n) => n.getAttribute('data-comment-uri') === item.commentUri
+      )
+      el = commentEl?.querySelectorAll('[data-media-item]')?.[item.mediaIndex] ?? null
+    }
+    if (el) {
+      const raf = requestAnimationFrame(() => {
+        ;(el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+      })
+      return () => cancelAnimationFrame(raf)
+    }
+  }, [keyboardFocusIndex, focusItems])
 
   if (!decodedUri) {
     if (onClose) onClose()
@@ -1232,15 +1359,44 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
                 >
                   {likeLoading ? '…' : isLiked ? '♥' : '♡'} Like
                 </button>
-                <button
-                  type="button"
-                  className={`${styles.likeRepostBtn} ${isReposted ? styles.likeRepostBtnActive : ''}`}
-                  onClick={handleRepost}
-                  disabled={repostLoading}
-                  title={isReposted ? 'Remove repost' : 'Repost'}
-                >
-                  {repostLoading ? '…' : 'Repost'}
-                </button>
+                <div className={styles.repostWrap} ref={repostDropdownRef}>
+                  <button
+                    type="button"
+                    className={`${styles.likeRepostBtn} ${isReposted ? styles.likeRepostBtnActive : ''} ${showRepostDropdown ? styles.repostTriggerOpen : ''}`}
+                    onClick={() => setShowRepostDropdown((v) => !v)}
+                    disabled={repostLoading}
+                    title={isReposted ? 'Remove repost' : 'Repost or quote'}
+                    aria-expanded={showRepostDropdown}
+                    aria-haspopup="true"
+                  >
+                    {repostLoading ? '…' : 'Repost ▾'}
+                  </button>
+                  {showRepostDropdown && (
+                    <div className={styles.repostDropdown} role="menu">
+                      <button
+                        type="button"
+                        className={styles.repostDropdownItem}
+                        role="menuitem"
+                        onClick={() => {
+                          setShowRepostDropdown(false)
+                          handleRepost()
+                        }}
+                        disabled={repostLoading}
+                      >
+                        {isReposted ? 'Remove repost' : 'Repost'}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.repostDropdownItem}
+                        role="menuitem"
+                        onClick={openQuoteComposer}
+                        disabled={!session?.did}
+                      >
+                        Quote post
+                      </button>
+                    </div>
+                  )}
+                </div>
                 {thread && isThreadViewPost(thread) && (
                   <PostActionsMenu
                     postUri={thread.post.uri}
@@ -1313,12 +1469,63 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
                     <PostText text={(thread.post.record as { text?: string }).text!} facets={(thread.post.record as { facets?: unknown[] })?.facets} />
                   </p>
                 )}
+                {(() => {
+                  const quoted = getQuotedPostView(thread.post)
+                  if (!quoted) return null
+                  const quotedHandle = quoted.author?.handle ?? quoted.author?.did ?? ''
+                  const quotedText = (quoted.record as { text?: string })?.text ?? ''
+                  const quotedMedia = getPostAllMedia(quoted)
+                  const quotedFirstMedia = quotedMedia[0]
+                  return (
+                    <div className={styles.quotedPostWrap}>
+                      <p className={styles.quotedPostLabel}>Quoting</p>
+                      <button
+                        type="button"
+                        className={styles.quotedPostCard}
+                        onClick={() => {
+                          navigate(`/post/${encodeURIComponent(quoted.uri)}`)
+                          onClose?.()
+                        }}
+                      >
+                        <div className={styles.quotedPostHead}>
+                          {quoted.author?.avatar ? (
+                            <img src={quoted.author.avatar} alt="" className={styles.quotedPostAvatar} loading="lazy" />
+                          ) : (
+                            <span className={styles.quotedPostAvatarPlaceholder} aria-hidden>{quotedHandle.slice(0, 1).toUpperCase()}</span>
+                          )}
+                          <ProfileLink handle={quotedHandle} className={styles.quotedPostHandle} onClick={(e) => e.stopPropagation()}>
+                            @{quotedHandle}
+                          </ProfileLink>
+                          {(quoted.record as { createdAt?: string })?.createdAt && (
+                            <span className={styles.quotedPostTime} title={formatRelativeTimeTitle((quoted.record as { createdAt: string }).createdAt)}>
+                              {formatRelativeTime((quoted.record as { createdAt: string }).createdAt)}
+                            </span>
+                          )}
+                        </div>
+                        {quotedFirstMedia && (
+                          <div className={styles.quotedPostMedia}>
+                            {quotedFirstMedia.type === 'image' ? (
+                              <img src={quotedFirstMedia.url} alt="" loading="lazy" className={styles.quotedPostThumb} />
+                            ) : quotedFirstMedia.videoPlaylist ? (
+                              <div className={styles.quotedPostVideoThumb} style={{ backgroundImage: quotedFirstMedia.url ? `url(${quotedFirstMedia.url})` : undefined }} />
+                            ) : null}
+                          </div>
+                        )}
+                        {quotedText ? (
+                          <p className={styles.quotedPostText}>
+                            <PostText text={quotedText} facets={(quoted.record as { facets?: unknown[] })?.facets} maxLength={200} stopPropagation />
+                          </p>
+                        ) : null}
+                      </button>
+                    </div>
+                  )
+                })()}
               </div>
             </article>
             {'replies' in thread && Array.isArray(thread.replies) && thread.replies.length > 0 && (
               <div
                 ref={commentsSectionRef}
-                className={styles.replies}
+                className={`${styles.replies} ${styles.repliesTopLevel}`}
                 onFocusCapture={(e) => {
                   const target = e.target as HTMLElement
                   const commentEl = target.closest?.('[data-comment-uri]') as HTMLElement | null
@@ -1354,8 +1561,11 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
                     return (
                       <div
                         key={r.post.uri}
+                        className={styles.topLevelCommentWrap}
                         data-comment-uri={r.post.uri}
                         tabIndex={-1}
+                      >
+                      <div
                         className={`${styles.collapsedCommentWrap} ${isFocusedCollapsed ? styles.commentFocused : ''}`}
                         style={{ marginLeft: 0 }}
                         onFocus={() => commentContentFocusIndex >= 0 && setKeyboardFocusIndex(commentContentFocusIndex)}
@@ -1371,10 +1581,11 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
                           <span className={styles.collapsedCommentLabel}>{label}</span>
                         </button>
                       </div>
+                      </div>
                     )
                   }
                   return (
-                    <div key={r.post.uri}>
+                    <div key={r.post.uri} className={styles.topLevelCommentWrap}>
                       <PostBlock
                         node={r}
                         depth={0}
@@ -1470,6 +1681,134 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
                 </div>
               </div>
             )}
+          </>
+        )}
+        {showQuoteComposer && (
+          <>
+            <div className={styles.quoteComposerBackdrop} onClick={closeQuoteComposer} aria-hidden />
+            <div
+              className={styles.quoteComposerOverlay}
+              role="dialog"
+              aria-label="Quote post"
+              onClick={closeQuoteComposer}
+              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' }}
+              onDrop={(e) => { e.preventDefault(); if (e.dataTransfer?.files?.length) addQuoteImages(e.dataTransfer.files) }}
+            >
+              <div className={styles.quoteComposerCard} onClick={(e) => e.stopPropagation()}>
+                <h2 className={styles.quoteComposerTitle}>Quote post</h2>
+                {!session?.did ? (
+                  <p className={styles.quoteComposerSignIn}>Log in to quote posts.</p>
+                ) : (
+                  <form
+                    onSubmit={handleQuoteSubmit}
+                    onKeyDown={(e) => {
+                      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                        e.preventDefault()
+                        handleQuoteSubmit(e as unknown as React.FormEvent)
+                      }
+                    }}
+                  >
+                    <textarea
+                      className={styles.quoteComposerTextarea}
+                      value={quoteText}
+                      onChange={(e) => setQuoteText(e.target.value.slice(0, QUOTE_MAX_LENGTH))}
+                      placeholder="Add your thoughts..."
+                      rows={4}
+                      maxLength={QUOTE_MAX_LENGTH}
+                      disabled={quotePosting}
+                      autoFocus
+                    />
+                    {quoteImages.length > 0 && (
+                      <div className={styles.quoteComposerMediaSection}>
+                        <div className={styles.quoteComposerPreviews}>
+                          {quoteImages.map((_, i) => (
+                            <div key={i} className={styles.quoteComposerPreviewWrap}>
+                              <img src={quotePreviewUrls[i]} alt="" className={styles.quoteComposerPreviewImg} />
+                              <button
+                                type="button"
+                                className={styles.quoteComposerPreviewRemove}
+                                onClick={() => removeQuoteImage(i)}
+                                aria-label="Remove image"
+                                disabled={quotePosting}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <p className={styles.quoteComposerAltPrompt}>Describe each image for accessibility (alt text).</p>
+                        <div className={styles.quoteComposerAltFields}>
+                          {quoteImages.map((_, i) => (
+                            <div key={i} className={styles.quoteComposerAltRow}>
+                              <label htmlFor={`quote-alt-${i}`} className={styles.quoteComposerAltLabel}>Image {i + 1}</label>
+                              <input
+                                id={`quote-alt-${i}`}
+                                type="text"
+                                className={styles.quoteComposerAltInput}
+                                placeholder="Describe this image"
+                                value={quoteImageAlts[i] ?? ''}
+                                onChange={(e) => {
+                                  const val = e.target.value.slice(0, 1000)
+                                  setQuoteImageAlts((prev) => {
+                                    const next = [...prev]
+                                    while (next.length < quoteImages.length) next.push('')
+                                    next[i] = val
+                                    return next
+                                  })
+                                }}
+                                maxLength={1000}
+                                disabled={quotePosting}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className={styles.quoteComposerFooter}>
+                      <div className={styles.quoteComposerFooterLeft}>
+                        <input
+                          ref={quoteFileInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/gif,image/webp"
+                          multiple
+                          className={styles.quoteComposerFileInput}
+                          onChange={(e) => {
+                            if (e.target.files?.length) addQuoteImages(e.target.files)
+                            e.target.value = ''
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className={styles.quoteComposerAddMedia}
+                          onClick={() => quoteFileInputRef.current?.click()}
+                          disabled={quotePosting || quoteImages.length >= QUOTE_IMAGE_MAX}
+                          title="Add photo"
+                          aria-label="Add photo"
+                        >
+                          Add media
+                        </button>
+                        <span className={styles.quoteComposerCount} aria-live="polite">
+                          {quoteText.length}/{QUOTE_MAX_LENGTH}
+                        </span>
+                      </div>
+                      <div className={styles.quoteComposerActions}>
+                        <button type="button" className={styles.quoteComposerCancel} onClick={closeQuoteComposer} disabled={quotePosting}>
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className={styles.quoteComposerSubmit}
+                          disabled={quotePosting || (!quoteText.trim() && quoteImages.length === 0)}
+                        >
+                          {quotePosting ? 'Posting…' : 'Quote post'}
+                        </button>
+                      </div>
+                    </div>
+                    {quoteError && <p className={styles.quoteComposerError}>{quoteError}</p>}
+                  </form>
+                )}
+              </div>
+            </div>
           </>
         )}
       </div>

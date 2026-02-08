@@ -2,7 +2,6 @@ import { useRef, useState, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { blockAccount, unblockAccount, reportPost, muteThread, deletePost, agent } from '../lib/bsky'
 import { getSession } from '../lib/bsky'
-import { useHiddenPosts } from '../context/HiddenPostsContext'
 import styles from './PostActionsMenu.module.css'
 
 interface PostActionsMenuProps {
@@ -15,7 +14,7 @@ interface PostActionsMenuProps {
   rootUri: string
   /** When true, hide "Block account" (own content) */
   isOwnPost?: boolean
-  /** Called after hide (e.g. close modal or remove from view) */
+  /** Called after delete (e.g. close modal) */
   onHidden?: () => void
   /** Optional class for the trigger button wrapper */
   className?: string
@@ -46,7 +45,6 @@ export default function PostActionsMenu({
   onOpenChange,
 }: PostActionsMenuProps) {
   const session = getSession()
-  const { addHidden } = useHiddenPosts()
   const [openUncontrolled, setOpenUncontrolled] = useState(false)
   const [loading, setLoading] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
@@ -271,12 +269,6 @@ export default function PostActionsMenu({
     }
   }
 
-  function handleHide() {
-    addHidden(postUri)
-    setOpen(false)
-    onHidden?.()
-  }
-
   function handleCopyLink() {
     const base = typeof window !== 'undefined' ? window.location.origin + (import.meta.env.BASE_URL || '/').replace(/\/$/, '') : ''
     const url = `${base}/post/${encodeURIComponent(postUri)}`
@@ -291,7 +283,6 @@ export default function PostActionsMenu({
     setLoading('delete')
     try {
       await deletePost(postUri)
-      addHidden(postUri)
       setOpen(false)
       onHidden?.()
     } catch {
@@ -326,7 +317,11 @@ export default function PostActionsMenu({
         aria-label="More options"
         title="More options"
       >
-        ⋯
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+          <circle cx="4" cy="12" r="2" fill="currentColor" />
+          <circle cx="12" cy="12" r="2" fill="currentColor" />
+          <circle cx="20" cy="12" r="2" fill="currentColor" />
+        </svg>
       </button>
       {open && dropdownPosition &&
         createPortal(
@@ -349,14 +344,6 @@ export default function PostActionsMenu({
             </div>
           ) : !loggedIn ? (
             <>
-              <button
-                type="button"
-                className={styles.item}
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleHide() }}
-                role="menuitem"
-              >
-                Hide post
-              </button>
               <button
                 type="button"
                 className={styles.item}
@@ -464,14 +451,6 @@ export default function PostActionsMenu({
                 role="menuitem"
               >
                 {loading === 'mute' ? '…' : 'Mute thread'}
-              </button>
-              <button
-                type="button"
-                className={styles.item}
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleHide() }}
-                role="menuitem"
-              >
-                Hide post
               </button>
               <button
                 type="button"

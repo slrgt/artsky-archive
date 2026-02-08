@@ -47,16 +47,53 @@ export async function getOAuthClient(): Promise<BrowserOAuthClient> {
   return client
 }
 
+export type OAuthSession = import('@atproto/oauth-client').OAuthSession
+
 /**
  * Initialize OAuth: restore existing session or process callback after redirect.
- * Call once on app load. Returns session if user just completed OAuth or had a stored session.
+ * When hasCallback is false and preferredRestoreDid is set, restores that DID's session (for multi-account).
  */
-export async function initOAuth(): Promise<
-  | { session: import('@atproto/oauth-client').OAuthSession; state?: string | null }
+export async function initOAuth(options?: {
+  hasCallback?: boolean
+  preferredRestoreDid?: string
+}): Promise<
+  | { session: OAuthSession; state?: string | null }
   | undefined
 > {
   const oauth = await getOAuthClient()
+  const hasCallback =
+    options?.hasCallback ??
+    (typeof window !== 'undefined'
+      ? (() => {
+          const params = new URLSearchParams(window.location.search)
+          return params.has('state') && (params.has('code') || params.has('error'))
+        })()
+      : false)
+  if (hasCallback) {
+    return oauth.init()
+  }
+  if (options?.preferredRestoreDid) {
+    try {
+      const session = await oauth.restore(options.preferredRestoreDid, 'auto')
+      return { session }
+    } catch {
+      return undefined
+    }
+  }
   return oauth.init()
+}
+
+/**
+ * Restore a specific OAuth session by DID (for account switching). Returns the session or null.
+ */
+export async function restoreOAuthSession(did: string): Promise<OAuthSession | null> {
+  try {
+    const oauth = await getOAuthClient()
+    const session = await oauth.restore(did, 'auto')
+    return session
+  } catch {
+    return null
+  }
 }
 
 /**

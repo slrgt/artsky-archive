@@ -4,7 +4,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useEditProfile } from '../context/EditProfileContext'
 import { useModalTopBarSlot } from '../context/ModalTopBarSlotContext'
-import { agent, publicAgent, getPostMediaInfo, getSession, listStandardSiteDocumentsForAuthor, isPostNsfw, type TimelineItem, type StandardSiteDocumentView } from '../lib/bsky'
+import { agent, publicAgent, getPostMediaInfo, getPostMediaInfoForDisplay, getSession, getActorFeeds, listStandardSiteDocumentsForAuthor, isPostNsfw, type TimelineItem, type StandardSiteDocumentView } from '../lib/bsky'
 import { formatRelativeTime, formatRelativeTimeTitle } from '../lib/date'
 import PostCard from '../components/PostCard'
 import PostText from '../components/PostText'
@@ -21,6 +21,98 @@ const REASON_PIN = 'app.bsky.feed.defs#reasonPin'
 
 const NSFW_CYCLE: NsfwPreference[] = ['sfw', 'blurred', 'nsfw']
 const VIEW_MODE_CYCLE: ViewMode[] = ['1', '2', '3']
+
+/** Nominal column width for height estimation (px). */
+const ESTIMATE_COL_WIDTH = 280
+const CARD_CHROME = 100
+
+function estimateItemHeight(item: TimelineItem): number {
+  const media = getPostMediaInfo(item.post)
+  if (!media) return CARD_CHROME + 80
+  if (media.aspectRatio != null && media.aspectRatio > 0) {
+    return CARD_CHROME + ESTIMATE_COL_WIDTH / media.aspectRatio
+  }
+  return CARD_CHROME + 220
+}
+
+/** Distribute items across columns so each column's estimated total height is roughly equal. */
+function distributeByHeight(
+  items: TimelineItem[],
+  numCols: number
+): Array<Array<{ item: TimelineItem; originalIndex: number }>> {
+  const columns: Array<Array<{ item: TimelineItem; originalIndex: number }>> = Array.from(
+    { length: numCols },
+    () => []
+  )
+  const columnHeights: number[] = Array(numCols).fill(0)
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    const h = estimateItemHeight(item)
+    let shortest = 0
+    for (let c = 1; c < numCols; c++) {
+      const heightDiff = columnHeights[c] - columnHeights[shortest]
+      if (heightDiff < 0) shortest = c
+      else if (heightDiff === 0 && columns[c].length < columns[shortest].length) shortest = c
+    }
+    columns[shortest].push({ item, originalIndex: i })
+    columnHeights[shortest] += h
+  }
+  return columns
+}
+
+function indexAbove(
+  columns: Array<Array<{ item: TimelineItem; originalIndex: number }>>,
+  currentIndex: number
+): number {
+  for (let c = 0; c < columns.length; c++) {
+    const row = columns[c].findIndex((e) => e.originalIndex === currentIndex)
+    if (row > 0) return columns[c][row - 1].originalIndex
+    if (row === 0) return currentIndex
+  }
+  return currentIndex
+}
+
+function indexBelow(
+  columns: Array<Array<{ item: TimelineItem; originalIndex: number }>>,
+  currentIndex: number
+): number {
+  for (let c = 0; c < columns.length; c++) {
+    const row = columns[c].findIndex((e) => e.originalIndex === currentIndex)
+    if (row >= 0 && row < columns[c].length - 1) return columns[c][row + 1].originalIndex
+    if (row >= 0) return currentIndex
+  }
+  return currentIndex
+}
+
+function indexLeftByRow(
+  columns: Array<Array<{ item: TimelineItem; originalIndex: number }>>,
+  currentIndex: number
+): number {
+  for (let c = 0; c < columns.length; c++) {
+    const row = columns[c].findIndex((e) => e.originalIndex === currentIndex)
+    if (row < 0) continue
+    if (c === 0) return currentIndex
+    const leftCol = columns[c - 1]
+    if (row < leftCol.length) return leftCol[row].originalIndex
+    return currentIndex
+  }
+  return currentIndex
+}
+
+function indexRightByRow(
+  columns: Array<Array<{ item: TimelineItem; originalIndex: number }>>,
+  currentIndex: number
+): number {
+  for (let c = 0; c < columns.length; c++) {
+    const row = columns[c].findIndex((e) => e.originalIndex === currentIndex)
+    if (row < 0) continue
+    if (c === columns.length - 1) return currentIndex
+    const rightCol = columns[c + 1]
+    if (row < rightCol.length) return rightCol[row].originalIndex
+    return currentIndex
+  }
+  return currentIndex
+}
 
 function ColumnIcon({ cols }: { cols: 1 | 2 | 3 }) {
   const w = 14
@@ -146,21 +238,15 @@ export function ProfileContent({
     try {
       setLoading(true)
       setError(null)
-      const res = await readAgent.app.bsky.feed.getActorFeeds({ actor: handle, limit: 50 })
-      const list = (res.data.feeds || []).map((f: { uri: string; displayName: string; description?: string; avatar?: string; likeCount?: number }) => ({
-        uri: f.uri,
-        displayName: f.displayName,
-        description: f.description,
-        avatar: f.avatar,
-        likeCount: f.likeCount,
-      }))
+      const list = await getActorFeeds(handle, 50)
       setFeeds(list)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load feeds')
+      setFeeds([])
     } finally {
       setLoading(false)
     }
-  }, [handle, readAgent])
+  }, [handle])
 
   const loadBlog = useCallback(async (nextCursor?: string) => {
     if (!handle || !profile?.did) return
@@ -240,15 +326,20 @@ export function ProfileContent({
     return !!embed && (embed.$type === 'app.bsky.embed.record#view' || embed.$type === 'app.bsky.embed.recordWithMedia#view')
   }
   const isRepostOrQuote = (item: TimelineItem) => isRepost(item) || isQuotePost(item)
+  /* Posts tab: original posts + quote posts where the poster added their own media (not just quoted post's media). Reposts tab: all reposts + all quote posts. */
   const authorFeedItemsRaw =
-    tab === 'posts' ? items.filter((i) => !isRepostOrQuote(i)) : tab === 'reposts' ? items.filter(isRepostOrQuote) : items
+    tab === 'posts'
+      ? items.filter((i) => !isRepost(i) && (!isQuotePost(i) || !!getPostMediaInfo(i.post)))
+      : tab === 'reposts'
+        ? items.filter(isRepostOrQuote)
+        : items
   const authorFeedItems =
     tab === 'posts'
       ? [...authorFeedItemsRaw].sort((a, b) => (isPinned(b) ? 1 : 0) - (isPinned(a) ? 1 : 0))
       : authorFeedItemsRaw
   const { nsfwPreference, setNsfwPreference, unblurredUris, setUnblurred } = useModeration()
   const mediaItems = authorFeedItems
-    .filter((item) => getPostMediaInfo(item.post))
+    .filter((item) => getPostMediaInfoForDisplay(item.post))
     .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
   const profileGridItems = mediaItems
   const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
@@ -297,25 +388,45 @@ export function ProfileContent({
       if (key === 'w' || e.key === 'ArrowUp') {
         mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
-        setKeyboardFocusIndex((idx) => Math.max(0, idx - cols))
+        if (cols >= 2) {
+          const columns = distributeByHeight(items, cols)
+          setKeyboardFocusIndex((idx) => indexAbove(columns, idx))
+        } else {
+          setKeyboardFocusIndex((idx) => Math.max(0, idx - 1))
+        }
         return
       }
       if (key === 's' || e.key === 'ArrowDown') {
         mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
-        setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + cols))
+        if (cols >= 2) {
+          const columns = distributeByHeight(items, cols)
+          setKeyboardFocusIndex((idx) => indexBelow(columns, idx))
+        } else {
+          setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + 1))
+        }
         return
       }
       if (key === 'a' || e.key === 'ArrowLeft') {
         mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
-        setKeyboardFocusIndex((idx) => Math.max(0, idx - 1))
+        if (cols >= 2) {
+          const columns = distributeByHeight(items, cols)
+          setKeyboardFocusIndex((idx) => indexLeftByRow(columns, idx))
+        } else {
+          setKeyboardFocusIndex((idx) => Math.max(0, idx - 1))
+        }
         return
       }
       if (key === 'd' || e.key === 'ArrowRight') {
         mouseMovedRef.current = false
         scrollIntoViewFromKeyboardRef.current = true
-        setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + 1))
+        if (cols >= 2) {
+          const columns = distributeByHeight(items, cols)
+          setKeyboardFocusIndex((idx) => indexRightByRow(columns, idx))
+        } else {
+          setKeyboardFocusIndex((idx) => Math.min(items.length - 1, idx + 1))
+        }
         return
       }
       if (key === 'e' || key === 'enter') {
@@ -358,7 +469,7 @@ export function ProfileContent({
   const textItems = authorFeedItems.filter(
     (item) =>
       postText(item.post).length > 0 &&
-      !getPostMediaInfo(item.post) &&
+      !getPostMediaInfoForDisplay(item.post) &&
       !isReply(item.post),
   )
 
@@ -678,19 +789,25 @@ export function ProfileContent({
             <div className={styles.empty}>No feeds.</div>
           ) : (
             <ul className={styles.feedsList}>
-              {feeds.map((f) => (
-                <li key={f.uri}>
-                  <a
-                    href={`https://bsky.app/profile/${handle}/feed/${encodeURIComponent(f.uri)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.feedLink}
-                  >
-                    <span className={styles.feedName}>{f.displayName}</span>
-                    {f.description && <span className={styles.feedDesc}>{f.description}</span>}
-                  </a>
-                </li>
-              ))}
+              {feeds.map((f) => {
+                const feedSlug = f.uri.split('/').pop() ?? ''
+                const feedUrl = feedSlug
+                  ? `https://bsky.app/profile/${encodeURIComponent(handle)}/feed/${encodeURIComponent(feedSlug)}`
+                  : f.uri
+                return (
+                  <li key={f.uri}>
+                    <a
+                      href={feedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.feedLink}
+                    >
+                      <span className={styles.feedName}>{f.displayName}</span>
+                      {f.description && <span className={styles.feedDesc}>{f.description}</span>}
+                    </a>
+                  </li>
+                )
+              })}
             </ul>
           )
         ) : mediaItems.length === 0 ? (
@@ -699,32 +816,66 @@ export function ProfileContent({
           </div>
         ) : (
           <>
-            <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
-              {mediaItems.map((item, index) => (
-                <div
-                  key={item.post.uri}
-                  onMouseEnter={() => {
-                    if (mouseMovedRef.current) {
-                      mouseMovedRef.current = false
-                      setKeyboardFocusIndex(index)
-                    }
-                  }}
-                >
-                  <PostCard
-                    item={item}
-                    isSelected={(tab === 'posts' || tab === 'reposts') && index === keyboardFocusIndex}
-                    cardRef={(el) => { cardRefsRef.current[index] = el }}
-                    openAddDropdown={(tab === 'posts' || tab === 'reposts') && index === keyboardFocusIndex && keyboardAddOpen}
-                    onAddClose={() => setKeyboardAddOpen(false)}
-                    onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
-                    nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
-                    onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
-                    constrainMediaHeight={cols === 1}
-                    likedUriOverride={likeOverrides[item.post.uri]}
-                  />
-                </div>
-              ))}
-            </div>
+            {cols >= 2 ? (
+              <div className={`${styles.gridColumns} ${styles[`gridView${viewMode}`]}`}>
+                {distributeByHeight(mediaItems, cols).map((column, colIndex) => (
+                  <div key={colIndex} className={styles.gridColumn}>
+                    {column.map(({ item, originalIndex }) => (
+                      <div
+                        key={item.post.uri}
+                        className={styles.gridItem}
+                        onMouseEnter={() => {
+                          if (mouseMovedRef.current) {
+                            mouseMovedRef.current = false
+                            setKeyboardFocusIndex(originalIndex)
+                          }
+                        }}
+                      >
+                        <PostCard
+                          item={item}
+                          isSelected={(tab === 'posts' || tab === 'reposts') && originalIndex === keyboardFocusIndex}
+                          cardRef={(el) => { cardRefsRef.current[originalIndex] = el }}
+                          openAddDropdown={(tab === 'posts' || tab === 'reposts') && originalIndex === keyboardFocusIndex && keyboardAddOpen}
+                          onAddClose={() => setKeyboardAddOpen(false)}
+                          onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
+                          nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
+                          onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
+                          constrainMediaHeight={false}
+                          likedUriOverride={likeOverrides[item.post.uri]}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
+                {mediaItems.map((item, index) => (
+                  <div
+                    key={item.post.uri}
+                    onMouseEnter={() => {
+                      if (mouseMovedRef.current) {
+                        mouseMovedRef.current = false
+                        setKeyboardFocusIndex(index)
+                      }
+                    }}
+                  >
+                    <PostCard
+                      item={item}
+                      isSelected={(tab === 'posts' || tab === 'reposts') && index === keyboardFocusIndex}
+                      cardRef={(el) => { cardRefsRef.current[index] = el }}
+                      openAddDropdown={(tab === 'posts' || tab === 'reposts') && index === keyboardFocusIndex && keyboardAddOpen}
+                      onAddClose={() => setKeyboardAddOpen(false)}
+                      onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
+                      nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
+                      onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
+                      constrainMediaHeight={cols === 1}
+                      likedUriOverride={likeOverrides[item.post.uri]}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
             {cursor && <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />}
             {loadingMore && <div className={styles.loadingMore}>Loading…</div>}
           </>

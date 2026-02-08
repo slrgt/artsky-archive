@@ -9,10 +9,18 @@
   background: var(--overlay-bg);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  padding: 1rem;
+  padding: 0.75rem 0.5rem 0.75rem 0.5rem;
   padding-top: 2.5rem;
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+  padding-right: max(0.5rem, env(safe-area-inset-right));
+  padding-bottom: 0.75rem;
   box-sizing: border-box;
   overflow: hidden;
+}
+
+/* Post detail etc.: small top gap so pane is not touching the top of the screen */
+.overlayFlushTop.overlay {
+  padding-top: max(0.5rem, env(safe-area-inset-top));
 }
 
 /* Match main content width on homepage (Layout .main) */
@@ -33,6 +41,11 @@
 /* Smooth snap-back after swipe (no transition during drag for 1:1 follow) */
 .paneSwipeReturning {
   transition: transform 0.2s ease-out;
+}
+
+/* Post detail: no right border so it doesn't double up with comment borders */
+.paneNoRightBorder.pane {
+  border-right: none;
 }
 
 .scroll {
@@ -71,9 +84,20 @@
   z-index: 2;
 }
 
-/* When bar is overlay, add padding so first content clears the X button */
+/* X (and back) without circle when bar is transparent */
+.modalTopBarTransparent .closeBtn,
+.modalTopBarTransparent .backBtn {
+  background: transparent;
+  border-radius: 0;
+}
+.modalTopBarTransparent .closeBtn:hover,
+.modalTopBarTransparent .backBtn:hover {
+  background: var(--glass-bg);
+}
+
+/* When bar is overlay, no top padding so content (e.g. media) goes under the X */
 .scrollWithTransparentBar {
-  padding-top: 2.75rem;
+  padding-top: 0;
 }
 
 /* Left: X + Back so we can match its width on the right for true center */
@@ -137,7 +161,7 @@
 .backBtn:focus,
 .closeBtn:focus {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
 .backBtn:active,
@@ -149,8 +173,11 @@
 @media (max-width: 767px) {
   .overlay {
     padding-top: max(0.5rem, env(safe-area-inset-top));
-    padding-bottom: 2.5rem;
+    padding-bottom: 2rem;
     justify-content: flex-start;
+  }
+  .overlayFlushTop.overlay {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
   }
   .pane {
     max-height: calc(100% - 2.5rem);
@@ -164,7 +191,7 @@
     bottom: auto;
   }
   .scrollWithTransparentBar {
-    padding-top: 2.75rem;
+    padding-top: 0;
     padding-bottom: 0;
   }
 }
