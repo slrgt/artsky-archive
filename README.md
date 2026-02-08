@@ -43,7 +43,7 @@ git push -u origin dev
 So that pushes to `dev` can deploy to the separate dev URL, do this once.
 
 **1. Create the dev repo**  
-On GitHub, create a new repo **artsky-dev** (same account as artsky, e.g. `slrgt/artsky-dev`). It can be empty (no need to clone or add files).
+On GitHub, create a new repo **artsky-dev** (same account as artsky, e.g. `slrgt/artsky-dev`). It can be empty. The first deploy will push the built app and a README (from `artsky-dev-README.md` in this repo) so the artsky-dev repo explains what it is.
 
 **2. Create a fine-grained Personal Access Token**
 

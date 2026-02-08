@@ -87,6 +87,9 @@ jobs:
             exit 1
           fi
 
+      - name: Add README for artsky-dev repo
+        run: cp artsky-dev-README.md dist/README.md
+
       - name: Deploy to artsky-dev repo
         uses: peaceiris/actions-gh-pages@v4
         with:
