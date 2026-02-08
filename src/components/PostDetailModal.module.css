@@ -140,21 +140,26 @@
   transform: scale(0.96);
 }
 
-/* Mobile: bar at bottom of popup (column-reverse), scroll above it */
+/* Mobile: top bar stays at top (X and back on top left), scroll below; less gap at top, gap at bottom */
 @media (max-width: 767px) {
+  .overlay {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+    padding-bottom: 2.5rem;
+    justify-content: flex-start;
+  }
   .pane {
-    flex-direction: column-reverse;
+    max-height: calc(100% - 2.5rem);
   }
   .scroll {
     padding-bottom: 0.5rem;
   }
-  /* Transparent bar on mobile: pin to bottom so it matches other modals */
+  /* Transparent bar on mobile: keep at top so X/back are top left */
   .modalTopBarTransparent {
-    top: auto;
-    bottom: 0;
+    top: 0;
+    bottom: auto;
   }
   .scrollWithTransparentBar {
-    padding-top: 0;
-    padding-bottom: 2.75rem;
+    padding-top: 2.75rem;
+    padding-bottom: 0;
   }
 }

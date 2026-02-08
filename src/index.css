@@ -181,6 +181,16 @@ body {
   min-height: -webkit-fill-available;
 }
 
+/* iOS Safari: transparent behind URL bar and status bar so it feels like a native app */
+@media (max-width: 767px) {
+  body {
+    background: transparent;
+  }
+  #root {
+    background: var(--bg);
+  }
+}
+
 button {
   font-family: inherit;
 }
