@@ -54,12 +54,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     async function init() {
       // On localhost, skip OAuth init so the app doesn't redirect to 127.0.0.1 (library behavior).
       if (!isLocalhost()) {
+        const oauthAccounts = bsky.getOAuthAccountsSnapshot()
         try {
           const search = typeof window !== 'undefined' ? window.location.search : ''
           const params = new URLSearchParams(search)
           const hasCallback = params.has('state') && (params.has('code') || params.has('error'))
           const waitMs = hasCallback ? 12_000 : oauthTimeoutMs
-          const oauthAccounts = bsky.getOAuthAccountsSnapshot()
           const oauthResult = await Promise.race([
             oauth.initOAuth({
               hasCallback,

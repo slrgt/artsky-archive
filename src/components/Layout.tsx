@@ -307,7 +307,7 @@ export default function Layout({ title, children, showNav }: Props) {
       </button>
     </div>
   )
-  const { viewMode, setViewMode, viewOptions } = useViewMode()
+  const { viewMode, setViewMode, cycleViewMode, viewOptions } = useViewMode()
   const { cardViewMode, cycleCardView } = useArtOnly()
   const { mediaOnly, toggleMediaOnly } = useMediaOnly()
   const path = loc.pathname
@@ -1128,6 +1128,17 @@ export default function Layout({ title, children, showNav }: Props) {
                 title={cardViewMode === 'default' ? 'Minimalist' : cardViewMode === 'minimalist' ? 'Art only' : 'Show all'}
               >
                 <ArtOnlyEyeIcon mode={cardViewMode === 'default' ? 'open' : cardViewMode === 'minimalist' ? 'half' : 'closed'} />
+              </button>
+              <button
+                type="button"
+                className={styles.headerBtn}
+                onClick={cycleViewMode}
+                title={`${VIEW_LABELS[viewMode]}. Click to cycle.`}
+                aria-label={`${VIEW_LABELS[viewMode]}. Click to cycle.`}
+              >
+                {viewMode === '1' && <Column1Icon />}
+                {viewMode === '2' && <Column2Icon />}
+                {viewMode === '3' && <Column3Icon />}
               </button>
               {session && (
                 <div className={styles.headerBtnWrap}>

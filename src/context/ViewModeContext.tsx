@@ -19,6 +19,8 @@ export const VIEW_LABELS: Record<ViewMode, string> = {
 type ViewModeContextValue = {
   viewMode: ViewMode
   setViewMode: (mode: ViewMode) => void
+  /** Cycle 1 → 2 → 3 → 1 (uses current state, safe for header toggle). */
+  cycleViewMode: () => void
   viewOptions: ViewMode[]
 }
 
@@ -71,9 +73,23 @@ export function ViewModeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const cycleViewMode = useCallback(() => {
+    setViewModeState((prev) => {
+      const i = VIEW_OPTIONS.indexOf(prev)
+      const next: ViewMode = VIEW_OPTIONS[i >= 0 ? (i + 1) % VIEW_OPTIONS.length : 0]
+      try {
+        localStorage.setItem(STORAGE_KEY, next)
+      } catch {
+        // ignore
+      }
+      return next
+    })
+  }, [])
+
   const value: ViewModeContextValue = {
     viewMode,
     setViewMode,
+    cycleViewMode,
     viewOptions: VIEW_OPTIONS,
   }
 
