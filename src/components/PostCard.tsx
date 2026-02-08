@@ -50,8 +50,6 @@ interface Props {
   onNsfwUnblur?: () => void
   /** When true, media wrap uses fixed height from --feed-card-media-max-height (no aspect-ratio resize on load) */
   constrainMediaHeight?: boolean
-  /** When true, do not show like count next to the like button (e.g. on preview cards in feed) */
-  hideLikeCount?: boolean
 }
 
 function RepostIcon() {
@@ -82,7 +80,7 @@ function isHlsUrl(url: string): boolean {
   return /\.m3u8(\?|$)/i.test(url) || url.includes('m3u8')
 }
 
-export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, feedLabel, openActionsMenuTrigger, openActionsMenu, onActionsMenuOpen, onActionsMenuClose, onAspectRatio, fillCell, nsfwBlurred, onNsfwUnblur, constrainMediaHeight, hideLikeCount }: Props) {
+export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, feedLabel, openActionsMenuTrigger, openActionsMenu, onActionsMenuOpen, onActionsMenuClose, onAspectRatio, fillCell, nsfwBlurred, onNsfwUnblur, constrainMediaHeight }: Props) {
   const navigate = useNavigate()
   const { session } = useSession()
   const { artOnly } = useArtOnly()
@@ -99,11 +97,9 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const isFollowingAuthor = !!authorViewer?.following
   const isOwnPost = session?.did === post.author.did
   const showNotFollowingGreen = !!session && !isOwnPost && !isFollowingAuthor
-  const postViewer = (post as { viewer?: { like?: string }; likeCount?: number })
+  const postViewer = (post as { viewer?: { like?: string } })
   const initialLikedUri = postViewer.viewer?.like
   const [likedUri, setLikedUri] = useState<string | undefined>(initialLikedUri)
-  const [likeCount, setLikeCount] = useState(postViewer.likeCount ?? 0)
-  const [likeLoading, setLikeLoading] = useState(false)
 
   const [imageIndex, setImageIndex] = useState(0)
   const [multiImageExpanded, setMultiImageExpanded] = useState(false)
@@ -127,33 +123,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
 
   useEffect(() => {
     setLikedUri(initialLikedUri)
-    setLikeCount(postViewer.likeCount ?? 0)
-  }, [post.uri, initialLikedUri, postViewer.likeCount])
-
-  async function handleLikeClick(e: React.MouseEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    if (!session?.did || likeLoading) return
-    const isLiked = !!likedUri
-    setLikeLoading(true)
-    try {
-      if (isLiked) {
-        if (likedUri) await agent.deleteLike(likedUri)
-        setLikedUri(undefined)
-        setLikeCount((c) => Math.max(0, c - 1))
-      } else {
-        const res = await agent.like(post.uri, post.cid)
-        setLikedUri(res.uri)
-        setLikeCount((c) => c + 1)
-      }
-    } catch {
-      // revert
-      setLikedUri(initialLikedUri)
-      setLikeCount(postViewer.likeCount ?? 0)
-    } finally {
-      setLikeLoading(false)
-    }
-  }
+  }, [post.uri, initialLikedUri])
 
   const clearLongPressTimer = useCallback(() => {
     if (longPressTimerRef.current !== null) {

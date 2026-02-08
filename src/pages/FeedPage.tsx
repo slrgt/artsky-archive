@@ -596,7 +596,6 @@ export default function FeedPage() {
                             fillCell={false}
                             nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
                             onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
-                            hideLikeCount
                           />
                         </div>
                       ))}
@@ -630,7 +629,6 @@ export default function FeedPage() {
                       fillCell={false}
                       nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
                       onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
-                      hideLikeCount
                     />
                   </div>
                 ))}

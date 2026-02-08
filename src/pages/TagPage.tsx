@@ -166,7 +166,6 @@ export function TagContent({ tag, inModal = false }: { tag: string; inModal?: bo
                   onPostClick={inModal ? (uri) => openPostModal(uri) : undefined}
                   nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
                   onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
-                  hideLikeCount
                 />
               </div>
             ))}
