@@ -632,18 +632,6 @@ export default function Layout({ title, children, showNav }: Props) {
   const accountPanelContent = (
     <>
       <section className={styles.menuSection}>
-        <span className={styles.menuSectionTitle}>App</span>
-        <Link
-          to="/artboards"
-          className={path === '/artboards' ? styles.menuItemActive : styles.menuItem}
-          onClick={closeAccountPanel}
-          aria-current={path === '/artboards' ? 'page' : undefined}
-        >
-          <span className={styles.navIcon}><ArtboardsIcon /></span>
-          <span>Artboards</span>
-        </Link>
-      </section>
-      <section className={styles.menuSection}>
         <div className={styles.menuThemeColumnRow}>
           {themeButtons}
           <div className={styles.menuRow}>
@@ -880,23 +868,27 @@ export default function Layout({ title, children, showNav }: Props) {
                 <img src={`${import.meta.env.BASE_URL || '/'}icon.svg`} alt="" className={styles.logoIcon} />
                 <span className={styles.logoText}>ArtSky</span>
               </Link>
-              {isDesktop && (
-                <>
-                  <Link to="/artboards" className={styles.headerArtboardsLink} aria-label="Artboards">
-                    Artboards
-                  </Link>
-                  <Link
-                    to="/forum"
-                    className={styles.headerArtboardsLink}
-                    aria-label="Forum"
-                  >
-                    Forum
-                  </Link>
-                </>
-              )}
             </div>
             <div className={styles.headerCenter}>
-              <SearchBar inputRef={searchInputRef} compact={isDesktop} />
+              {isDesktop ? (
+                <div className={styles.headerSearchRow}>
+                  <div className={styles.headerSearchSide}>
+                    <Link to="/artboards" className={styles.headerArtboardsLink} aria-label="Artboards">
+                      Artboards
+                    </Link>
+                  </div>
+                  <div className={styles.headerSearchBarWrap}>
+                    <SearchBar inputRef={searchInputRef} compact={isDesktop} />
+                  </div>
+                  <div className={styles.headerSearchSide}>
+                    <Link to="/forum" className={styles.headerArtboardsLink} aria-label="Forum">
+                      Forum
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <SearchBar inputRef={searchInputRef} compact={isDesktop} />
+              )}
             </div>
             <div className={styles.headerRight}>
               {!session && isDesktop && (

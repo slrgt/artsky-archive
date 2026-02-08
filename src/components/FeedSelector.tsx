@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { FeedSource, FeedMixEntry } from '../types'
 import styles from './FeedSelector.module.css'
+
+const REMIX_EXPLANATION =
+  'Remix combines multiple feeds into one. Turn on two or more feeds, then use − and + to set how many posts from each appear in every 10. The bar shows each feed\'s share.'
 
 function sameSource(a: FeedSource, b: FeedSource): boolean {
   return (a.uri ?? a.label) === (b.uri ?? b.label)
@@ -27,6 +30,17 @@ export default function FeedSelector({
   const [customInput, setCustomInput] = useState('')
   const [showCustom, setShowCustom] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
+  const helpRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showHelp) return
+    function handleClickOutside(e: MouseEvent) {
+      if (helpRef.current && !helpRef.current.contains(e.target as Node)) setShowHelp(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showHelp])
 
   async function handleAddCustom(e: React.FormEvent) {
     e.preventDefault()
@@ -44,6 +58,22 @@ export default function FeedSelector({
 
   return (
     <div className={styles.wrap}>
+      <div className={styles.remixHeader} ref={helpRef}>
+        <button
+          type="button"
+          className={styles.helpBtn}
+          onClick={() => setShowHelp((v) => !v)}
+          aria-label="Explain remix feed"
+          aria-expanded={showHelp}
+        >
+          ?
+        </button>
+        {showHelp && (
+          <div className={styles.helpPopover} role="tooltip">
+            {REMIX_EXPLANATION}
+          </div>
+        )}
+      </div>
       <div className={styles.tabs}>
         {sources.map((s) => {
           const entryIndex = mixEntries.findIndex((e) => sameSource(e.source, s))
@@ -75,7 +105,8 @@ export default function FeedSelector({
                     }}
                     onClick={() => onToggle(s)}
                   >
-                    {s.label}
+                    <span className={styles.feedPillLabel}>{s.label}</span>
+                    <span className={styles.feedPillRatio}>{in10} in 10 posts</span>
                   </button>
                   <button
                     type="button"
@@ -96,7 +127,14 @@ export default function FeedSelector({
                   className={isInMix ? styles.active : ''}
                   onClick={() => onToggle(s)}
                 >
-                  {s.label}
+                  {isInMix ? (
+                    <>
+                      <span className={styles.feedPillLabel}>{s.label}</span>
+                      <span className={styles.feedPillRatio}>10 in 10 posts</span>
+                    </>
+                  ) : (
+                    s.label
+                  )}
                 </button>
               )}
             </div>

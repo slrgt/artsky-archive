@@ -468,8 +468,20 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
           onMouseLeave={onMediaLeave}
         >
           {!hasMedia ? (
-            <div className={styles.textOnlyPlaceholder} aria-hidden>
-              Text post
+            <div className={styles.textOnlyPreview}>
+              {text ? (
+                <div className={styles.textOnlyPreviewText}>
+                  <PostText
+                    text={text}
+                    facets={(post.record as { facets?: unknown[] })?.facets}
+                    maxLength={160}
+                    stopPropagation
+                    linkDisplay="domain"
+                  />
+                </div>
+              ) : (
+                <span className={styles.textOnlyPreviewEmpty}>Text post</span>
+              )}
             </div>
           ) : isVideo ? (
             <video

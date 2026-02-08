@@ -248,9 +248,39 @@
     align-items: center;
     min-width: 0;
   }
-  .headerCenter > * {
+  .headerCenter > *:not(.headerSearchRow) {
     width: 100%;
     max-width: 480px;
+  }
+  .headerSearchRow {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: 720px;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+  .headerSearchSide {
+    flex: 1 0 auto;
+    display: flex;
+    align-items: center;
+    min-width: 4.5rem;
+    position: relative;
+    z-index: 2;
+  }
+  .headerSearchSide:first-child {
+    justify-content: flex-start;
+  }
+  .headerSearchSide:last-child {
+    justify-content: flex-end;
+  }
+  .headerSearchBarWrap {
+    flex: 0 1 480px;
+    width: 100%;
+    max-width: 480px;
+    min-width: 0;
+    position: relative;
+    z-index: 1;
   }
   .headerRight {
     display: flex;
