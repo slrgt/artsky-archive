@@ -10,6 +10,7 @@ import { FeedMixProvider } from './context/FeedMixContext'
 import { ProfileModalProvider } from './context/ProfileModalContext'
 import { LoginModalProvider } from './context/LoginModalContext'
 import { EditProfileProvider } from './context/EditProfileContext'
+import { ScrollLockProvider } from './context/ScrollLockContext'
 import { HiddenPostsProvider } from './context/HiddenPostsContext'
 import { ModerationProvider } from './context/ModerationContext'
 import FeedPage from './pages/FeedPage'
@@ -81,6 +82,7 @@ export default function App() {
       <HashRouter>
         <ThemeProvider>
           <SessionProvider>
+            <ScrollLockProvider>
             <ViewModeProvider>
               <ArtOnlyProvider>
                 <MediaOnlyProvider>
@@ -100,6 +102,7 @@ export default function App() {
                 </MediaOnlyProvider>
               </ArtOnlyProvider>
             </ViewModeProvider>
+            </ScrollLockProvider>
           </SessionProvider>
         </ThemeProvider>
       </HashRouter>

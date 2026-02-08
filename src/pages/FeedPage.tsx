@@ -437,8 +437,8 @@ export default function FeedPage() {
       if (items.length === 0) return
 
       const key = e.key.toLowerCase()
-      /* Ignore key repeat so D/A/W/S move one step only (no skip) */
-      if (e.repeat && (key === 'w' || key === 's' || key === 'a' || key === 'd' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return
+      /* Ignore key repeat for left/right only (so A/D don’t skip); allow repeat for W/S so holding moves up/down */
+      if (e.repeat && (key === 'a' || key === 'd' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return
       if (blockConfirm) {
         if (key === 'escape') {
           e.preventDefault()

@@ -527,6 +527,30 @@
   padding-right: 4px;
 }
 
+/* Comment media: cap height so images/videos scale to fit viewport */
+.replies .galleryWrap {
+  max-height: 85vh;
+}
+
+.replies .galleryImageBtn {
+  max-height: 70vh;
+  min-height: 0;
+}
+
+.replies .galleryMedia {
+  max-height: 70vh;
+  object-fit: contain;
+}
+
+.replies .galleryVideoWrap {
+  max-height: 70vh;
+}
+
+.replies .galleryVideoWrap .galleryVideo {
+  max-height: 100%;
+  object-fit: contain;
+}
+
 .collapsedCommentWrap {
   margin-bottom: 0.5rem;
 }

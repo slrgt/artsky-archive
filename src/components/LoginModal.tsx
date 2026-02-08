@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import type { LoginMode } from './LoginCard'
 import LoginCard from './LoginCard'
+import { useScrollLock } from '../context/ScrollLockContext'
 import styles from './LoginModal.module.css'
 
 interface LoginModalProps {
@@ -11,6 +12,14 @@ interface LoginModalProps {
 }
 
 export default function LoginModal({ isOpen, mode, onClose, onSuccess }: LoginModalProps) {
+  const scrollLock = useScrollLock()
+
+  useEffect(() => {
+    if (!isOpen) return
+    scrollLock?.lockScroll()
+    return () => scrollLock?.unlockScroll()
+  }, [isOpen, scrollLock])
+
   useEffect(() => {
     if (!isOpen) return
     const handleKeyDown = (e: KeyboardEvent) => {

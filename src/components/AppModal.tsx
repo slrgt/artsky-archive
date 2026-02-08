@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ModalTopBarSlotContext } from '../context/ModalTopBarSlotContext'
+import { useScrollLock } from '../context/ScrollLockContext'
 import styles from './PostDetailModal.module.css'
 
 interface AppModalProps {
@@ -26,9 +27,38 @@ export default function AppModal({
   transparentTopBar = false,
 }: AppModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const closeBtnRef = useRef<HTMLButtonElement>(null)
   const [topBarSlotEl, setTopBarSlotEl] = useState<HTMLDivElement | null>(null)
   const [topBarRightSlotEl, setTopBarRightSlotEl] = useState<HTMLDivElement | null>(null)
+  const scrollLock = useScrollLock()
+
+  useEffect(() => {
+    scrollLock?.lockScroll()
+    return () => scrollLock?.unlockScroll()
+  }, [scrollLock])
+
+  /* When modal is open, route wheel events to the modal scroll area so scrolling never moves the page behind */
+  useEffect(() => {
+    const overlay = overlayRef.current
+    const scrollEl = scrollRef.current
+    if (!overlay || !scrollEl) return
+    const onWheel = (e: WheelEvent) => {
+      const target = e.target as Node
+      if (!overlay.contains(target)) {
+        /* Mouse outside modal: prevent page scroll and scroll the popup instead */
+        e.preventDefault()
+        scrollEl.scrollTop += e.deltaY
+        return
+      }
+      if (scrollEl.contains(target)) return
+      /* Mouse over overlay but not the scroll area (e.g. backdrop or top bar): scroll the popup */
+      e.preventDefault()
+      scrollEl.scrollTop += e.deltaY
+    }
+    window.addEventListener('wheel', onWheel, { passive: false, capture: true })
+    return () => window.removeEventListener('wheel', onWheel, { capture: true })
+  }, [])
 
   useEffect(() => {
     if (focusCloseOnOpen) closeBtnRef.current?.focus()
@@ -100,7 +130,7 @@ export default function AppModal({
             <div ref={setTopBarSlotEl} className={styles.modalTopBarSlot} />
             <div ref={setTopBarRightSlotEl} className={styles.modalTopBarRight} />
           </div>
-          <div className={`${styles.scroll} ${transparentTopBar ? styles.scrollWithTransparentBar : ''}`}>{children}</div>
+          <div ref={scrollRef} className={`${styles.scroll} ${transparentTopBar ? styles.scrollWithTransparentBar : ''}`}>{children}</div>
         </div>
       </div>
     </ModalTopBarSlotContext.Provider>

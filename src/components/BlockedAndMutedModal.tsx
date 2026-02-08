@@ -7,6 +7,7 @@ import {
   unblockAccount,
   unmuteAccount,
 } from '../lib/bsky'
+import { useScrollLock } from '../context/ScrollLockContext'
 import styles from './BlockedAndMutedModal.module.css'
 
 type BlockedEntry = { blockUri: string; did: string; handle?: string; displayName?: string; avatar?: string }
@@ -43,6 +44,7 @@ function formatDuration(expiresAt?: string): string {
 }
 
 export default function BlockedAndMutedModal({ onClose }: { onClose: () => void }) {
+  const scrollLock = useScrollLock()
   const [blocked, setBlocked] = useState<BlockedEntry[]>([])
   const [muted, setMuted] = useState<MutedEntry[]>([])
   const [mutedWords, setMutedWords] = useState<MutedWordEntry[]>([])
@@ -53,6 +55,11 @@ export default function BlockedAndMutedModal({ onClose }: { onClose: () => void 
   const [newWordDuration, setNewWordDuration] = useState<'24h' | '7d' | '30d' | 'forever'>('forever')
   const [newWordExcludeFollowing, setNewWordExcludeFollowing] = useState(true)
   const [addWordLoading, setAddWordLoading] = useState(false)
+
+  useEffect(() => {
+    scrollLock?.lockScroll()
+    return () => scrollLock?.unlockScroll()
+  }, [scrollLock])
 
   const load = () => {
     setLoading(true)

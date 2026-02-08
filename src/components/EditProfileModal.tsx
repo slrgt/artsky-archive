@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { agent, getSession } from '../lib/bsky'
+import { useScrollLock } from '../context/ScrollLockContext'
 import styles from './EditProfileModal.module.css'
 
 const DESCRIPTION_MAX = 256
@@ -16,6 +17,7 @@ const AVATAR_MAX_MB = 1
 export default function EditProfileModal({ onClose, onSaved }: EditProfileModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const scrollLock = useScrollLock()
   const [displayName, setDisplayName] = useState('')
   const [handle, setHandle] = useState('')
   const [description, setDescription] = useState('')
@@ -24,6 +26,11 @@ export default function EditProfileModal({ onClose, onSaved }: EditProfileModalP
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    scrollLock?.lockScroll()
+    return () => scrollLock?.unlockScroll()
+  }, [scrollLock])
 
   useEffect(() => {
     const session = getSession()
