@@ -27,10 +27,6 @@
     padding-left: 1rem;
     padding-right: 1rem;
   }
-  /* Smooth snap-back after swipe gesture (no transition during drag for 1:1 follow) */
-  .wrapInModal.wrapSwipeReturning {
-    transition: transform 0.2s ease-out;
-  }
 }
 
 .loading {

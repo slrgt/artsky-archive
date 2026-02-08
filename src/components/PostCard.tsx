@@ -659,90 +659,92 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
         {!artOnly && (
         <div className={styles.meta}>
           <div className={styles.cardActionRow} onClick={(e) => e.stopPropagation()}>
-            <div
-              className={`${styles.addWrap} ${addOpen ? styles.addWrapOpen : ''}`}
-              ref={addRef}
-            >
+            <div className={styles.cardActionRowCenter}>
+              <div
+                className={`${styles.addWrap} ${addOpen ? styles.addWrapOpen : ''}`}
+                ref={addRef}
+              >
+                <button
+                  type="button"
+                  className={styles.addToBoardBtn}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setAddOpen((o) => !o)
+                  }}
+                  aria-label="Collect"
+                  aria-expanded={addOpen}
+                >
+                  +
+                </button>
+                {addOpen && (
+                  <div className={styles.addDropdown}>
+                    {boards.length === 0 ? null : (
+                      <>
+                        {boards.map((b) => {
+                          const alreadyIn = isPostInArtboard(b.id, post.uri)
+                          const selected = addToBoardIds.has(b.id)
+                          return (
+                            <label key={b.id} className={styles.addBoardLabel}>
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={() => !alreadyIn && toggleBoardSelection(b.id)}
+                                disabled={alreadyIn}
+                                className={styles.addBoardCheckbox}
+                              />
+                              <span className={styles.addBoardText}>
+                                {alreadyIn ? <>✓ {b.name}</> : b.name}
+                              </span>
+                            </label>
+                          )
+                        })}
+                      </>
+                    )}
+                    <div className={styles.addDropdownNew}>
+                      <input
+                        type="text"
+                        placeholder="New collection name"
+                        value={newBoardName}
+                        onChange={(e) => setNewBoardName(e.target.value)}
+                        className={styles.addBoardInput}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddToArtboard())}
+                      />
+                    </div>
+                    <div className={styles.addDropdownActions}>
+                      <button
+                        type="button"
+                        className={styles.addBoardSubmit}
+                        onClick={handleAddToArtboard}
+                        disabled={addToBoardIds.size === 0 && !newBoardName.trim()}
+                      >
+                        Add to selected
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
-                className={styles.addToBoardBtn}
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setAddOpen((o) => !o)
-                }}
-                aria-label="Collect"
-                aria-expanded={addOpen}
+                className={`${styles.cardLikeRepostBtn} ${isLiked ? styles.cardLikeRepostBtnActive : ''}`}
+                onClick={handleLikeClick}
+                disabled={likeLoading}
+                title={isLiked ? 'Remove like' : 'Like'}
+                aria-label={isLiked ? 'Remove like' : 'Like'}
               >
-                +
+                {likeLoading ? '…' : isLiked ? '♥' : '♡'}
               </button>
-              {addOpen && (
-                <div className={styles.addDropdown}>
-                  {boards.length === 0 ? null : (
-                    <>
-                      {boards.map((b) => {
-                        const alreadyIn = isPostInArtboard(b.id, post.uri)
-                        const selected = addToBoardIds.has(b.id)
-                        return (
-                          <label key={b.id} className={styles.addBoardLabel}>
-                            <input
-                              type="checkbox"
-                              checked={selected}
-                              onChange={() => !alreadyIn && toggleBoardSelection(b.id)}
-                              disabled={alreadyIn}
-                              className={styles.addBoardCheckbox}
-                            />
-                            <span className={styles.addBoardText}>
-                              {alreadyIn ? <>✓ {b.name}</> : b.name}
-                            </span>
-                          </label>
-                        )
-                      })}
-                    </>
-                  )}
-                  <div className={styles.addDropdownNew}>
-                    <input
-                      type="text"
-                      placeholder="New collection name"
-                      value={newBoardName}
-                      onChange={(e) => setNewBoardName(e.target.value)}
-                      className={styles.addBoardInput}
-                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddToArtboard())}
-                    />
-                  </div>
-                  <div className={styles.addDropdownActions}>
-                    <button
-                      type="button"
-                      className={styles.addBoardSubmit}
-                      onClick={handleAddToArtboard}
-                      disabled={addToBoardIds.size === 0 && !newBoardName.trim()}
-                    >
-                      Add to selected
-                    </button>
-                  </div>
-                </div>
-              )}
+              <button
+                type="button"
+                className={`${styles.cardLikeRepostBtn} ${isReposted ? styles.cardLikeRepostBtnActive : ''}`}
+                onClick={handleRepostClick}
+                disabled={repostLoading}
+                title={isReposted ? 'Remove repost' : 'Repost'}
+                aria-label={isReposted ? 'Remove repost' : 'Repost'}
+              >
+                <RepostIcon />
+              </button>
             </div>
-            <button
-              type="button"
-              className={`${styles.cardLikeRepostBtn} ${isLiked ? styles.cardLikeRepostBtnActive : ''}`}
-              onClick={handleLikeClick}
-              disabled={likeLoading}
-              title={isLiked ? 'Remove like' : 'Like'}
-              aria-label={isLiked ? 'Remove like' : 'Like'}
-            >
-              {likeLoading ? '…' : isLiked ? '♥' : '♡'}
-            </button>
-            <button
-              type="button"
-              className={`${styles.cardLikeRepostBtn} ${isReposted ? styles.cardLikeRepostBtnActive : ''}`}
-              onClick={handleRepostClick}
-              disabled={repostLoading}
-              title={isReposted ? 'Remove repost' : 'Repost'}
-              aria-label={isReposted ? 'Remove repost' : 'Repost'}
-            >
-              <RepostIcon />
-            </button>
             <div
               className={styles.actionsMenuWrap}
               data-open={openActionsMenu === true ? 'true' : undefined}

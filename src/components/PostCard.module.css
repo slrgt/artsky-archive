@@ -74,13 +74,21 @@
   opacity: 1;
 }
 
-/* Action row: Collect, Like, Repost, ... menu above username */
+/* Action row: Collect, Like, Repost centered in card; ... menu absolutely on the right so it doesn't shift center */
 .cardActionRow {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
   margin-bottom: 0.35rem;
+}
+
+.cardActionRowCenter {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.875rem;
+  min-width: 0;
 }
 
 .cardActionRow .addWrap {
@@ -118,10 +126,13 @@
   cursor: default;
 }
 
-/* ... menu in meta row: always visible on preview cards */
+/* ... menu in meta row: out of flow so Collect/Like/Repost stay truly centered */
 .actionsMenuWrap {
-  flex-shrink: 0;
-  margin-left: auto;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
 }
 
 .addToBoardBtn {

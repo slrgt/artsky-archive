@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import type { AppBskyFeedDefs } from '@atproto/api'
 import type { AtpSessionData } from '@atproto/api'
@@ -598,23 +598,6 @@ function PostBlock({
   )
 }
 
-const MOBILE_BREAKPOINT = 768
-function getMobileSnapshot() {
-  return typeof window !== 'undefined' ? window.innerWidth < MOBILE_BREAKPOINT : false
-}
-function subscribeMobile(cb: () => void) {
-  if (typeof window === 'undefined') return () => {}
-  const mq = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-  mq.addEventListener('change', cb)
-  return () => mq.removeEventListener('change', cb)
-}
-
-/* Swipe thresholds: require clearly horizontal gesture to avoid accidental triggers when scrolling */
-const SWIPE_COMMIT_PX = 28
-const SWIPE_HORIZONTAL_RATIO = 2
-const SWIPE_TRIGGER_PX = 80
-const SWIPE_DRAG_CAP_PX = 140
-
 export interface PostDetailContentProps {
   /** Decoded post URI */
   uri: string
@@ -628,7 +611,6 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
   const navigate = useNavigate()
   const { openProfileModal } = useProfileModal()
   const { isHidden } = useHiddenPosts()
-  const isMobile = useSyncExternalStore(subscribeMobile, getMobileSnapshot, () => false)
   const decodedUri = uriProp
   const [thread, setThread] = useState<
     AppBskyFeedDefs.ThreadViewPost | AppBskyFeedDefs.NotFoundPost | AppBskyFeedDefs.BlockedPost | { $type: string } | null
@@ -666,11 +648,6 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
   const keyboardFocusIndexRef = useRef(0)
   const prevSectionIndexRef = useRef(0)
-  const touchStartXRef = useRef(0)
-  const touchStartYRef = useRef(0)
-  const horizontalSwipeRef = useRef(false)
-  const [swipeTranslateX, setSwipeTranslateX] = useState(0)
-  const [swipeReturning, setSwipeReturning] = useState(false)
   const boards = getArtboards()
   const session = getSession()
   const { session: sessionFromContext, sessionsList, switchAccount } = useSession()
@@ -1165,63 +1142,8 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
   const rootMedia =
     thread && isThreadViewPost(thread) ? getPostAllMedia(thread.post) : []
 
-  const authorHandle =
-    thread && isThreadViewPost(thread) ? (thread.post.author.handle ?? thread.post.author.did) : null
-
-  const swipeEnabled = onClose && isMobile
-
-  function onSwipeTouchStart(e: React.TouchEvent) {
-    if (!swipeEnabled || e.touches.length !== 1) return
-    touchStartXRef.current = e.touches[0].clientX
-    touchStartYRef.current = e.touches[0].clientY
-    horizontalSwipeRef.current = false
-  }
-
-  function onSwipeTouchMove(e: React.TouchEvent) {
-    if (!swipeEnabled || e.touches.length !== 1) return
-    const dx = e.touches[0].clientX - touchStartXRef.current
-    const dy = e.touches[0].clientY - touchStartYRef.current
-    if (!horizontalSwipeRef.current) {
-      if (Math.abs(dx) > SWIPE_COMMIT_PX && Math.abs(dx) > Math.abs(dy) * SWIPE_HORIZONTAL_RATIO) {
-        horizontalSwipeRef.current = true
-      } else {
-        return
-      }
-    }
-    e.preventDefault()
-    const capped = Math.max(-SWIPE_DRAG_CAP_PX, Math.min(SWIPE_DRAG_CAP_PX, dx))
-    setSwipeTranslateX(capped)
-  }
-
-  function onSwipeTouchEnd(e: React.TouchEvent) {
-    if (!swipeEnabled || e.changedTouches.length !== 1) {
-      setSwipeTranslateX(0)
-      setSwipeReturning(false)
-      return
-    }
-    const dx = e.changedTouches[0].clientX - touchStartXRef.current
-    const triggered =
-      horizontalSwipeRef.current && Math.abs(dx) > SWIPE_TRIGGER_PX &&
-      (dx > 0 ? true : dx < 0 && !!authorHandle)
-    if (triggered) {
-      if (dx > 0) onClose?.()
-      else if (authorHandle) openProfileModal(authorHandle)
-    } else {
-      setSwipeReturning(true)
-      setTimeout(() => setSwipeReturning(false), 220)
-    }
-    horizontalSwipeRef.current = false
-    setSwipeTranslateX(0)
-  }
-
   const content = (
-      <div
-        className={`${styles.wrap}${onClose ? ` ${styles.wrapInModal}` : ''}${swipeReturning ? ` ${styles.wrapSwipeReturning}` : ''}`}
-        style={swipeTranslateX !== 0 ? { transform: `translateX(${swipeTranslateX}px)` } : undefined}
-        onTouchStart={swipeEnabled ? onSwipeTouchStart : undefined}
-        onTouchMove={swipeEnabled ? onSwipeTouchMove : undefined}
-        onTouchEnd={swipeEnabled ? onSwipeTouchEnd : undefined}
-      >
+      <div className={`${styles.wrap}${onClose ? ` ${styles.wrapInModal}` : ''}`}>
         {loading && <div className={styles.loading}>Loading…</div>}
         {error && <p className={styles.error}>{error}</p>}
         {thread && isThreadViewPost(thread) && (

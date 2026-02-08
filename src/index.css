@@ -181,22 +181,25 @@ body {
   min-height: -webkit-fill-available;
 }
 
-/* iOS Safari: transparent behind URL bar and status bar; background only in content area so nav hide/scroll still works */
+/* iOS Safari: transparent above top navbar and below bottom navbar (safe-area strips); background only in content area */
 @media (max-width: 767px) {
   html {
     background: transparent;
   }
+  html[data-theme="light"] body,
+  html[data-theme="dark"] body,
   body {
     background: transparent;
   }
-  #root {
+  #root,
+  html[data-theme="light"] #root {
     position: relative;
     background: transparent;
     min-height: 100vh;
     min-height: 100dvh;
     min-height: -webkit-fill-available;
   }
-  /* Grey background only in the area inside safe areas so top/bottom strips stay transparent */
+  /* Grey background only inside safe areas so the strips above/below navbars stay transparent */
   #root::before {
     content: '';
     position: absolute;
@@ -207,9 +210,6 @@ body {
     background: var(--bg);
     z-index: -1;
     pointer-events: none;
-  }
-  html[data-theme="light"] #root {
-    background: transparent;
   }
 }
 

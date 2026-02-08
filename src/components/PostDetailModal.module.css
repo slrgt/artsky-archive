@@ -30,6 +30,11 @@
   overflow: hidden;
 }
 
+/* Smooth snap-back after swipe (no transition during drag for 1:1 follow) */
+.paneSwipeReturning {
+  transition: transform 0.2s ease-out;
+}
+
 .scroll {
   overflow-y: auto;
   overflow-x: hidden;
