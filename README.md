@@ -25,6 +25,37 @@ Use your **Bluesky handle** (or email) and an **App Password**.
 2. Create a new app password and copy it.
 3. In artsky, sign in with your handle and that app password (not your main account password).
 
+## Branches (main vs dev)
+
+- **`main`** – Live site. Pushes deploy to **https://YOUR_USERNAME.github.io/artsky/**.
+- **`dev`** – Dev site. Pushes deploy to a **separate** URL, **https://YOUR_USERNAME.github.io/artsky-dev/**, so you and others can test the dev version online before merging to main.
+
+**Workflow:** Push to `dev` → dev site updates. When ready, merge `dev` into `main` → live site updates.
+
+To create and push `dev` once (if you don't have it yet):
+```bash
+git checkout -b dev
+git push -u origin dev
+```
+
+### One-time setup for the dev site
+
+So that pushes to `dev` can deploy to the separate dev URL, do this once:
+
+1. **Create the dev repo**  
+   On GitHub, create a new repo **artsky-dev** (same account as artsky, e.g. `slrgt/artsky-dev`). It can be empty (no need to clone or add files).
+
+2. **Create a Personal Access Token**  
+   GitHub → **Settings** (your profile) → **Developer settings** → **Personal access tokens** → **Tokens (classic)** → **Generate new token**. Give it a name (e.g. "artsky dev deploy"), scope **repo**, then generate and **copy the token**.
+
+3. **Add the token as a secret in the artsky repo**  
+   Open the **artsky** repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**. Name: **DEV_DEPLOY_TOKEN**, value: the token you copied. Save.
+
+4. **Turn on GitHub Pages for artsky-dev**  
+   Open the **artsky-dev** repo → **Settings** → **Pages** → **Build and deployment** → **Source**: **Deploy from a branch**. Branch: **main** (or **master**), folder **/ (root)**. Save.
+
+After the first push to `dev`, the workflow will build and push the built app into **artsky-dev**; the dev site will be at **https://YOUR_USERNAME.github.io/artsky-dev/**.
+
 ## Deploy to GitHub Pages
 
 1. Push this repo to GitHub (e.g. `https://github.com/YOUR_USERNAME/artsky`).

@@ -3,10 +3,11 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
-// GitHub project pages are served at https://<user>.github.io/<repo>/
+// GitHub project pages: main → /artsky/, dev → /artsky-dev/ (set VITE_BASE_PATH in CI)
 const isProd = process.env.NODE_ENV === 'production'
+const base = process.env.VITE_BASE_PATH ?? (isProd ? '/artsky/' : '/')
 export default defineConfig({
-  base: isProd ? '/artsky/' : '/',
+  base,
   plugins: [
     react(),
     VitePWA({

@@ -352,6 +352,8 @@
   cursor: pointer;
   width: 100%;
   aspect-ratio: 1;
+  max-height: 85vh;
+  min-height: 0;
   border-radius: 0.25rem;
 }
 
@@ -362,9 +364,9 @@
 
 .galleryMedia {
   max-width: 100%;
+  max-height: 85vh;
   width: auto;
   height: auto;
-  max-height: 85vh;
   object-fit: contain;
   background: transparent;
   display: block;
@@ -380,6 +382,7 @@
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
+  max-height: 85vh;
   background: var(--bg);
   border-radius: 0.25rem;
   scroll-margin-top: 5rem;
@@ -525,30 +528,6 @@
 .replies .postBlock {
   padding-left: 4px;
   padding-right: 4px;
-}
-
-/* Comment media: cap height so images/videos scale to fit viewport */
-.replies .galleryWrap {
-  max-height: 85vh;
-}
-
-.replies .galleryImageBtn {
-  max-height: 70vh;
-  min-height: 0;
-}
-
-.replies .galleryMedia {
-  max-height: 70vh;
-  object-fit: contain;
-}
-
-.replies .galleryVideoWrap {
-  max-height: 70vh;
-}
-
-.replies .galleryVideoWrap .galleryVideo {
-  max-height: 100%;
-  object-fit: contain;
 }
 
 .collapsedCommentWrap {

@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
 
 permissions:
@@ -11,11 +11,13 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
+  # Main branch: build and deploy to this repo's GitHub Pages (slrgt.github.io/artsky/)
+  build-main:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,8 +47,9 @@ jobs:
         with:
           path: dist
 
-  deploy:
-    needs: build
+  deploy-main:
+    needs: build-main
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -54,3 +57,43 @@ jobs:
     steps:
       - id: deploy
         uses: actions/deploy-pages@v4
+
+  # Dev branch: build with /artsky-dev/ base and push to slrgt/artsky-dev repo (slrgt.github.io/artsky-dev/)
+  build-and-deploy-dev:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for dev site
+        run: npm run build
+        env:
+          CI: true
+          NODE_OPTIONS: '--max-old-space-size=4096'
+          VITE_BASE_PATH: '/artsky-dev/'
+
+      - name: Verify build output
+        run: |
+          if [ ! -f dist/index.html ]; then
+            echo "::error::Build failed: dist/index.html not found"
+            exit 1
+          fi
+
+      - name: Deploy to artsky-dev repo
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          personal_token: ${{ secrets.DEV_DEPLOY_TOKEN }}
+          external_repository: slrgt/artsky-dev
+          publish_branch: main
+          publish_dir: ./dist
+          force_orphan: true
+          user_name: github-actions[bot]
+          user_email: github-actions[bot]@users.noreply.github.com
