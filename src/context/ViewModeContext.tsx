@@ -9,11 +9,11 @@ export type ViewMode = '1' | '2' | '3'
 
 const VIEW_OPTIONS: ViewMode[] = ['1', '2', '3']
 
-/** Human-readable labels: view N = N columns */
+/** Human-readable labels: view N = N Columns */
 export const VIEW_LABELS: Record<ViewMode, string> = {
-  '1': '1 column',
-  '2': '2 columns',
-  '3': '3 columns',
+  '1': '1 Column',
+  '2': '2 Columns',
+  '3': '3 Columns',
 }
 
 type ViewModeContextValue = {

@@ -156,8 +156,8 @@ function BellIcon() {
   )
 }
 
-/** Same eye shape for all states; mode = open | half | closed. 3 simple lashes per state. */
-function ArtOnlyEyeIcon({ mode }: { mode: 'open' | 'half' | 'closed' }) {
+/** Eye icon for NSFW preference: closed = SFW, half = Blurred, open = NSFW */
+function NsfwEyeIcon({ mode }: { mode: 'open' | 'half' | 'closed' }) {
   const eyePath = 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -189,6 +189,33 @@ function ArtOnlyEyeIcon({ mode }: { mode: 'open' | 'half' | 'closed' }) {
     </svg>
   )
 }
+
+/** Preview card mode icons: full card (show all), compact (minimalist), image only (art only) */
+function CardModeIcon({ mode }: { mode: 'default' | 'minimalist' | 'artOnly' }) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      {mode === 'default' && (
+        <>
+          <rect x="4" y="3" width="16" height="18" rx="2" />
+          <rect x="6" y="5" width="12" height="8" rx="1" />
+          <line x1="6" y1="16" x2="10" y2="16" />
+          <line x1="6" y1="19" x2="14" y2="19" />
+        </>
+      )}
+      {mode === 'minimalist' && (
+        <>
+          <rect x="4" y="3" width="16" height="18" rx="2" />
+          <rect x="6" y="5" width="12" height="8" rx="1" />
+        </>
+      )}
+      {mode === 'artOnly' && (
+        <rect x="4" y="3" width="16" height="18" rx="2" />
+      )}
+    </svg>
+  )
+}
+
+const NSFW_CYCLE = ['sfw', 'blurred', 'nsfw'] as const
 function Column1Icon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -340,6 +367,7 @@ export default function Layout({ title, children, showNav }: Props) {
   )
   const { viewMode, setViewMode, cycleViewMode } = useViewMode()
   const { cardViewMode, cycleCardView } = useArtOnly()
+  const { nsfwPreference, setNsfwPreference } = useModeration()
   const { mediaOnly, toggleMediaOnly } = useMediaOnly()
   const path = loc.pathname
   const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
@@ -984,24 +1012,73 @@ export default function Layout({ title, children, showNav }: Props) {
   const accountPanelContent = (
     <>
       <section className={styles.menuSection}>
+        {!isDesktop && (
+          <div className={styles.menuMobileViewRow} role="group" aria-label="View options">
+            <button
+              type="button"
+              className={`${styles.menuMobileViewBtn} ${styles.menuMobileViewBtnActive}`}
+              onClick={cycleViewMode}
+              title={`${VIEW_LABELS[viewMode]}. Click to cycle.`}
+              aria-label={`Columns: ${VIEW_LABELS[viewMode]}`}
+            >
+              <span className={styles.menuMobileViewBtnIcon}>
+                {viewMode === '1' && <Column1Icon />}
+                {viewMode === '2' && <Column2Icon />}
+                {viewMode === '3' && <Column3Icon />}
+              </span>
+              <span className={styles.menuMobileViewBtnLabel}>{VIEW_LABELS[viewMode]}</span>
+            </button>
+            <button
+              type="button"
+              className={`${styles.menuMobileViewBtn} ${nsfwPreference !== 'sfw' ? styles.menuMobileViewBtnActive : ''}`}
+              onClick={() => {
+                const i = NSFW_CYCLE.indexOf(nsfwPreference)
+                setNsfwPreference(NSFW_CYCLE[(i + 1) % NSFW_CYCLE.length])
+              }}
+              title={`${nsfwPreference}. Click to cycle: SFW → Blurred → NSFW`}
+              aria-label={`Content: ${nsfwPreference}`}
+            >
+              <span className={styles.menuMobileViewBtnIcon}>
+                <NsfwEyeIcon mode={nsfwPreference === 'sfw' ? 'closed' : nsfwPreference === 'blurred' ? 'half' : 'open'} />
+              </span>
+              <span className={styles.menuMobileViewBtnLabel}>
+                {nsfwPreference === 'sfw' ? 'SFW' : nsfwPreference === 'blurred' ? 'Blurred' : 'NSFW'}
+              </span>
+            </button>
+            <button
+              type="button"
+              className={`${styles.menuMobileViewBtn} ${cardViewMode !== 'default' ? styles.menuMobileViewBtnActive : ''}`}
+              onClick={cycleCardView}
+              aria-label={cardViewMode === 'default' ? 'Full Cards' : cardViewMode === 'minimalist' ? 'Mini Cards' : 'Art Cards'}
+              title={cardViewMode === 'default' ? 'Full Cards' : cardViewMode === 'minimalist' ? 'Mini Cards' : 'Art Cards'}
+            >
+              <span className={styles.menuMobileViewBtnIcon}>
+                <CardModeIcon mode={cardViewMode === 'default' ? 'default' : cardViewMode === 'minimalist' ? 'minimalist' : 'artOnly'} />
+              </span>
+              <span className={styles.menuMobileViewBtnLabel}>
+                {cardViewMode === 'default' ? 'Full Cards' : cardViewMode === 'minimalist' ? 'Mini Cards' : 'Art Cards'}
+              </span>
+            </button>
+          </div>
+        )}
         <div className={styles.menuThemeRow}>
           {themeButtons}
         </div>
-        <NsfwPreferenceRow rowClassName={styles.menuNsfwRow} />
+        {isDesktop && <NsfwPreferenceRow rowClassName={styles.menuNsfwRow} />}
         <div className={styles.menuNsfwRow} role="group" aria-label="Feed content">
           <button
             type="button"
             className={mediaOnly ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
             onClick={() => toggleMediaOnly()}
           >
-            Media only
+            Only Media Posts
           </button>
           <button
             type="button"
             className={!mediaOnly ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
             onClick={() => toggleMediaOnly()}
           >
-            Media & Text
+            Media & Text Posts
           </button>
         </div>
       </section>
@@ -1009,21 +1086,23 @@ export default function Layout({ title, children, showNav }: Props) {
         <>
           <section className={styles.menuSection}>
             <div className={styles.menuProfileAndAccounts}>
-              <button
-                type="button"
-                className={`${styles.menuProfileBtn} ${styles.menuProfileBtnAccentHover}`}
-                onClick={() => {
-                  setAccountMenuOpen(false)
-                  setAccountSheetOpen(false)
-                  openArtboardsModal()
-                }}
-                title="Collections"
-              >
-                <span className={styles.menuProfileIconWrap} aria-hidden>
-                  <ArtboardsIcon />
-                </span>
-                <span>Collections</span>
-              </button>
+              {isDesktop && (
+                <button
+                  type="button"
+                  className={`${styles.menuProfileBtn} ${styles.menuProfileBtnAccentHover}`}
+                  onClick={() => {
+                    setAccountMenuOpen(false)
+                    setAccountSheetOpen(false)
+                    openArtboardsModal()
+                  }}
+                  title="Collections"
+                >
+                  <span className={styles.menuProfileIconWrap} aria-hidden>
+                    <ArtboardsIcon />
+                  </span>
+                  <span>Collections</span>
+                </button>
+              )}
               <div className={styles.menuAccountsBlock}>
                 {sessionsList.map((s) => {
             const profile = accountProfiles[s.did]
@@ -1304,26 +1383,42 @@ export default function Layout({ title, children, showNav }: Props) {
                   <span className={styles.headerBtnLabel}>New</span>
                 </button>
               )}
-              <button
-                type="button"
-                className={`${styles.headerBtn} ${cardViewMode !== 'default' ? styles.headerBtnActive : ''}`}
-                onClick={cycleCardView}
-                aria-label={cardViewMode === 'default' ? 'Minimalist' : cardViewMode === 'minimalist' ? 'Art only' : 'Show all'}
-                title={cardViewMode === 'default' ? 'Minimalist' : cardViewMode === 'minimalist' ? 'Art only' : 'Show all'}
-              >
-                <ArtOnlyEyeIcon mode={cardViewMode === 'default' ? 'open' : cardViewMode === 'minimalist' ? 'half' : 'closed'} />
-              </button>
-              <button
-                type="button"
-                className={styles.headerBtn}
-                onClick={cycleViewMode}
-                title={`${VIEW_LABELS[viewMode]}. Click to cycle.`}
-                aria-label={`${VIEW_LABELS[viewMode]}. Click to cycle.`}
-              >
-                {viewMode === '1' && <Column1Icon />}
-                {viewMode === '2' && <Column2Icon />}
-                {viewMode === '3' && <Column3Icon />}
-              </button>
+              {isDesktop && (
+                <>
+                  <button
+                    type="button"
+                    className={`${styles.headerBtn} ${nsfwPreference !== 'sfw' ? styles.headerBtnActive : ''}`}
+                    onClick={() => {
+                      const i = NSFW_CYCLE.indexOf(nsfwPreference)
+                      setNsfwPreference(NSFW_CYCLE[(i + 1) % NSFW_CYCLE.length])
+                    }}
+                    title={`${nsfwPreference}. Click to cycle: SFW → Blurred → NSFW`}
+                    aria-label={`NSFW filter: ${nsfwPreference}`}
+                  >
+                    <NsfwEyeIcon mode={nsfwPreference === 'sfw' ? 'closed' : nsfwPreference === 'blurred' ? 'half' : 'open'} />
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.headerBtn} ${cardViewMode !== 'default' ? styles.headerBtnActive : ''}`}
+                    onClick={cycleCardView}
+                    aria-label={cardViewMode === 'default' ? 'Show all' : cardViewMode === 'minimalist' ? 'Minimalist' : 'Art only'}
+                    title={cardViewMode === 'default' ? 'Show all' : cardViewMode === 'minimalist' ? 'Minimalist' : 'Art only'}
+                  >
+                    <CardModeIcon mode={cardViewMode === 'default' ? 'default' : cardViewMode === 'minimalist' ? 'minimalist' : 'artOnly'} />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.headerBtn}
+                    onClick={cycleViewMode}
+                    title={`${VIEW_LABELS[viewMode]}. Click to cycle.`}
+                    aria-label={`${VIEW_LABELS[viewMode]}. Click to cycle.`}
+                  >
+                    {viewMode === '1' && <Column1Icon />}
+                    {viewMode === '2' && <Column2Icon />}
+                    {viewMode === '3' && <Column3Icon />}
+                  </button>
+                </>
+              )}
               {session && (
                 <div className={styles.headerBtnWrap}>
                   <button

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import {
   agent,
   getPostMediaInfo,
+  getPostAllMediaForDisplay,
   getGuestFeed,
   getSavedFeedsFromPreferences,
   getFeedDisplayName,
@@ -121,38 +122,6 @@ function indexBelow(
   return currentIndex
 }
 
-/** Same row, column to the left; stays put if already in leftmost column. */
-function indexLeftByRow(
-  columns: Array<Array<{ item: TimelineItem; originalIndex: number }>>,
-  currentIndex: number
-): number {
-  for (let c = 0; c < columns.length; c++) {
-    const row = columns[c].findIndex((e) => e.originalIndex === currentIndex)
-    if (row < 0) continue
-    if (c === 0) return currentIndex
-    const leftCol = columns[c - 1]
-    if (row < leftCol.length) return leftCol[row].originalIndex
-    return currentIndex
-  }
-  return currentIndex
-}
-
-/** Same row, column to the right; stays put if already in rightmost column. */
-function indexRightByRow(
-  columns: Array<Array<{ item: TimelineItem; originalIndex: number }>>,
-  currentIndex: number
-): number {
-  for (let c = 0; c < columns.length; c++) {
-    const row = columns[c].findIndex((e) => e.originalIndex === currentIndex)
-    if (row < 0) continue
-    if (c === columns.length - 1) return currentIndex
-    const rightCol = columns[c + 1]
-    if (row < rightCol.length) return rightCol[row].originalIndex
-    return currentIndex
-  }
-  return currentIndex
-}
-
 /** Vertical overlap (shared space) between two rects in px. */
 function verticalOverlap(a: DOMRect, b: DOMRect): number {
   const top = Math.max(a.top, b.top)
@@ -161,8 +130,8 @@ function verticalOverlap(a: DOMRect, b: DOMRect): number {
 }
 
 /**
- * Left/right nav by shared vertical space: pick the card in the adjacent column that
- * shares the most vertical overlap with the currently focused card.
+ * Left nav: pick the card in the left column with the most vertical overlap.
+ * If no card in that column has a valid rect (none loaded yet), stay put.
  */
 function indexLeftClosest(
   columns: Array<Array<{ item: TimelineItem; originalIndex: number }>>,
@@ -170,19 +139,18 @@ function indexLeftClosest(
   getRect: (index: number) => DOMRect | undefined
 ): number {
   for (let c = 0; c < columns.length; c++) {
-    const row = columns[c].findIndex((e) => e.originalIndex === currentIndex)
-    if (row < 0) continue
+    if (columns[c].findIndex((e) => e.originalIndex === currentIndex) < 0) continue
     if (c === 0) return currentIndex
     const leftCol = columns[c - 1]
     const currentRect = getRect(currentIndex)
-    if (!currentRect) return indexLeftByRow(columns, currentIndex)
-    let bestIndex = leftCol[0].originalIndex
+    if (!currentRect) return currentIndex
+    let bestIndex = currentIndex
     let bestOverlap = -1
     for (const { originalIndex } of leftCol) {
       const r = getRect(originalIndex)
       if (!r) continue
       const overlap = verticalOverlap(currentRect, r)
-      if (overlap > bestOverlap) {
+      if (overlap > 0 && overlap > bestOverlap) {
         bestOverlap = overlap
         bestIndex = originalIndex
       }
@@ -192,25 +160,28 @@ function indexLeftClosest(
   return currentIndex
 }
 
+/**
+ * Right nav: pick the card in the right column with the most vertical overlap.
+ * If no card in that column has a valid rect (none loaded yet), stay put.
+ */
 function indexRightClosest(
   columns: Array<Array<{ item: TimelineItem; originalIndex: number }>>,
   currentIndex: number,
   getRect: (index: number) => DOMRect | undefined
 ): number {
   for (let c = 0; c < columns.length; c++) {
-    const row = columns[c].findIndex((e) => e.originalIndex === currentIndex)
-    if (row < 0) continue
+    if (columns[c].findIndex((e) => e.originalIndex === currentIndex) < 0) continue
     if (c === columns.length - 1) return currentIndex
     const rightCol = columns[c + 1]
     const currentRect = getRect(currentIndex)
-    if (!currentRect) return indexRightByRow(columns, currentIndex)
-    let bestIndex = rightCol[0].originalIndex
+    if (!currentRect) return currentIndex
+    let bestIndex = currentIndex
     let bestOverlap = -1
     for (const { originalIndex } of rightCol) {
       const r = getRect(originalIndex)
       if (!r) continue
       const overlap = verticalOverlap(currentRect, r)
-      if (overlap > bestOverlap) {
+      if (overlap > 0 && overlap > bestOverlap) {
         bestOverlap = overlap
         bestIndex = originalIndex
       }
@@ -242,6 +213,8 @@ export default function FeedPage() {
   const [actionsMenuOpenForIndex, setActionsMenuOpenForIndex] = useState<number | null>(null)
   const { openPostModal, isModalOpen } = useProfileModal()
   const cardRefsRef = useRef<(HTMLDivElement | null)[]>([])
+  /** Refs for focused media elements: [cardIndex][mediaIndex] for scroll-into-view on multi-image posts */
+  const mediaRefsRef = useRef<Record<number, Record<number, HTMLElement | null>>>({})
   const mediaItemsRef = useRef<TimelineItem[]>([])
   const keyboardFocusIndexRef = useRef(0)
   const actionsMenuOpenForIndexRef = useRef<number | null>(null)
@@ -441,13 +414,48 @@ export default function FeedPage() {
     .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
   const emptyBecauseAllSeen = displayItems.length === 0 && itemsAfterOtherFilters.length > 0
   const cols = Math.min(3, Math.max(1, viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3))
+  /** Flat list of focus targets: one per media item per post (multi-image posts get multiple entries). */
+  const focusTargets = useMemo(() => {
+    const out: { cardIndex: number; mediaIndex: number }[] = []
+    displayItems.forEach((item, cardIndex) => {
+      const all = getPostAllMediaForDisplay(item.post)
+      const n = Math.max(1, all.length)
+      for (let m = 0; m < n; m++) out.push({ cardIndex, mediaIndex: m })
+    })
+    return out
+  }, [displayItems])
+  /** First focus index for each card (top image; for S and A/D). */
+  const firstFocusIndexForCard = useMemo(() => {
+    const out: number[] = []
+    let idx = 0
+    displayItems.forEach((item, cardIndex) => {
+      out[cardIndex] = idx
+      const all = getPostAllMediaForDisplay(item.post)
+      idx += Math.max(1, all.length)
+    })
+    return out
+  }, [displayItems])
+  /** Last focus index for each card (bottom image; for W when moving to card above). */
+  const lastFocusIndexForCard = useMemo(() => {
+    const out: number[] = []
+    displayItems.forEach((item, cardIndex) => {
+      const all = getPostAllMediaForDisplay(item.post)
+      const n = Math.max(1, all.length)
+      out[cardIndex] = firstFocusIndexForCard[cardIndex] + n - 1
+    })
+    return out
+  }, [displayItems, firstFocusIndexForCard])
   mediaItemsRef.current = displayItems
   keyboardFocusIndexRef.current = keyboardFocusIndex
   actionsMenuOpenForIndexRef.current = actionsMenuOpenForIndex
 
   useEffect(() => {
-    setKeyboardFocusIndex((i) => (i < 0 ? i : displayItems.length ? Math.min(i, displayItems.length - 1) : 0))
-  }, [displayItems.length])
+    setKeyboardFocusIndex((i) => {
+      if (i < 0) return i
+      if (focusTargets.length === 0) return 0
+      return Math.min(i, focusTargets.length - 1)
+    })
+  }, [focusTargets.length])
 
   useEffect(() => {
     saveSeenUris(seenUris)
@@ -483,32 +491,35 @@ export default function FeedPage() {
     return () => window.removeEventListener('mousemove', onMouseMove)
   }, [])
 
-  // Scroll focused card into view only when focus was changed by keyboard (W/S/A/D), not on mouse hover
+  // Scroll focused card/media into view only when focus was changed by keyboard (W/S/A/D), not on mouse hover
   useEffect(() => {
     if (!scrollIntoViewFromKeyboardRef.current) return
     scrollIntoViewFromKeyboardRef.current = false
     if (keyboardFocusIndex === lastScrollIntoViewIndexRef.current) return
     lastScrollIntoViewIndexRef.current = keyboardFocusIndex
-    const index = keyboardFocusIndex
+    const target = focusTargets[keyboardFocusIndex]
     const raf = requestAnimationFrame(() => {
-      const el = cardRefsRef.current[index]
+      const cardIndex = target?.cardIndex ?? keyboardFocusIndex
+      const mediaIndex = target?.mediaIndex ?? 0
+      const mediaEl = mediaRefsRef.current[cardIndex]?.[mediaIndex]
+      const el = mediaEl ?? cardRefsRef.current[cardIndex]
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
       }
     })
     return () => cancelAnimationFrame(raf)
-  }, [keyboardFocusIndex])
+  }, [keyboardFocusIndex, focusTargets])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       /* Never affect feed when a popup is open: check both context and URL (URL covers first render after open). */
       const hasContentModalInUrl = /[?&](post|profile|tag|forumPost|artboard)=/.test(location.search)
       if (isModalOpen || hasContentModalInUrl) return
-      const target = e.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) {
+      const eventTarget = e.target as HTMLElement
+      if (eventTarget.tagName === 'INPUT' || eventTarget.tagName === 'TEXTAREA' || eventTarget.tagName === 'SELECT' || eventTarget.isContentEditable) {
         if (e.key === 'Escape') {
           e.preventDefault()
-          target.blur()
+          eventTarget.blur()
         }
         return
       }
@@ -516,11 +527,14 @@ export default function FeedPage() {
 
       const items = mediaItemsRef.current // displayItems
       const i = keyboardFocusIndexRef.current
-      if (items.length === 0) return
+      if (items.length === 0 || focusTargets.length === 0) return
+
+      const focusTarget = focusTargets[i]
+      const currentCardIndex = focusTarget?.cardIndex ?? 0
 
       const key = e.key.toLowerCase()
       const focusInActionsMenu = (document.activeElement as HTMLElement)?.closest?.('[role="menu"]')
-      const menuOpenForFocusedCard = actionsMenuOpenForIndex === i
+      const menuOpenForFocusedCard = actionsMenuOpenForIndex === currentCardIndex
       if ((focusInActionsMenu || menuOpenForFocusedCard) && (key === 'w' || key === 's' || key === 'e' || key === 'enter' || key === 'q' || key === 'escape')) {
         return
       }
@@ -537,7 +551,7 @@ export default function FeedPage() {
       if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'r' || key === 'f' || key === 'c' || key === 'h' || key === 'b' || key === 'm' || key === '`' || key === '4' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') e.preventDefault()
 
       if (key === 'b') {
-        const item = items[i]
+        const item = items[currentCardIndex]
         if (item?.post?.author && session?.did !== item.post.author.did) {
           setBlockConfirm({
             did: item.post.author.did,
@@ -551,11 +565,21 @@ export default function FeedPage() {
 
       /* Use ref + concrete value (not functional updater) so Strict Mode double-invoke doesn't move two steps */
       const fromNone = i < 0
+      const columns = cols >= 2 ? distributeByHeight(items, cols) : null
+      const getRect = (idx: number) => cardRefsRef.current[idx]?.getBoundingClientRect()
       if (key === 'w' || e.key === 'ArrowUp') {
         mouseMovedRef.current = false
         setKeyboardNavActive(true)
         scrollIntoViewFromKeyboardRef.current = true
-        const next = fromNone ? items.length - 1 : cols >= 2 ? indexAbove(distributeByHeight(items, cols), i) : Math.max(0, i - 1)
+        const onFirstImageOfCard = i === firstFocusIndexForCard[currentCardIndex]
+        const next = fromNone
+          ? (lastFocusIndexForCard[items.length - 1] ?? focusTargets.length - 1)
+          : !onFirstImageOfCard
+            ? Math.max(0, i - 1)
+            : (() => {
+                const nextCard = cols >= 2 && columns ? indexAbove(columns, currentCardIndex) : Math.max(0, currentCardIndex - 1)
+                return lastFocusIndexForCard[nextCard] ?? firstFocusIndexForCard[nextCard] ?? 0
+              })()
         setKeyboardFocusIndex(next)
         return
       }
@@ -563,7 +587,15 @@ export default function FeedPage() {
         mouseMovedRef.current = false
         setKeyboardNavActive(true)
         scrollIntoViewFromKeyboardRef.current = true
-        const next = fromNone ? 0 : cols >= 2 ? indexBelow(distributeByHeight(items, cols), i) : Math.min(items.length - 1, i + 1)
+        const onLastImageOfCard = i === lastFocusIndexForCard[currentCardIndex]
+        const next = fromNone
+          ? 0
+          : !onLastImageOfCard
+            ? Math.min(focusTargets.length - 1, i + 1)
+            : (() => {
+                const nextCard = cols >= 2 && columns ? indexBelow(columns, currentCardIndex) : Math.min(items.length - 1, currentCardIndex + 1)
+                return firstFocusIndexForCard[nextCard] ?? i
+              })()
         setKeyboardFocusIndex(next)
         return
       }
@@ -571,9 +603,8 @@ export default function FeedPage() {
         mouseMovedRef.current = false
         setKeyboardNavActive(true)
         scrollIntoViewFromKeyboardRef.current = true
-        const columns = cols >= 2 ? distributeByHeight(items, cols) : null
-        const getRect = (idx: number) => cardRefsRef.current[idx]?.getBoundingClientRect()
-        const next = fromNone ? 0 : cols >= 2 && columns ? indexLeftClosest(columns, i, getRect) : Math.max(0, i - 1)
+        const nextCard = fromNone ? 0 : cols >= 2 && columns ? indexLeftClosest(columns, currentCardIndex, getRect) : currentCardIndex
+        const next = fromNone ? 0 : nextCard !== currentCardIndex ? (lastFocusIndexForCard[nextCard] ?? i) : i
         if (next !== i) setActionsMenuOpenForIndex(null)
         setKeyboardFocusIndex(next)
         return
@@ -582,9 +613,8 @@ export default function FeedPage() {
         mouseMovedRef.current = false
         setKeyboardNavActive(true)
         scrollIntoViewFromKeyboardRef.current = true
-        const columns = cols >= 2 ? distributeByHeight(items, cols) : null
-        const getRect = (idx: number) => cardRefsRef.current[idx]?.getBoundingClientRect()
-        const next = fromNone ? 0 : cols >= 2 && columns ? indexRightClosest(columns, i, getRect) : Math.min(items.length - 1, i + 1)
+        const nextCard = fromNone ? 0 : cols >= 2 && columns ? indexRightClosest(columns, currentCardIndex, getRect) : currentCardIndex
+        const next = fromNone ? 0 : nextCard !== currentCardIndex ? (lastFocusIndexForCard[nextCard] ?? i) : i
         if (next !== i) setActionsMenuOpenForIndex(null)
         setKeyboardFocusIndex(next)
         return
@@ -593,22 +623,22 @@ export default function FeedPage() {
         if (menuOpenForFocusedCard) {
           setActionsMenuOpenForIndex(null)
         } else {
-          setActionsMenuOpenForIndex(i)
+          setActionsMenuOpenForIndex(currentCardIndex)
         }
         return
       }
       if (key === 'e' || key === 'enter') {
-        const item = items[i]
+        const item = items[currentCardIndex]
         if (item) openPostModal(item.post.uri)
         return
       }
       if (key === 'r') {
-        const item = items[i]
+        const item = items[currentCardIndex]
         if (item) openPostModal(item.post.uri, true)
         return
       }
       if (key === 'f') {
-        const item = items[i]
+        const item = items[currentCardIndex]
         if (!item?.post?.uri || !item?.post?.cid) return
         const uri = item.post.uri
         const currentLikeUri = uri in likeOverrides ? (likeOverrides[uri] ?? undefined) : (item.post as { viewer?: { like?: string } }).viewer?.like
@@ -628,7 +658,7 @@ export default function FeedPage() {
         return
       }
       if (key === '4') {
-        const item = items[i]
+        const item = items[currentCardIndex]
         const author = item?.post?.author as { did: string; viewer?: { following?: string } } | undefined
         if (author && session?.did && session.did !== author.did) {
           const postUri = item.post.uri
@@ -679,7 +709,7 @@ export default function FeedPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [location.search, cols, isModalOpen, openPostModal, blockConfirm, session, likeOverrides, actionsMenuOpenForIndex])
+  }, [location.search, cols, isModalOpen, openPostModal, blockConfirm, session, likeOverrides, actionsMenuOpenForIndex, focusTargets, firstFocusIndexForCard, lastFocusIndexForCard])
 
   useEffect(() => {
     if (blockConfirm) blockCancelRef.current?.focus()
@@ -719,15 +749,20 @@ export default function FeedPage() {
                         if (mouseMovedRef.current) {
                           mouseMovedRef.current = false
                           setKeyboardNavActive(false)
-                          setKeyboardFocusIndex(originalIndex)
+                          setKeyboardFocusIndex(firstFocusIndexForCard[originalIndex] ?? 0)
                         }
                       }}
                     >
                       <PostCard
                         item={item}
-                        isSelected={originalIndex === keyboardFocusIndex}
+                        isSelected={focusTargets[keyboardFocusIndex]?.cardIndex === originalIndex}
+                        focusedMediaIndex={focusTargets[keyboardFocusIndex]?.cardIndex === originalIndex ? focusTargets[keyboardFocusIndex]?.mediaIndex : undefined}
+                        onMediaRef={(mediaIndex, el) => {
+                          if (!mediaRefsRef.current[originalIndex]) mediaRefsRef.current[originalIndex] = {}
+                          mediaRefsRef.current[originalIndex][mediaIndex] = el
+                        }}
                         cardRef={(el) => { cardRefsRef.current[originalIndex] = el }}
-                        openAddDropdown={originalIndex === keyboardFocusIndex && keyboardAddOpen}
+                        openAddDropdown={focusTargets[keyboardFocusIndex]?.cardIndex === originalIndex && keyboardAddOpen}
                         onAddClose={() => setKeyboardAddOpen(false)}
                         onActionsMenuOpenChange={(open) => setActionsMenuOpenForIndex(open ? originalIndex : null)}
                         cardIndex={originalIndex}

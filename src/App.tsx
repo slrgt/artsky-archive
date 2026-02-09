@@ -10,6 +10,7 @@ import { ViewModeProvider } from './context/ViewModeContext'
 import { ArtOnlyProvider } from './context/ArtOnlyContext'
 import { MediaOnlyProvider } from './context/MediaOnlyContext'
 import { FeedMixProvider } from './context/FeedMixContext'
+import { ModalExpandProvider } from './context/ModalExpandContext'
 import { ProfileModalProvider } from './context/ProfileModalContext'
 import { LoginModalProvider } from './context/LoginModalContext'
 import { EditProfileProvider } from './context/EditProfileContext'
@@ -174,9 +175,11 @@ export default function App() {
                       <EditProfileProvider>
                     <ModerationProvider>
                     <LoginModalProvider>
+                    <ModalExpandProvider>
                     <ProfileModalProvider>
                         <AppRoutes />
                     </ProfileModalProvider>
+                    </ModalExpandProvider>
                     </LoginModalProvider>
                     </ModerationProvider>
                       </EditProfileProvider>

@@ -649,10 +649,25 @@ export async function getActorFeeds(actor: string, limit = 50): Promise<ActorFee
   return data.feeds ?? []
 }
 
-/** Search posts by hashtag (tag without #). Uses public App View API so search works regardless of PDS. Returns PostView[]; use with cursor for pagination. */
+/** Search posts by hashtag (tag without #). Uses agent when logged in (avoids public API CORS/failures), else public App View API. */
 export async function searchPostsByTag(tag: string, cursor?: string) {
   const normalized = tag.replace(/^#/, '').trim()
   if (!normalized) return { posts: [], cursor: undefined as string | undefined }
+
+  if (getSession()) {
+    try {
+      const res = await agent.app.bsky.feed.searchPosts({
+        q: normalized,
+        tag: [normalized],
+        limit: 30,
+        sort: 'latest',
+        cursor,
+      })
+      return { posts: res.data.posts ?? [], cursor: res.data.cursor }
+    } catch {
+      /* fall through to public API */
+    }
+  }
 
   const params = new URLSearchParams()
   params.set('q', normalized)
@@ -666,10 +681,24 @@ export async function searchPostsByTag(tag: string, cursor?: string) {
   return { posts: data.posts ?? [], cursor: data.cursor }
 }
 
-/** Search posts by full-text query (no tag filter). Uses public App View API so search works regardless of PDS. Used for multi-word search. */
+/** Search posts by full-text query (no tag filter). Uses agent when logged in (avoids public API CORS/failures), else public App View API. */
 export async function searchPostsByQuery(q: string, cursor?: string) {
   const term = q.trim()
   if (!term) return { posts: [] as AppBskyFeedDefs.PostView[], cursor: undefined as string | undefined }
+
+  if (getSession()) {
+    try {
+      const res = await agent.app.bsky.feed.searchPosts({
+        q: term,
+        limit: 30,
+        sort: 'latest',
+        cursor,
+      })
+      return { posts: res.data.posts ?? [], cursor: res.data.cursor }
+    } catch {
+      /* fall through to public API */
+    }
+  }
 
   const params = new URLSearchParams()
   params.set('q', term)

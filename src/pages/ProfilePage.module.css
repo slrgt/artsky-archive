@@ -179,7 +179,7 @@
   padding-bottom: 0.25rem;
   transition: transform 0.25s ease;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   width: 100%;
 }
 
@@ -195,8 +195,11 @@
 @media (max-width: 767px) {
   .tabsSticky {
     top: 3.25rem;
-    justify-content: center;
-    overflow: hidden;
+    overflow: visible;
+  }
+  /* Posts filter row (All / Liked) stays visible below tabs on mobile */
+  .tabsSticky .postsFilterRow {
+    margin-top: 0.5rem;
   }
   /* In profile popup on mobile: pin tabs to bottom of scroll (above close/back bar) */
   .wrapInModal .tabsSticky {
@@ -335,6 +338,35 @@
 }
 
 .tabActive {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.postsFilterRow {
+  display: flex;
+  gap: 0.25rem;
+  justify-content: center;
+  margin-top: 0.35rem;
+  flex-shrink: 0;
+}
+
+.postsFilterBtn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+
+.postsFilterBtn:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.postsFilterBtnActive {
   color: var(--accent);
   border-color: var(--accent);
 }

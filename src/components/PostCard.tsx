@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback, useLayoutEffect } from 'react'
+import { useRef, useEffect, useState, useCallback, useLayoutEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import Hls from 'hls.js'
@@ -52,6 +52,10 @@ interface Props {
   cardIndex?: number
   /** Index of the card whose ... menu is currently open (null = none); when this is not cardIndex, this card closes its menu */
   actionsMenuOpenForIndex?: number | null
+  /** Index of the focused media within this post (for multi-image keyboard nav); undefined = whole card focused */
+  focusedMediaIndex?: number
+  /** Called with (mediaIndex, element) so parent can scroll the focused media into view */
+  onMediaRef?: (mediaIndex: number, el: HTMLElement | null) => void
 }
 
 const REASON_PIN = 'app.bsky.feed.defs#reasonPin'
@@ -92,7 +96,7 @@ function isHlsUrl(url: string): boolean {
   return /\.m3u8(\?|$)/i.test(url) || url.includes('m3u8')
 }
 
-export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, onAspectRatio, fillCell, nsfwBlurred, onNsfwUnblur, constrainMediaHeight, likedUriOverride, onLikedChange, seen, onActionsMenuOpenChange, cardIndex, actionsMenuOpenForIndex }: Props) {
+export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, onAspectRatio, fillCell, nsfwBlurred, onNsfwUnblur, constrainMediaHeight, likedUriOverride, onLikedChange, seen, onActionsMenuOpenChange, cardIndex, actionsMenuOpenForIndex, focusedMediaIndex, onMediaRef }: Props) {
   const navigate = useNavigate()
   const { session } = useSession()
   const { openLoginModal } = useLoginModal()
@@ -382,6 +386,11 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const allMedia = getPostAllMediaForDisplay(post)
   const imageItems = allMedia.filter((m) => m.type === 'image')
   const hasImage = imageItems.length > 0
+  /** Indices in allMedia for each image (for onMediaRef / focusedMediaIndex when multi-image) */
+  const imageMediaIndices = useMemo(
+    () => allMedia.map((m, i) => (m.type === 'image' ? i : -1)).filter((i): i is number => i >= 0),
+    [allMedia]
+  )
   const currentImageUrl = isMultipleImages && imageItems.length ? imageItems[0]?.url : (media?.url ?? '')
 
   const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -548,7 +557,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   )
 
   return (
-    <div ref={setCardRef} data-post-uri={post.uri} className={`${styles.card} ${isSelected ? styles.cardSelected : ''} ${showTransFlagOutline ? styles.cardTransFlag : ''} ${!showTransFlagOutline && isLiked ? styles.cardLiked : ''} ${!showTransFlagOutline && inAnyArtboard ? styles.cardInArtboard : ''} ${seen ? styles.cardSeen : ''} ${fillCell ? styles.cardFillCell : ''} ${artOnly ? styles.cardArtOnly : ''} ${minimalist ? styles.cardMinimalist : ''}`}>
+    <div ref={setCardRef} data-post-uri={post.uri} className={`${styles.card} ${isSelected ? styles.cardSelected : ''} ${showTransFlagOutline ? styles.cardTransFlag : ''} ${!showTransFlagOutline && isLiked ? styles.cardLiked : ''} ${!showTransFlagOutline && inAnyArtboard ? styles.cardInArtboard : ''} ${seen && !isSelected ? styles.cardSeen : ''} ${fillCell ? styles.cardFillCell : ''} ${artOnly ? styles.cardArtOnly : ''} ${minimalist ? styles.cardMinimalist : ''}`}>
       <div
         role="button"
         tabIndex={0}
@@ -614,7 +623,10 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
         }}
       >
         <div
-          ref={mediaWrapRef}
+          ref={(el) => {
+            ;(mediaWrapRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+            if (onMediaRef && hasMedia && !(isMultipleImages && imageItems.length > 1)) onMediaRef(0, el)
+          }}
           className={`${styles.mediaWrap} ${fillCell ? styles.mediaWrapFillCell : ''} ${constrainMediaHeight ? styles.mediaWrapConstrained : ''} ${isMultipleImages && imageItems.length > 1 ? styles.mediaWrapMultiStack : ''}`}
           style={
             fillCell || constrainMediaHeight ||
@@ -673,21 +685,26 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                 })()}
                 <div className={styles.mediaWrapGrid}>
                   <div className={styles.mediaGrid} style={{ minHeight: 0 }}>
-                    {imageItems.map((imgItem, idx) => (
-                      <div
-                        key={idx}
-                        className={styles.mediaGridCell}
-                        style={{ flex: `${1 / (imgItem.aspectRatio || 1)} 1 0` }}
-                      >
-                        <img
-                          src={imgItem.url}
-                          alt=""
-                          className={styles.mediaGridImg}
-                          loading="lazy"
-                          onLoad={idx === 0 ? handleImageLoad : undefined}
-                        />
-                      </div>
-                    ))}
+                    {imageItems.map((imgItem, idx) => {
+                      const mediaIndex = imageMediaIndices[idx] ?? idx
+                      const isFocused = focusedMediaIndex === mediaIndex
+                      return (
+                        <div
+                          key={idx}
+                          ref={(el) => onMediaRef?.(mediaIndex, el)}
+                          className={`${styles.mediaGridCell} ${isFocused ? styles.mediaGridCellFocused : ''}`}
+                          style={{ flex: `${1 / (imgItem.aspectRatio || 1)} 1 0` }}
+                        >
+                          <img
+                            src={imgItem.url}
+                            alt=""
+                            className={styles.mediaGridImg}
+                            loading="lazy"
+                            onLoad={idx === 0 ? handleImageLoad : undefined}
+                          />
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
             </>

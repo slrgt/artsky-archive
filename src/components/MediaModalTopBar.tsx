@@ -6,7 +6,8 @@ import { useModeration } from '../context/ModerationContext'
 import { useModalTopBarSlot } from '../context/ModalTopBarSlotContext'
 import styles from './Layout.module.css'
 
-function ArtOnlyEyeIcon({ mode }: { mode: 'open' | 'half' | 'closed' }) {
+/** Eye icon for NSFW preference: closed = SFW, half = Blurred, open = NSFW */
+function NsfwEyeIcon({ mode }: { mode: 'open' | 'half' | 'closed' }) {
   const eyePath = 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -34,6 +35,31 @@ function ArtOnlyEyeIcon({ mode }: { mode: 'open' | 'half' | 'closed' }) {
           <line x1="12" y1="19" x2="12" y2="23" />
           <line x1="17" y1="19" x2="18" y2="22" />
         </>
+      )}
+    </svg>
+  )
+}
+
+/** Preview card mode icons: full card (show all), compact (minimalist), image only (art only) */
+function CardModeIcon({ mode }: { mode: 'default' | 'minimalist' | 'artOnly' }) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      {mode === 'default' && (
+        <>
+          <rect x="4" y="3" width="16" height="18" rx="2" />
+          <rect x="6" y="5" width="12" height="8" rx="1" />
+          <line x1="6" y1="16" x2="10" y2="16" />
+          <line x1="6" y1="19" x2="14" y2="19" />
+        </>
+      )}
+      {mode === 'minimalist' && (
+        <>
+          <rect x="4" y="3" width="16" height="18" rx="2" />
+          <rect x="6" y="5" width="12" height="8" rx="1" />
+        </>
+      )}
+      {mode === 'artOnly' && (
+        <rect x="4" y="3" width="16" height="18" rx="2" />
       )}
     </svg>
   )
@@ -86,12 +112,15 @@ export default function MediaModalTopBar({ centerContent }: { centerContent?: Re
             <>
               <button
                 type="button"
-                className={`${styles.headerBtn} ${cardViewMode !== 'default' ? styles.headerBtnActive : ''}`}
-                onClick={cycleCardView}
-                aria-label={cardViewMode === 'default' ? 'Minimalist' : cardViewMode === 'minimalist' ? 'Art only' : 'Show all'}
-                title={cardViewMode === 'default' ? 'Minimalist' : cardViewMode === 'minimalist' ? 'Art only' : 'Show all'}
+                className={`${styles.headerBtn} ${nsfwPreference !== 'sfw' ? styles.headerBtnActive : ''}`}
+                onClick={() => {
+                  const i = NSFW_CYCLE.indexOf(nsfwPreference)
+                  setNsfwPreference(NSFW_CYCLE[(i + 1) % NSFW_CYCLE.length])
+                }}
+                title={`${nsfwPreference}. Click to cycle: SFW → Blurred → NSFW`}
+                aria-label={`NSFW filter: ${nsfwPreference}`}
               >
-                <ArtOnlyEyeIcon mode={cardViewMode === 'default' ? 'open' : cardViewMode === 'minimalist' ? 'half' : 'closed'} />
+                <NsfwEyeIcon mode={nsfwPreference === 'sfw' ? 'closed' : nsfwPreference === 'blurred' ? 'half' : 'open'} />
               </button>
               <button
                 type="button"
@@ -106,15 +135,12 @@ export default function MediaModalTopBar({ centerContent }: { centerContent?: Re
               </button>
               <button
                 type="button"
-                className={`${styles.headerBtn} ${nsfwPreference !== 'sfw' ? styles.headerBtnActive : ''}`}
-                onClick={() => {
-                  const i = NSFW_CYCLE.indexOf(nsfwPreference)
-                  setNsfwPreference(NSFW_CYCLE[(i + 1) % NSFW_CYCLE.length])
-                }}
-                title={`${nsfwPreference}. Click to cycle: SFW → Blurred → NSFW`}
-                aria-label={`NSFW filter: ${nsfwPreference}`}
+                className={`${styles.headerBtn} ${cardViewMode !== 'default' ? styles.headerBtnActive : ''}`}
+                onClick={cycleCardView}
+                aria-label={cardViewMode === 'default' ? 'Show all' : cardViewMode === 'minimalist' ? 'Minimalist' : 'Art only'}
+                title={cardViewMode === 'default' ? 'Show all' : cardViewMode === 'minimalist' ? 'Minimalist' : 'Art only'}
               >
-                {nsfwPreference === 'sfw' ? 'SFW' : nsfwPreference === 'blurred' ? 'Blurred' : 'NSFW'}
+                <CardModeIcon mode={cardViewMode === 'default' ? 'default' : cardViewMode === 'minimalist' ? 'minimalist' : 'artOnly'} />
               </button>
             </>,
             rightSlot
