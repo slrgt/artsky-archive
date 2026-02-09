@@ -92,7 +92,6 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const showTransFlagOutline = isLiked && inAnyArtboard && isFollowingAuthor
 
   const [imageIndex, setImageIndex] = useState(0)
-  const [multiImageExpanded, setMultiImageExpanded] = useState(false)
   const [mediaAspect, setMediaAspect] = useState<number | null>(() =>
     hasMedia && media?.aspectRatio != null ? media.aspectRatio : null
   )
@@ -257,7 +256,6 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const allMedia = getPostAllMediaForDisplay(post)
   const imageItems = allMedia.filter((m) => m.type === 'image')
   const currentImageUrl = isMultipleImages && imageItems.length ? imageItems[imageIndex]?.url : (media?.url ?? '')
-  const n = imageItems.length
 
   const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget
@@ -421,10 +419,10 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
       >
         <div
           ref={mediaWrapRef}
-          className={`${styles.mediaWrap} ${fillCell ? styles.mediaWrapFillCell : ''} ${constrainMediaHeight ? styles.mediaWrapConstrained : ''} ${isMultipleImages && imageItems.length > 1 && !multiImageExpanded ? styles.mediaWrapMultiStack : ''}`}
+          className={`${styles.mediaWrap} ${fillCell ? styles.mediaWrapFillCell : ''} ${constrainMediaHeight ? styles.mediaWrapConstrained : ''} ${isMultipleImages && imageItems.length > 1 ? styles.mediaWrapMultiStack : ''}`}
           style={
             fillCell || constrainMediaHeight ||
-            (isMultipleImages && imageItems.length > 1 && !multiImageExpanded)
+            (isMultipleImages && imageItems.length > 1)
               ? undefined
               : {
                   aspectRatio:
@@ -468,45 +466,8 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
               />
             </div>
           ) : isMultipleImages && imageItems.length > 1 ? (
-            multiImageExpanded ? (
-              <>
-                <img
-                  src={currentImageUrl}
-                  alt=""
-                  className={styles.media}
-                  loading="lazy"
-                  onLoad={handleImageLoad}
-                />
-                <button
-                  type="button"
-                  className={styles.mediaArrow}
-                  style={{ left: 0 }}
-                  aria-label="Previous image"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    setImageIndex((i) => (n ? (i - 1 + n) % n : 0))
-                  }}
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  className={styles.mediaArrow}
-                  style={{ right: 0 }}
-                  aria-label="Next image"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    setImageIndex((i) => (n ? (i + 1) % n : 0))
-                  }}
-                >
-                  ›
-                </button>
-              </>
-            ) : (
-              <>
-                {/* Spacer height = sum of each image's height at full width so all images fit without cropping */}
+            <>
+              {/* Spacer height = sum of each image's height at full width so all images fit without cropping */}
                 {(() => {
                   const totalInverseAspect = imageItems.reduce((s, m) => s + 1 / (m.aspectRatio || 1), 0)
                   const combinedAspect = 1 / totalInverseAspect
@@ -533,8 +494,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                     ))}
                   </div>
                 </div>
-              </>
-            )
+            </>
           ) : (
             <>
               <img src={currentImageUrl} alt="" className={styles.media} loading="lazy" onLoad={handleImageLoad} />
