@@ -1,3 +1,4 @@
+// ArtSky – Bluesky client focused on art
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 import { HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
