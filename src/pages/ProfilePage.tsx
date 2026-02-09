@@ -144,6 +144,7 @@ function ColumnIcon({ cols }: { cols: 1 | 2 | 3 }) {
 }
 
 type ProfileTab = 'posts' | 'reposts' | 'blog' | 'text' | 'feeds'
+type ProfilePostsFilter = 'all' | 'liked'
 
 type ProfileState = {
   displayName?: string
@@ -166,8 +167,11 @@ export function ProfileContent({
   inModal?: boolean
 }) {
   const [tab, setTab] = useState<ProfileTab>('posts')
+  const [profilePostsFilter, setProfilePostsFilter] = useState<ProfilePostsFilter>('all')
   const [items, setItems] = useState<TimelineItem[]>([])
   const [cursor, setCursor] = useState<string | undefined>()
+  const [likedItems, setLikedItems] = useState<TimelineItem[]>([])
+  const [likedCursor, setLikedCursor] = useState<string | undefined>()
   const [feeds, setFeeds] = useState<GeneratorView[]>([])
   const [blogDocuments, setBlogDocuments] = useState<StandardSiteDocumentView[]>([])
   const [blogCursor, setBlogCursor] = useState<string | undefined>()
@@ -274,14 +278,41 @@ export function ProfileContent({
     }
   }, [handle, profile?.did, readAgent])
 
+  const loadLiked = useCallback(async (nextCursor?: string) => {
+    if (!handle || !session || !profile || session.did !== profile.did) return
+    try {
+      if (nextCursor) setLoadingMore(true)
+      else setLoading(true)
+      setError(null)
+      const res = await agent.getActorLikes({ actor: handle, limit: 30, cursor: nextCursor })
+      const feed = (res.data.feed ?? []) as TimelineItem[]
+      setLikedItems((prev) => (nextCursor ? [...prev, ...feed] : feed))
+      setLikedCursor(res.data.cursor ?? undefined)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load liked posts')
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }, [handle, profile?.did, session?.did])
+
   useEffect(() => {
     if (handle) {
       setProfile(null)
       setFollowUriOverride(null)
       setTab('posts')
+      setProfilePostsFilter('all')
+      setLikedItems([])
+      setLikedCursor(undefined)
       load()
     }
   }, [handle, load])
+
+  useEffect(() => {
+    if (profilePostsFilter === 'liked' && handle && session && profile && session.did === profile.did) {
+      loadLiked()
+    }
+  }, [profilePostsFilter, handle, profile?.did, session?.did, loadLiked])
 
   useEffect(() => {
     if (tab === 'feeds') loadFeeds()
@@ -306,9 +337,11 @@ export function ProfileContent({
   // Infinite scroll: load more when any column's sentinel is about to enter view (posts, reposts tabs). Per-column sentinels when cols >= 2 so short columns trigger load before blank space; 800px rootMargin to load before user sees empty space.
   loadingMoreRef.current = loadingMore
   const colsForObserver = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
+  const loadMoreCursor = tab === 'posts' && profilePostsFilter === 'liked' ? likedCursor : cursor
+  const loadMore = tab === 'posts' && profilePostsFilter === 'liked' ? (c: string) => loadLiked(c) : load
   useEffect(() => {
     if (tab !== 'posts' && tab !== 'reposts') return
-    if (!cursor) return
+    if (!loadMoreCursor) return
     const firstSentinel = colsForObserver >= 2 ? loadMoreSentinelRefs.current[0] : loadMoreSentinelRef.current
     const root = inModal ? firstSentinel?.closest('[data-modal-scroll]') ?? null : null
     const observer = new IntersectionObserver(
@@ -316,7 +349,7 @@ export function ProfileContent({
         for (const e of entries) {
           if (e.isIntersecting && !loadingMoreRef.current) {
             loadingMoreRef.current = true
-            load(cursor)
+            loadMore(loadMoreCursor)
             break
           }
         }
@@ -334,7 +367,7 @@ export function ProfileContent({
       if (sentinel) observer.observe(sentinel)
     }
     return () => observer.disconnect()
-  }, [tab, cursor, load, inModal, colsForObserver])
+  }, [tab, profilePostsFilter, loadMoreCursor, load, loadLiked, loadMore, inModal, colsForObserver])
 
   const followingUri = profile?.viewer?.following ?? followUriOverride
   const isFollowing = !!followingUri
@@ -348,10 +381,13 @@ export function ProfileContent({
     return !!embed && (embed.$type === 'app.bsky.embed.record#view' || embed.$type === 'app.bsky.embed.recordWithMedia#view')
   }
   const isRepostOrQuote = (item: TimelineItem) => isRepost(item) || isQuotePost(item)
-  /* Posts tab: original posts + quote posts where the poster added their own media (not just quoted post's media). Reposts tab: all reposts + all quote posts. */
+  const itemsForPostsTab = profilePostsFilter === 'liked' ? likedItems : items
+  /* Posts tab + my posts: original posts + quote posts with media. Posts tab + liked: all liked posts (no filter). Reposts tab: reposts + quote posts. */
   const authorFeedItemsRaw =
     tab === 'posts'
-      ? items.filter((i) => !isRepost(i) && (!isQuotePost(i) || !!getPostMediaInfo(i.post)))
+      ? profilePostsFilter === 'liked'
+        ? likedItems
+        : itemsForPostsTab.filter((i) => !isRepost(i) && (!isQuotePost(i) || !!getPostMediaInfo(i.post)))
       : tab === 'reposts'
         ? items.filter(isRepostOrQuote)
         : items
@@ -367,7 +403,8 @@ export function ProfileContent({
 
   /* For modal: which tabs have content (hide empty categories) */
   const tabHasContent = useMemo(() => {
-    const postsMedia = items.filter((i) => !isRepost(i) && (!isQuotePost(i) || !!getPostMediaInfo(i.post)))
+    const postsSource = profilePostsFilter === 'liked' ? likedItems : items
+    const postsMedia = profilePostsFilter === 'liked' ? postsSource : postsSource.filter((i) => !isRepost(i) && (!isQuotePost(i) || !!getPostMediaInfo(i.post)))
       .filter((i) => getPostMediaInfoForDisplay(i.post))
       .filter((i) => nsfwPreference !== 'sfw' || !isPostNsfw(i.post))
     const repostsMedia = items.filter(isRepostOrQuote)
@@ -386,17 +423,17 @@ export function ProfileContent({
       text: textOnly.length > 0,
       feeds: feeds.length > 0,
     }
-  }, [items, blogDocuments, feeds, nsfwPreference])
+  }, [items, likedItems, profilePostsFilter, blogDocuments, feeds, nsfwPreference])
 
   const visibleTabs = useMemo((): ProfileTab[] => {
     const t: ProfileTab[] = []
-    if (tabHasContent.posts) t.push('posts')
+    if (tabHasContent.posts || isOwnProfile) t.push('posts')
     if (tabHasContent.reposts) t.push('reposts')
     if (tabHasContent.blog) t.push('blog')
     if (tabHasContent.text) t.push('text')
     if (tabHasContent.feeds) t.push('feeds')
     return t
-  }, [tabHasContent])
+  }, [tabHasContent, isOwnProfile])
 
   useEffect(() => {
     if (loading || visibleTabs.length === 0) return
@@ -605,6 +642,19 @@ export function ProfileContent({
                     >
                       Blocked & muted
                     </button>
+                    <div className={styles.postsFilterRow} role="group" aria-label="Filter posts">
+                      <button
+                        type="button"
+                        className={`${styles.postsFilterBtn} ${styles.postsFilterBtnInHeader} ${profilePostsFilter === 'liked' ? styles.postsFilterBtnActive : ''}`}
+                        onClick={() => {
+                          setProfilePostsFilter((prev) => (prev === 'liked' ? 'all' : 'liked'))
+                          setTab('posts')
+                        }}
+                        title={profilePostsFilter === 'liked' ? 'Show my posts' : 'Show liked posts'}
+                      >
+                        Liked
+                      </button>
+                    </div>
                   </>
                 )}
                 {showFollowButton &&
@@ -924,7 +974,11 @@ export function ProfileContent({
           )
         ) : mediaItems.length === 0 ? (
           <div className={styles.empty}>
-            {tab === 'posts' ? 'No posts with images or videos.' : 'No reposts with images or videos.'}
+            {tab === 'posts'
+              ? profilePostsFilter === 'liked'
+                ? 'No liked posts with images or videos.'
+                : 'No posts with images or videos.'
+              : 'No reposts with images or videos.'}
           </div>
         ) : (
           <>

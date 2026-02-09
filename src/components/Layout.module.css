@@ -37,6 +37,13 @@
   outline-offset: -2px;
 }
 
+@media (max-width: 767px) {
+  /* Reserve space for floating liquid glass nav (pill height + transparent gap below) */
+  .wrap {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+}
+
 @media (min-width: 768px) {
   .wrap {
     padding-bottom: 1rem;
@@ -80,6 +87,15 @@
 }
 
 @media (max-width: 767px) {
+  /* iOS 26–style liquid glass header on mobile: translucent, strong blur, rounded bottom */
+  .header {
+    background: color-mix(in srgb, var(--glass-bg) 68%, transparent);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    backdrop-filter: blur(28px) saturate(180%);
+    border-radius: 0 0 20px 20px;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+    padding-top: max(0.35rem, env(safe-area-inset-top));
+  }
   .headerHidden {
     transform: translateY(-100%);
   }
@@ -307,6 +323,7 @@
     grid-template-columns: 1fr 1fr 1fr;
     align-items: center;
     justify-items: center;
+    padding-right: max(0.2rem, env(safe-area-inset-right));
   }
   .headerLeft {
     justify-self: start;
@@ -345,17 +362,19 @@
     font-size: 0.85rem;
     font-weight: 500;
     color: var(--text);
-    background: var(--glass-highlight);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 100%, white 12%), color-mix(in srgb, var(--surface) 100%, black 6%));
     border: 1px solid var(--glass-border);
     border-radius: var(--glass-radius-sm);
     cursor: pointer;
     font: inherit;
     -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14), 0 1px 0 rgba(255, 255, 255, 0.12) inset;
   }
   .headerCenterMobile .headerFeedsBtn:hover {
     color: var(--accent);
-    background: var(--accent-subtle);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent-subtle) 100%, white 10%), color-mix(in srgb, var(--accent-subtle) 100%, black 4%));
     border-color: var(--accent);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.16), 0 1px 0 rgba(255, 255, 255, 0.1) inset;
   }
   .headerCenterMobile .headerFeedsBtnActive {
     display: inline-flex;
@@ -366,13 +385,15 @@
     font-size: 0.85rem;
     font-weight: 500;
     color: var(--accent);
-    background: var(--accent-muted);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent-muted) 100%, white 8%), color-mix(in srgb, var(--accent-muted) 100%, black 8%));
     border: 1px solid var(--accent);
     border-radius: var(--glass-radius-sm);
     cursor: pointer;
     font: inherit;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08) inset;
   }
-  .headerCenterMobile .headerFeedsBtn svg {
+  .headerCenterMobile .headerFeedsBtn svg,
+  .headerCenterMobile .headerFeedsBtnActive svg {
     width: 16px;
     height: 16px;
     flex-shrink: 0;
@@ -1256,6 +1277,63 @@
   padding-right: env(safe-area-inset-right);
 }
 
+/* Mobile only: column + NSFW + card toggle in account menu (icon + label per button) */
+.menuMobileViewRow {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+.menuMobileViewBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.25rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  background: var(--glass-highlight);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+.menuMobileViewBtn:hover {
+  border-color: var(--muted);
+}
+.menuMobileViewBtnIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.menuMobileViewBtnIcon svg {
+  width: 22px;
+  height: 22px;
+}
+.menuMobileViewBtnLabel {
+  text-align: center;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.menuMobileViewBtnActive {
+  border-color: var(--accent);
+  background: var(--accent-muted);
+  color: var(--accent);
+}
+.menuMobileViewBtnActive:hover {
+  filter: brightness(0.97);
+}
+
 /* Adult content toggle (account menu) - row of 3 buttons below theme/column row */
 .menuNsfwRow {
   display: flex;
@@ -1298,23 +1376,23 @@
   filter: brightness(0.97);
 }
 
-/* iOS-style tab bar with icons; hides on scroll down; hidden on desktop; half height */
+/* iOS 26–style liquid glass tab bar: floating pill, transparent gap below; hidden on desktop */
 .nav {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  left: max(1rem, env(safe-area-inset-left));
+  right: max(1rem, env(safe-area-inset-right));
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 0.1rem 0.3rem;
-  padding-left: max(0.3rem, env(safe-area-inset-left));
-  padding-right: max(0.3rem, env(safe-area-inset-right));
-  padding-bottom: max(0.1rem, env(safe-area-inset-bottom));
-  background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  backdrop-filter: blur(var(--glass-blur));
-  border-top: 1px solid var(--glass-border);
+  padding: 0.35rem 0.5rem;
+  /* Liquid glass: translucent, strong blur + vibrancy */
+  background: color-mix(in srgb, var(--glass-bg) 68%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: 9999px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
   z-index: 20;
   transition: transform 0.25s ease;
 }
@@ -1326,7 +1404,7 @@
 }
 
 .navHidden {
-  transform: translateY(100%);
+  transform: translateY(calc(100% + max(0.75rem, env(safe-area-inset-bottom))));
 }
 
 .nav a,

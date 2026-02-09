@@ -18,6 +18,7 @@ export default function ProfileModal({ handle, onClose, onBack, canGoBack }: Pro
       onClose={onClose}
       onBack={onBack}
       canGoBack={canGoBack}
+      compact
     >
       <ProfileContent handle={handle} openProfileModal={openProfileModal} inModal />
     </AppModal>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { ModalTopBarSlotContext } from '../context/ModalTopBarSlotContext'
+import { useModalExpand } from '../context/ModalExpandContext'
 import { useScrollLock } from '../context/ScrollLockContext'
 import { useSwipeToClose } from '../hooks/useSwipeToClose'
 import styles from './PostDetailModal.module.css'
@@ -27,6 +28,8 @@ interface AppModalProps {
   focusCloseOnOpen?: boolean
   /** When true, top bar has transparent background so content shows through; X button keeps its background. */
   transparentTopBar?: boolean
+  /** When true, pane uses same size as compose/notifications (420px, 85vh). Default false. */
+  compact?: boolean
   /** Optional: called when user completes a swipe left on mobile (e.g. open post author profile). */
   onSwipeLeft?: () => void
 }
@@ -39,6 +42,7 @@ export default function AppModal({
   canGoBack,
   focusCloseOnOpen = false,
   transparentTopBar = false,
+  compact = false,
   onSwipeLeft,
 }: AppModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
@@ -47,7 +51,7 @@ export default function AppModal({
   const [topBarSlotEl, setTopBarSlotEl] = useState<HTMLDivElement | null>(null)
   const [topBarRightSlotEl, setTopBarRightSlotEl] = useState<HTMLDivElement | null>(null)
   const [mobileBottomBarSlotEl, setMobileBottomBarSlotEl] = useState<HTMLDivElement | null>(null)
-  const [expanded, setExpanded] = useState(false)
+  const { expanded, setExpanded } = useModalExpand()
   const [bottomBarHidden, setBottomBarHidden] = useState(false)
   const scrollLock = useScrollLock()
   const isMobile = useSyncExternalStore(subscribeMobile, getMobileSnapshot, () => false)
@@ -151,7 +155,7 @@ export default function AppModal({
         aria-label={ariaLabel}
       >
         <div
-          className={`${styles.pane}${swipe.isReturning ? ` ${styles.paneSwipeReturning}` : ''}${transparentTopBar ? ` ${styles.paneNoRightBorder}` : ''}${expanded ? ` ${styles.paneExpanded}` : ''}`}
+          className={`${styles.pane}${swipe.isReturning ? ` ${styles.paneSwipeReturning}` : ''}${transparentTopBar ? ` ${styles.paneNoRightBorder}` : ''}${compact ? ` ${styles.paneCompact}` : ''}${expanded ? ` ${styles.paneExpanded}` : ''}`}
           style={swipe.style}
           onTouchStart={swipe.onTouchStart}
           onTouchMove={swipe.onTouchMove}
@@ -189,7 +193,7 @@ export default function AppModal({
                 <button
                   type="button"
                   className={styles.expandBtn}
-                  onClick={() => setExpanded((e) => !e)}
+                  onClick={() => setExpanded(!expanded)}
                   aria-label={expanded ? 'Restore popup size' : 'Expand to edges'}
                   title={expanded ? 'Restore' : 'Expand to edges'}
                 >
@@ -232,7 +236,7 @@ export default function AppModal({
               <button
                 type="button"
                 className={styles.expandBtn}
-                onClick={() => setExpanded((e) => !e)}
+                onClick={() => setExpanded(!expanded)}
                 aria-label={expanded ? 'Restore popup size' : 'Expand to edges'}
                 title={expanded ? 'Restore' : 'Expand to edges'}
               >
