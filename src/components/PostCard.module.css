@@ -13,6 +13,8 @@
   -webkit-tap-highlight-color: transparent;
   /* Reserve space above when scrollIntoView runs so fixed header doesn't cover the card */
   scroll-margin-top: 5rem;
+  container-type: inline-size;
+  container-name: postcard;
 }
 
 .cardLink {
@@ -25,24 +27,40 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.cardSelected {
-  outline: 3px solid var(--accent);
-  outline-offset: 0px;
+/* Ring layer above media so it's never clipped; pointer-events: none so clicks hit the card */
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
   z-index: 1;
+  box-shadow: none;
 }
 
-/* Pink ring when post is liked; negative offset so it sits on the card edge (overlaps 1px border) */
+/* Purple ring when focused/selected */
+.cardSelected {
+  outline: none;
+  z-index: 1;
+}
+.cardSelected::after {
+  box-shadow: inset 0 0 0 3px var(--accent);
+}
+
+/* Pink ring when post is liked */
 .cardLiked {
-  outline: 2px solid #ec4899;
-  outline-offset: -2px;
-  box-shadow: none;
+  outline: none;
+}
+.cardLiked::after {
+  box-shadow: inset 0 0 0 2px #ec4899;
 }
 
 /* Light blue ring when post is in an artboard */
 .cardInArtboard {
-  outline: 2px solid #7dd3fc;
-  outline-offset: -2px;
-  box-shadow: none;
+  outline: none;
+}
+.cardInArtboard::after {
+  box-shadow: inset 0 0 0 2px #7dd3fc;
 }
 
 /* Trans flag border (pink, light blue, white, light blue, pink) when liked + in artboard */
@@ -114,34 +132,39 @@ html[data-theme="dark"] .cardSeen {
 
 /* Purple ring on hover */
 .card:hover {
-  outline: 3px solid var(--accent);
-  outline-offset: 0px;
+  outline: none;
+}
+.card:hover::after {
+  box-shadow: inset 0 0 0 3px var(--accent);
 }
 
-/* When navigating with keyboard (W/S/A/D), only the selected card gets the outline – not the card under the mouse */
-[data-feed-cards][data-keyboard-nav] .card:hover:not(.cardSelected) {
-  outline: none;
+/* When navigating with keyboard (W/S/A/D), only the selected card gets the ring – not the card under the mouse */
+[data-feed-cards][data-keyboard-nav] .card:hover:not(.cardSelected)::after {
   box-shadow: none;
 }
-[data-feed-cards][data-keyboard-nav] .card.cardLiked:hover:not(.cardSelected) {
-  outline: 2px solid #ec4899;
-  outline-offset: -2px;
-  box-shadow: none;
+[data-feed-cards][data-keyboard-nav] .card.cardLiked:hover:not(.cardSelected)::after {
+  box-shadow: inset 0 0 0 2px #ec4899;
 }
-[data-feed-cards][data-keyboard-nav] .card.cardInArtboard:hover:not(.cardSelected) {
-  outline: 2px solid #7dd3fc;
-  outline-offset: -2px;
-  box-shadow: none;
+[data-feed-cards][data-keyboard-nav] .card.cardInArtboard:hover:not(.cardSelected)::after {
+  box-shadow: inset 0 0 0 2px #7dd3fc;
 }
 [data-feed-cards][data-keyboard-nav] .card.cardTransFlag:hover:not(.cardSelected) {
   outline: none;
 }
 
-/* Liked + hover: keep pink outline only */
-.card.cardLiked:hover {
-  outline: 2px solid #ec4899;
-  outline-offset: -2px;
-  box-shadow: none;
+/* Liked + hover: keep pink ring only */
+.card.cardLiked:hover::after {
+  box-shadow: inset 0 0 0 2px #ec4899;
+}
+
+/* When focused/selected: purple ring; if also liked, add pink ring inside */
+.card.cardSelected::after,
+.card.cardSelected.cardInArtboard::after {
+  box-shadow: inset 0 0 0 3px var(--accent);
+}
+/* Purple outer, pink inset so both visible when liked + focused */
+.card.cardSelected.cardLiked::after {
+  box-shadow: inset 0 0 0 3px var(--accent), inset 0 0 0 5px #ec4899;
 }
 
 /* Bento grid: card fills cell height */
@@ -226,6 +249,14 @@ html[data-theme="dark"] .cardSeen {
   flex-shrink: 0;
 }
 
+/* When card is narrow enough that download/menu would overlap collect+like, hide them */
+@container postcard (max-width: 200px) {
+  .cardActionRowLeft,
+  .cardActionRowRight {
+    display: none;
+  }
+}
+
 .cardActionRow .addWrap {
   margin-left: 0;
 }
@@ -279,6 +310,14 @@ html[data-theme="dark"] .cardSeen {
   line-height: 1;
   flex-shrink: 0;
 }
+/* Preview cards (2/3-col feed): action row already has avatar, hide duplicate next to username */
+[data-feed-cards][data-view-mode="2"] .handleRow .authorAvatar,
+[data-feed-cards][data-view-mode="2"] .handleRow .authorAvatarPlaceholder,
+[data-feed-cards][data-view-mode="3"] .handleRow .authorAvatar,
+[data-feed-cards][data-view-mode="3"] .handleRow .authorAvatarPlaceholder {
+  display: none;
+}
+
 @media (max-width: 767px) {
   .handleRow .authorAvatar {
     display: none;
@@ -291,6 +330,20 @@ html[data-theme="dark"] .cardSeen {
   [data-feed-cards][data-view-mode="3"] .cardActionRowAvatar {
     width: 1rem;
     height: 1rem;
+  }
+  /* No purple focus/selected ring on mobile – touch only; keep liked (pink) and collected (blue) rings */
+  .cardSelected::after,
+  .card:hover::after {
+    box-shadow: none;
+  }
+  .card.cardSelected.cardLiked::after {
+    box-shadow: inset 0 0 0 2px #ec4899;
+  }
+  .card.cardSelected.cardInArtboard::after {
+    box-shadow: inset 0 0 0 2px #7dd3fc;
+  }
+  .cardLink:focus-visible {
+    outline: none;
   }
 }
 
@@ -440,6 +493,7 @@ html[data-theme="dark"] .cardSeen {
 }
 
 /* Portaled to body: stay fixed in viewport where opened (don't scroll with feed) */
+/* Portaled: fixed so dropdown doesn't scroll with page; left/bottom set inline and updated on scroll */
 .addDropdownFixed {
   position: fixed !important;
   transform: translateX(-50%);

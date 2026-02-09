@@ -2,7 +2,77 @@ import { useRef, useState, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { blockAccount, unblockAccount, reportPost, muteThread, deletePost, agent } from '../lib/bsky'
 import { getSession } from '../lib/bsky'
+import { formatRelativeTimeTitle, formatExactDateTime } from '../lib/date'
 import styles from './PostActionsMenu.module.css'
+
+const ICON_SIZE = 18
+
+function DownloadIcon() {
+  return (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 5v14m0 0l-4-4m4 4l4-4" />
+    </svg>
+  )
+}
+function LinkIcon() {
+  return (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  )
+}
+function BackIcon() {
+  return (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
+  )
+}
+function BlockIcon() {
+  return (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+    </svg>
+  )
+}
+function UnblockIcon() {
+  return (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M18 6L6 18M6 6l12 12" />
+      <circle cx="12" cy="12" r="10" />
+    </svg>
+  )
+}
+function ReportIcon() {
+  return (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+      <line x1="4" y1="22" x2="4" y2="15" />
+    </svg>
+  )
+}
+function MuteIcon() {
+  return (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <line x1="23" y1="9" x2="17" y2="15" />
+      <line x1="17" y1="9" x2="23" y2="15" />
+    </svg>
+  )
+}
+function TrashIcon() {
+  return (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  )
+}
 
 interface PostActionsMenuProps {
   /** Post/reply URI */
@@ -22,6 +92,8 @@ interface PostActionsMenuProps {
   compact?: boolean
   /** When set, show "From: {feedLabel}" at top of menu (e.g. feed name) */
   feedLabel?: string
+  /** Post creation time (ISO string); when set, show relative time e.g. "Posted 2h ago" */
+  postedAt?: string
   /** When this number changes, open the menu (e.g. from M key). Ignored when open/onOpenChange are used. */
   openTrigger?: number
   /** Controlled open state (when set, menu open is controlled by parent) */
@@ -36,6 +108,8 @@ interface PostActionsMenuProps {
   downloadLabel?: string
   /** When true, show loading state on the download menu item */
   downloadLoading?: boolean
+  /** Optional ref to receive the dropdown DOM element (e.g. for parent to detect focus outside) */
+  dropdownRef?: React.RefObject<HTMLDivElement | null>
 }
 
 export default function PostActionsMenu({
@@ -48,6 +122,7 @@ export default function PostActionsMenu({
   className,
   compact,
   feedLabel,
+  postedAt,
   openTrigger,
   open: openControlled,
   onOpenChange,
@@ -55,6 +130,7 @@ export default function PostActionsMenu({
   onDownload,
   downloadLabel,
   downloadLoading,
+  dropdownRef: dropdownRefProp,
 }: PostActionsMenuProps) {
   const session = getSession()
   const [openUncontrolled, setOpenUncontrolled] = useState(false)
@@ -124,16 +200,29 @@ export default function PostActionsMenu({
     }
   }, [openTrigger, isControlled])
 
+  function updateDropdownPosition() {
+    if (!triggerRef.current) return null
+    const rect = triggerRef.current.getBoundingClientRect()
+    return {
+      bottom: window.innerHeight - rect.top,
+      right: window.innerWidth - rect.right,
+    }
+  }
+
   useLayoutEffect(() => {
     if (!open || !triggerRef.current) {
       setDropdownPosition(null)
       return
     }
-    const rect = triggerRef.current.getBoundingClientRect()
-    setDropdownPosition({
-      bottom: window.innerHeight - rect.top,
-      right: window.innerWidth - rect.right,
-    })
+    setDropdownPosition(updateDropdownPosition())
+  }, [open])
+
+  /* Keep dropdown aligned with trigger when user scrolls (dropdown is position:fixed so we must update its coords) */
+  useEffect(() => {
+    if (!open) return
+    const onScroll = () => setDropdownPosition((prev) => (prev ? updateDropdownPosition() ?? prev : prev))
+    window.addEventListener('scroll', onScroll, true)
+    return () => window.removeEventListener('scroll', onScroll, true)
   }, [open])
 
   useEffect(() => {
@@ -168,17 +257,24 @@ export default function PostActionsMenu({
           setBlockStep('idle')
         } else {
           setOpen(false)
+          triggerRef.current?.focus()
         }
         return
       }
-      if (key === 'w' || key === 's' || key === 'e' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      if (key === '`' || key === 'm') {
+        e.preventDefault()
+        setOpen(false)
+        triggerRef.current?.focus()
+        return
+      }
+      if (key === 'w' || key === 's' || key === 'e' || key === 'enter' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         const dropdown = dropdownRef.current
         if (!dropdown) return
         const items = Array.from(dropdown.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]'))
         if (items.length === 0) return
         const current = document.activeElement as HTMLButtonElement | null
         const idx = current && items.includes(current) ? items.indexOf(current) : -1
-        if (key === 'e') {
+        if (key === 'e' || key === 'enter') {
           e.preventDefault()
           if (idx >= 0 && !items[idx].disabled) items[idx].click()
           return
@@ -346,7 +442,10 @@ export default function PostActionsMenu({
       {open && dropdownPosition &&
         createPortal(
           <div
-            ref={dropdownRef}
+            ref={(el) => {
+              (dropdownRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+              if (dropdownRefProp) (dropdownRefProp as React.MutableRefObject<HTMLDivElement | null>).current = el
+            }}
             className={`${styles.dropdown} ${styles.dropdownFixed} ${compact ? styles.dropdownCompact : ''}`}
             style={{
               position: 'fixed',
@@ -357,6 +456,11 @@ export default function PostActionsMenu({
           >
             {feedLabel ? (
             <div className={styles.feedLabel} role="presentation">From: {feedLabel}</div>
+          ) : null}
+            {postedAt ? (
+            <div className={styles.postedAt} role="presentation" title={formatExactDateTime(postedAt)}>
+              Posted {formatRelativeTimeTitle(postedAt)}
+            </div>
           ) : null}
           {feedback ? (
             <div className={feedback.type === 'success' ? styles.feedbackSuccess : styles.feedbackError} role="status">
@@ -372,7 +476,8 @@ export default function PostActionsMenu({
                   disabled={downloadLoading}
                   role="menuitem"
                 >
-                  {downloadLoading ? '…' : downloadLabel}
+                  <span className={styles.itemIcon}>{downloadLoading ? '…' : <DownloadIcon />}</span>
+                  {downloadLoading ? '' : downloadLabel}
                 </button>
               )}
               <button
@@ -381,6 +486,7 @@ export default function PostActionsMenu({
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCopyLink() }}
                 role="menuitem"
               >
+                <span className={styles.itemIcon}><LinkIcon /></span>
                 Copy link to post
               </button>
             </>
@@ -392,7 +498,8 @@ export default function PostActionsMenu({
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBlockStep('idle') }}
                 role="menuitem"
               >
-                ← Back
+                <span className={styles.itemIcon}><BackIcon /></span>
+                Back
               </button>
               <div className={styles.reportReasonLabel}>
                 Block {authorHandle ? `@${authorHandle}` : 'this user'}?
@@ -404,7 +511,8 @@ export default function PostActionsMenu({
                 disabled={loading === 'block'}
                 role="menuitem"
               >
-                {loading === 'block' ? '…' : 'Yes, block'}
+                <span className={styles.itemIcon}>{loading === 'block' ? '…' : <BlockIcon />}</span>
+                {loading === 'block' ? '' : 'Yes, block'}
               </button>
             </>
           ) : reportStep === 'reason' ? (
@@ -415,7 +523,8 @@ export default function PostActionsMenu({
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReportStep('main') }}
                 role="menuitem"
               >
-                ← Back
+                <span className={styles.itemIcon}><BackIcon /></span>
+                Back
               </button>
               <div className={styles.reportReasonLabel}>Report to Bluesky</div>
               {REPORT_REASONS.map(({ label, reasonType }) => (
@@ -427,7 +536,8 @@ export default function PostActionsMenu({
                   disabled={loading === 'report'}
                   role="menuitem"
                 >
-                  {loading === 'report' ? '…' : label}
+                  <span className={styles.itemIcon}>{loading === 'report' ? '…' : <ReportIcon />}</span>
+                  {loading === 'report' ? '' : label}
                 </button>
               ))}
             </>
@@ -441,7 +551,8 @@ export default function PostActionsMenu({
                   disabled={loading === 'delete'}
                   role="menuitem"
                 >
-                  {loading === 'delete' ? '…' : 'Delete post'}
+                  <span className={styles.itemIcon}>{loading === 'delete' ? '…' : <TrashIcon />}</span>
+                  {loading === 'delete' ? '' : 'Delete post'}
                 </button>
               )}
               {!isOwnPost && (
@@ -453,7 +564,8 @@ export default function PostActionsMenu({
                     disabled={loading === 'unblock'}
                     role="menuitem"
                   >
-                    {loading === 'unblock' ? '…' : 'Unblock account'}
+                    <span className={styles.itemIcon}>{loading === 'unblock' ? '…' : <UnblockIcon />}</span>
+                    {loading === 'unblock' ? '' : 'Unblock account'}
                   </button>
                 ) : (
                   <button
@@ -462,6 +574,7 @@ export default function PostActionsMenu({
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBlockStep('confirm') }}
                     role="menuitem"
                   >
+                    <span className={styles.itemIcon}><BlockIcon /></span>
                     Block user
                   </button>
                 )
@@ -472,6 +585,7 @@ export default function PostActionsMenu({
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReportStep('reason') }}
                 role="menuitem"
               >
+                <span className={styles.itemIcon}><ReportIcon /></span>
                 Report post
               </button>
               <button
@@ -481,7 +595,8 @@ export default function PostActionsMenu({
                 disabled={loading === 'mute'}
                 role="menuitem"
               >
-                {loading === 'mute' ? '…' : 'Mute thread'}
+                <span className={styles.itemIcon}>{loading === 'mute' ? '…' : <MuteIcon />}</span>
+                {loading === 'mute' ? '' : 'Mute thread'}
               </button>
               {onDownload && downloadLabel && (
                 <button
@@ -491,7 +606,8 @@ export default function PostActionsMenu({
                   disabled={downloadLoading}
                   role="menuitem"
                 >
-                  {downloadLoading ? '…' : downloadLabel}
+                  <span className={styles.itemIcon}>{downloadLoading ? '…' : <DownloadIcon />}</span>
+                  {downloadLoading ? '' : downloadLabel}
                 </button>
               )}
               <button
@@ -500,6 +616,7 @@ export default function PostActionsMenu({
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCopyLink() }}
                 role="menuitem"
               >
+                <span className={styles.itemIcon}><LinkIcon /></span>
                 Copy link to post
               </button>
             </>

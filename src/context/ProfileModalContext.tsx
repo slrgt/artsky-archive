@@ -10,7 +10,7 @@ import ArtboardModal from '../components/ArtboardModal'
 import SearchModal from '../components/SearchModal'
 
 export type ModalItem =
-  | { type: 'post'; uri: string; openReply?: boolean }
+  | { type: 'post'; uri: string; openReply?: boolean; focusUri?: string }
   | { type: 'profile'; handle: string }
   | { type: 'tag'; tag: string }
   | { type: 'search'; query: string }
@@ -22,7 +22,7 @@ export type ModalItem =
 type ProfileModalContextValue = {
   openProfileModal: (handle: string) => void
   closeProfileModal: () => void
-  openPostModal: (uri: string, openReply?: boolean) => void
+  openPostModal: (uri: string, openReply?: boolean, focusUri?: string) => void
   closePostModal: () => void
   openTagModal: (tag: string) => void
   openSearchModal: (query: string) => void
@@ -50,7 +50,10 @@ const ProfileModalContext = createContext<ProfileModalContextValue | null>(null)
 function parseSearchToModalItem(search: string): ModalItem | null {
   const params = new URLSearchParams(search)
   const postUri = params.get('post')
-  if (postUri) return { type: 'post', uri: postUri, openReply: params.get('reply') === '1' }
+  if (postUri) {
+    const focusUri = params.get('focus') ?? undefined
+    return { type: 'post', uri: postUri, openReply: params.get('reply') === '1', focusUri: focusUri ?? undefined }
+  }
   const profileHandle = params.get('profile')
   if (profileHandle) return { type: 'profile', handle: profileHandle }
   const tag = params.get('tag')
@@ -69,7 +72,9 @@ function parseSearchToModalItem(search: string): ModalItem | null {
 function modalItemToSearch(item: ModalItem): string {
   if (item.type === 'post') {
     const s = `post=${encodeURIComponent(item.uri)}`
-    return item.openReply ? `${s}&reply=1` : s
+    const reply = item.openReply ? '&reply=1' : ''
+    const focus = item.focusUri ? `&focus=${encodeURIComponent(item.focusUri)}` : ''
+    return s + reply + focus
   }
   if (item.type === 'profile') return `profile=${encodeURIComponent(item.handle)}`
   if (item.type === 'tag') return `tag=${encodeURIComponent(item.tag)}`
@@ -83,7 +88,7 @@ function modalItemToSearch(item: ModalItem): string {
 
 function modalItemsMatch(a: ModalItem, b: ModalItem): boolean {
   if (a.type !== b.type) return false
-  if (a.type === 'post' && b.type === 'post') return a.uri === b.uri && (a.openReply ?? false) === (b.openReply ?? false)
+  if (a.type === 'post' && b.type === 'post') return a.uri === b.uri && (a.openReply ?? false) === (b.openReply ?? false) && (a.focusUri ?? '') === (b.focusUri ?? '')
   if (a.type === 'profile' && b.type === 'profile') return a.handle === b.handle
   if (a.type === 'tag' && b.type === 'tag') return a.tag === b.tag
   if (a.type === 'search' && b.type === 'search') return a.query === b.query
@@ -99,9 +104,9 @@ export function ProfileModalProvider({ children }: { children: ReactNode }) {
   const location = useLocation()
   const navigate = useNavigate()
 
-  /** Open any modal: only update the URL; one effect syncs URL → stack (works for click and paste/share). */
-  const openPostModal = useCallback((uri: string, openReply?: boolean) => {
-    navigate({ pathname: location.pathname, search: `?${modalItemToSearch({ type: 'post', uri, openReply })}` })
+  /** Open any modal: only update the URL; one effect syncs URL → stack (works for click and paste/share). focusUri = scroll to this reply in the thread. */
+  const openPostModal = useCallback((uri: string, openReply?: boolean, focusUri?: string) => {
+    navigate({ pathname: location.pathname, search: `?${modalItemToSearch({ type: 'post', uri, openReply, focusUri })}` })
   }, [location.pathname, navigate])
 
   const openProfileModal = useCallback((handle: string) => {
@@ -193,6 +198,7 @@ export function ProfileModalProvider({ children }: { children: ReactNode }) {
         <PostDetailModal
           uri={currentModal.uri}
           openReply={currentModal.openReply}
+          focusUri={currentModal.focusUri}
           onClose={closeAllModals}
           onBack={closeModal}
           canGoBack={canGoBack}

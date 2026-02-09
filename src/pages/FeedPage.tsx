@@ -239,6 +239,8 @@ export default function FeedPage() {
   const loadingMoreRef = useRef(false)
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
   const [keyboardAddOpen, setKeyboardAddOpen] = useState(false)
+  const [openActionsMenuTrigger, setOpenActionsMenuTrigger] = useState(0)
+  const [actionsMenuOpenForIndex, setActionsMenuOpenForIndex] = useState<number | null>(null)
   const { openPostModal, isModalOpen } = useProfileModal()
   const cardRefsRef = useRef<(HTMLDivElement | null)[]>([])
   const mediaItemsRef = useRef<TimelineItem[]>([])
@@ -443,7 +445,7 @@ export default function FeedPage() {
   keyboardFocusIndexRef.current = keyboardFocusIndex
 
   useEffect(() => {
-    setKeyboardFocusIndex((i) => (displayItems.length ? Math.min(i, displayItems.length - 1) : 0))
+    setKeyboardFocusIndex((i) => (i < 0 ? i : displayItems.length ? Math.min(i, displayItems.length - 1) : 0))
   }, [displayItems.length])
 
   useEffect(() => {
@@ -517,6 +519,10 @@ export default function FeedPage() {
       if (items.length === 0) return
 
       const key = e.key.toLowerCase()
+      const menuOpenForFocusedCard = actionsMenuOpenForIndex === i
+      if (menuOpenForFocusedCard && (key === 'w' || key === 's' || key === 'e' || key === 'enter' || key === '`' || key === 'm' || key === 'q' || key === 'escape')) {
+        return
+      }
       /* Ignore key repeat for left/right only (so A/D don’t skip); allow repeat for W/S so holding moves up/down */
       if (e.repeat && (key === 'a' || key === 'd' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return
       if (blockConfirm) {
@@ -527,7 +533,7 @@ export default function FeedPage() {
         }
         return // let Tab/Enter reach the dialog buttons
       }
-      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'r' || key === 'f' || key === 'c' || key === 'h' || key === 'b' || key === '4' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') e.preventDefault()
+      if (key === 'w' || key === 's' || key === 'a' || key === 'd' || key === 'e' || key === 'enter' || key === 'r' || key === 'f' || key === 'c' || key === 'h' || key === 'b' || key === '4' || key === '`' || key === 'm' || e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') e.preventDefault()
 
       if (key === 'b') {
         const item = items[i]
@@ -543,13 +549,12 @@ export default function FeedPage() {
       }
 
       /* Use ref + concrete value (not functional updater) so Strict Mode double-invoke doesn't move two steps */
+      const fromNone = i < 0
       if (key === 'w' || e.key === 'ArrowUp') {
         mouseMovedRef.current = false
         setKeyboardNavActive(true)
         scrollIntoViewFromKeyboardRef.current = true
-        const next = cols >= 2
-          ? indexAbove(distributeByHeight(items, cols), i)
-          : Math.max(0, i - 1)
+        const next = fromNone ? items.length - 1 : cols >= 2 ? indexAbove(distributeByHeight(items, cols), i) : Math.max(0, i - 1)
         setKeyboardFocusIndex(next)
         return
       }
@@ -557,9 +562,7 @@ export default function FeedPage() {
         mouseMovedRef.current = false
         setKeyboardNavActive(true)
         scrollIntoViewFromKeyboardRef.current = true
-        const next = cols >= 2
-          ? indexBelow(distributeByHeight(items, cols), i)
-          : Math.min(items.length - 1, i + 1)
+        const next = fromNone ? 0 : cols >= 2 ? indexBelow(distributeByHeight(items, cols), i) : Math.min(items.length - 1, i + 1)
         setKeyboardFocusIndex(next)
         return
       }
@@ -569,10 +572,7 @@ export default function FeedPage() {
         scrollIntoViewFromKeyboardRef.current = true
         const columns = cols >= 2 ? distributeByHeight(items, cols) : null
         const getRect = (idx: number) => cardRefsRef.current[idx]?.getBoundingClientRect()
-        const next =
-          cols >= 2 && columns
-            ? indexLeftClosest(columns, i, getRect)
-            : Math.max(0, i - 1)
+        const next = fromNone ? 0 : cols >= 2 && columns ? indexLeftClosest(columns, i, getRect) : Math.max(0, i - 1)
         setKeyboardFocusIndex(next)
         return
       }
@@ -582,10 +582,7 @@ export default function FeedPage() {
         scrollIntoViewFromKeyboardRef.current = true
         const columns = cols >= 2 ? distributeByHeight(items, cols) : null
         const getRect = (idx: number) => cardRefsRef.current[idx]?.getBoundingClientRect()
-        const next =
-          cols >= 2 && columns
-            ? indexRightClosest(columns, i, getRect)
-            : Math.min(items.length - 1, i + 1)
+        const next = fromNone ? 0 : cols >= 2 && columns ? indexRightClosest(columns, i, getRect) : Math.min(items.length - 1, i + 1)
         setKeyboardFocusIndex(next)
         return
       }
@@ -617,6 +614,12 @@ export default function FeedPage() {
       }
       if (key === 'c') {
         setKeyboardAddOpen(true)
+        return
+      }
+      if (key === '`' || key === 'm') {
+        if (actionsMenuOpenForIndex !== i) {
+          setOpenActionsMenuTrigger((prev) => prev + 1)
+        }
         return
       }
       if (key === '4') {
@@ -671,7 +674,7 @@ export default function FeedPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [location.pathname, location.search, cols, isModalOpen, openPostModal, blockConfirm, session, likeOverrides])
+  }, [location.pathname, location.search, cols, isModalOpen, openPostModal, blockConfirm, session, likeOverrides, actionsMenuOpenForIndex])
 
   useEffect(() => {
     if (blockConfirm) blockCancelRef.current?.focus()
@@ -694,7 +697,13 @@ export default function FeedPage() {
           </div>
         ) : (
           <>
-            <div className={`${styles.gridColumns} ${styles[`gridView${viewMode}`]}`} data-feed-cards data-view-mode={viewMode} data-keyboard-nav={keyboardNavActive || undefined}>
+            <div
+              className={`${styles.gridColumns} ${styles[`gridView${viewMode}`]}`}
+              data-feed-cards
+              data-view-mode={viewMode}
+              data-keyboard-nav={keyboardNavActive || undefined}
+              onMouseLeave={() => setKeyboardFocusIndex(-1)}
+            >
               {distributeByHeight(displayItems, cols).map((column, colIndex) => (
                 <div key={colIndex} className={styles.gridColumn}>
                   {column.map(({ item, originalIndex }) => (
@@ -715,6 +724,8 @@ export default function FeedPage() {
                         cardRef={(el) => { cardRefsRef.current[originalIndex] = el }}
                         openAddDropdown={originalIndex === keyboardFocusIndex && keyboardAddOpen}
                         onAddClose={() => setKeyboardAddOpen(false)}
+                        openActionsMenuTrigger={originalIndex === keyboardFocusIndex ? openActionsMenuTrigger : undefined}
+                        onActionsMenuOpenChange={(open) => setActionsMenuOpenForIndex(open ? originalIndex : null)}
                         onPostClick={(uri, opts) => openPostModal(uri, opts?.openReply)}
                         onAspectRatio={undefined}
                         fillCell={false}
@@ -735,22 +746,20 @@ export default function FeedPage() {
                 </div>
               ))}
             </div>
-            {cursor && (
-              <>
-                <div className={styles.loadMoreRow}>
-                  {loadingMore && (
-                    <p className={styles.loadingMore} role="status">Loading more…</p>
-                  )}
-                  <button
-                    type="button"
-                    className={styles.loadMoreBtn}
-                    onClick={() => cursor && !loadingMore && load(cursor)}
-                    disabled={loadingMore}
-                  >
-                    Load more
-                  </button>
-                </div>
-              </>
+            {session && (
+              <div className={styles.loadMoreRow}>
+                {loadingMore && (
+                  <p className={styles.loadingMore} role="status">Loading more…</p>
+                )}
+                <button
+                  type="button"
+                  className={styles.loadMoreBtn}
+                  onClick={() => cursor && !loadingMore && load(cursor)}
+                  disabled={loadingMore || !cursor}
+                >
+                  {cursor ? 'Load more' : 'No more posts'}
+                </button>
+              </div>
             )}
           </>
         )}

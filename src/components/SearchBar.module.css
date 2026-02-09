@@ -109,6 +109,12 @@
   outline: none;
 }
 
+/* Above search results dropdown (which is z-index 100) so filter popup appears on top */
+.searchRowFilterOpen {
+  z-index: 102;
+  position: relative;
+}
+
 .filterDropdown {
   position: absolute;
   top: 100%;
@@ -117,13 +123,11 @@
   display: flex;
   gap: 0.25rem;
   padding: 0.35rem;
-  background: var(--glass-bg-strong);
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
-  backdrop-filter: blur(var(--glass-blur-strong));
+  background: var(--surface);
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius-sm);
   box-shadow: var(--shadow-dropdown);
-  z-index: 101;
+  z-index: 1;
 }
 
 .filterBtn,

@@ -57,10 +57,11 @@
   gap: 0.1rem;
 }
 
-/* Portaled dropdown: position set inline (fixed above trigger) so it stays in view in scrollable columns; above modal (z 1000) */
+/* Portaled dropdown: fixed so it doesn't scroll with the page; position coords set inline and updated on scroll */
 .dropdownFixed {
+  position: fixed !important;
   z-index: 1001;
-  /* position, bottom, right set via inline style */
+  /* bottom, right set via inline style */
 }
 
 .dropdownCompact {
@@ -74,7 +75,13 @@
 }
 
 .feedLabel {
-  padding: 0.35rem 0.6rem 0.25rem;
+  padding: 0.35rem 0.6rem 0.15rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.postedAt {
+  padding: 0.1rem 0.6rem 0.35rem;
   font-size: 0.8rem;
   color: var(--muted);
   border-bottom: 1px solid var(--border);
@@ -112,7 +119,8 @@
 }
 
 .item {
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
   padding: 0.4rem 0.6rem;
   text-align: left;
@@ -123,6 +131,16 @@
   border: none;
   border-radius: 0.35rem;
   cursor: pointer;
+  gap: 0.5rem;
+}
+
+.itemIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.25rem;
+  color: var(--muted);
 }
 
 .item:hover:not(:disabled) {

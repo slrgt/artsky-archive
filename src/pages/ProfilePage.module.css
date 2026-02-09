@@ -159,6 +159,8 @@
 @media (max-width: 767px) {
   .tabsSticky {
     top: 3.25rem;
+    justify-content: flex-start;
+    overflow: hidden;
   }
   /* In profile popup on mobile: pin tabs to bottom of scroll (above close/back bar) */
   .wrapInModal .tabsSticky {
@@ -178,6 +180,24 @@
   }
   .wrapInModal .tabsBarHidden {
     transform: translateY(100%);
+  }
+  /* Horizontal scrollable filter tabs on mobile (no scrollbar) */
+  .tabs {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    width: auto;
+    min-width: 100%;
+  }
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .tab {
+    flex-shrink: 0;
   }
 }
 
