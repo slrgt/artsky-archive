@@ -224,7 +224,7 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
 
   return (
     <div className={`${styles.wrap} ${compact ? styles.compact : ''} ${suggestionsAbove ? styles.suggestionsAbove : ''}`} ref={containerRef}>
-      <div className={styles.searchRow}>
+      <div className={`${styles.searchRow} ${filterOpen ? styles.searchRowFilterOpen : ''}`}>
         <button
           type="button"
           className={`${styles.filterIconBtn} ${filterOpen ? styles.filterIconActive : ''}`}

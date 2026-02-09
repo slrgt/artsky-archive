@@ -59,6 +59,79 @@
   letter-spacing: -0.01em;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.editFeedsBtn,
+.editFeedsDoneBtn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 0.35rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.editFeedsBtn:hover,
+.editFeedsDoneBtn:hover {
+  background: var(--glass-highlight);
+}
+
+.editFeedsSection {
+  margin-bottom: 0.5rem;
+}
+
+.editFeedsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.editFeedsItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.editFeedsItem:last-child {
+  border-bottom: none;
+}
+
+.editFeedsLabel {
+  font-size: 0.9rem;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editFeedsRemoveBtn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.editFeedsRemoveBtn:hover {
+  border-color: var(--danger, #c00);
+  color: var(--danger, #c00);
+}
+
 .helpWrap {
   position: relative;
   flex-shrink: 0;
@@ -103,6 +176,35 @@
   border: 1px solid var(--border);
   border-radius: var(--glass-radius-sm);
   box-shadow: var(--shadow-card);
+}
+
+/* Feed long-press / context menu */
+.feedContextMenu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 8rem;
+  padding: 0.25rem 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--glass-radius-sm);
+  box-shadow: var(--shadow-dropdown);
+}
+
+.feedContextMenuItem {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.75rem;
+  text-align: left;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.feedContextMenuItem:hover {
+  background: var(--glass-highlight);
 }
 
 /* Section: choose feeds */
@@ -364,15 +466,43 @@
   font-size: 16px;
 }
 
+.customSuggestionsWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  background: var(--glass-bg);
+  max-height: 14rem;
+  overflow-y: auto;
+  padding: 0.35rem 0;
+}
+
+.customSuggestionsSection {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.customSuggestionsLoading {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
 .customSuggestions {
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--glass-radius-sm);
-  background: var(--glass-bg);
-  max-height: 12rem;
-  overflow-y: auto;
+}
+
+.customSuggestionsWrap .customSuggestions {
+  border: none;
+  border-radius: 0;
+  max-height: none;
 }
 
 .customSuggestionItem {

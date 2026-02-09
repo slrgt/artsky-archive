@@ -181,6 +181,8 @@ export function ProfileContent({
   const { viewMode, setViewMode } = useViewMode()
   const readAgent = session ? agent : publicAgent
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
+  /** One sentinel per column so we load more when the user nears the bottom of any column (avoids blank space in short columns). */
+  const loadMoreSentinelRefs = useRef<(HTMLDivElement | null)[]>([])
   const loadingMoreRef = useRef(false)
   const [tabsBarVisible, setTabsBarVisible] = useState(true)
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
@@ -298,26 +300,38 @@ export function ProfileContent({
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Infinite scroll: load more when sentinel enters view (posts, reposts tabs). Match homepage: 600px rootMargin; when in modal use modal scroll container as root.
+  // Infinite scroll: load more when any column's sentinel is about to enter view (posts, reposts tabs). Per-column sentinels when cols >= 2 so short columns trigger load before blank space; 800px rootMargin to load before user sees empty space.
   loadingMoreRef.current = loadingMore
+  const colsForObserver = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
   useEffect(() => {
     if (tab !== 'posts' && tab !== 'reposts') return
-    const sentinel = loadMoreSentinelRef.current
-    if (!sentinel) return
     if (!cursor) return
-    const root = inModal ? sentinel.closest('[data-modal-scroll]') : null
+    const firstSentinel = colsForObserver >= 2 ? loadMoreSentinelRefs.current[0] : loadMoreSentinelRef.current
+    const root = inModal ? firstSentinel?.closest('[data-modal-scroll]') ?? null : null
     const observer = new IntersectionObserver(
       (entries) => {
-        const [e] = entries
-        if (!e?.isIntersecting || loadingMoreRef.current) return
-        loadingMoreRef.current = true
-        load(cursor)
+        for (const e of entries) {
+          if (e.isIntersecting && !loadingMoreRef.current) {
+            loadingMoreRef.current = true
+            load(cursor)
+            break
+          }
+        }
       },
-      { root: root ?? undefined, rootMargin: '600px', threshold: 0 }
+      { root: root ?? undefined, rootMargin: '800px', threshold: 0 }
     )
-    observer.observe(sentinel)
+    if (colsForObserver >= 2) {
+      const refs = loadMoreSentinelRefs.current
+      for (let c = 0; c < colsForObserver; c++) {
+        const el = refs[c]
+        if (el) observer.observe(el)
+      }
+    } else {
+      const sentinel = loadMoreSentinelRef.current
+      if (sentinel) observer.observe(sentinel)
+    }
     return () => observer.disconnect()
-  }, [tab, cursor, load, inModal])
+  }, [tab, cursor, load, inModal, colsForObserver])
 
   const followingUri = profile?.viewer?.following ?? followUriOverride
   const isFollowing = !!followingUri
@@ -588,7 +602,7 @@ export function ProfileContent({
               <nav className={styles.tabs} aria-label="Profile sections">
                 <button type="button" className={`${styles.tab} ${tab === 'posts' ? styles.tabActive : ''}`} onClick={() => setTab('posts')}>Posts</button>
                 <button type="button" className={`${styles.tab} ${tab === 'reposts' ? styles.tabActive : ''}`} onClick={() => setTab('reposts')}>Reposts</button>
-                <button type="button" className={`${styles.tab} ${tab === 'blog' ? styles.tabActive : ''}`} onClick={() => setTab('blog')}>Blog</button>
+                <button type="button" className={`${styles.tab} ${tab === 'blog' ? styles.tabActive : ''}`} onClick={() => setTab('blog')}>Threads</button>
                 <button type="button" className={`${styles.tab} ${tab === 'text' ? styles.tabActive : ''}`} onClick={() => setTab('text')}>Text</button>
                 <button type="button" className={`${styles.tab} ${tab === 'feeds' ? styles.tabActive : ''}`} onClick={() => setTab('feeds')}>Feeds</button>
               </nav>,
@@ -631,7 +645,7 @@ export function ProfileContent({
             <nav className={styles.tabs} aria-label="Profile sections">
               <button type="button" className={`${styles.tab} ${tab === 'posts' ? styles.tabActive : ''}`} onClick={() => setTab('posts')}>Posts</button>
               <button type="button" className={`${styles.tab} ${tab === 'reposts' ? styles.tabActive : ''}`} onClick={() => setTab('reposts')}>Reposts</button>
-              <button type="button" className={`${styles.tab} ${tab === 'blog' ? styles.tabActive : ''}`} onClick={() => setTab('blog')}>Blog</button>
+              <button type="button" className={`${styles.tab} ${tab === 'blog' ? styles.tabActive : ''}`} onClick={() => setTab('blog')}>Threads</button>
               <button type="button" className={`${styles.tab} ${tab === 'text' ? styles.tabActive : ''}`} onClick={() => setTab('text')}>Text</button>
               <button type="button" className={`${styles.tab} ${tab === 'feeds' ? styles.tabActive : ''}`} onClick={() => setTab('feeds')}>Feeds</button>
             </nav>
@@ -850,6 +864,13 @@ export function ProfileContent({
                         />
                       </div>
                     ))}
+                    {cursor && (
+                      <div
+                        ref={(el) => { loadMoreSentinelRefs.current[colIndex] = el }}
+                        className={styles.loadMoreSentinel}
+                        aria-hidden
+                      />
+                    )}
                   </div>
                 ))}
               </div>
@@ -881,7 +902,7 @@ export function ProfileContent({
                 ))}
               </div>
             )}
-            {cursor && <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />}
+            {cursor && cols === 1 && <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />}
             {loadingMore && <div className={styles.loadingMore}>Loading…</div>}
           </>
         )}

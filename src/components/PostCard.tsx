@@ -44,6 +44,10 @@ interface Props {
   likedUriOverride?: string | null
   /** When true, card is marked as seen (e.g. scrolled past); shown darkened */
   seen?: boolean
+  /** When this number changes, open the ... actions menu (e.g. from ` or M key) */
+  openActionsMenuTrigger?: number
+  /** Called when the ... actions menu opens or closes (for parent to track which card's menu is open) */
+  onActionsMenuOpenChange?: (open: boolean) => void
 }
 
 function RepostIcon() {
@@ -74,7 +78,7 @@ function isHlsUrl(url: string): boolean {
   return /\.m3u8(\?|$)/i.test(url) || url.includes('m3u8')
 }
 
-export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, onAspectRatio, fillCell, nsfwBlurred, onNsfwUnblur, constrainMediaHeight, likedUriOverride, seen }: Props) {
+export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, onAspectRatio, fillCell, nsfwBlurred, onNsfwUnblur, constrainMediaHeight, likedUriOverride, seen, openActionsMenuTrigger, onActionsMenuOpenChange }: Props) {
   const navigate = useNavigate()
   const { session } = useSession()
   const { openLoginModal } = useLoginModal()
@@ -84,6 +88,8 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const mediaWrapRef = useRef<HTMLDivElement>(null)
   const hlsRef = useRef<Hls | null>(null)
   const { post, reason } = item as { post: typeof item.post; reason?: { $type?: string; by?: { handle?: string; did?: string } } }
+  const feedSource = (item as { _feedSource?: { kind?: string; label?: string } })._feedSource
+  const feedLabel = feedSource?.label ?? (feedSource?.kind === 'timeline' ? 'Following' : undefined)
   const media = getPostMediaInfoForDisplay(post)
   const hasMedia = !!media
   const text = (post.record as { text?: string })?.text ?? ''
@@ -110,6 +116,8 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
     hasMedia && media?.aspectRatio != null ? media.aspectRatio : null
   )
   const [addOpen, setAddOpen] = useState(false)
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
+  const actionsMenuDropdownRef = useRef<HTMLDivElement>(null)
   const [addToBoardIds, setAddToBoardIds] = useState<Set<string>>(new Set())
   const [newBoardName, setNewBoardName] = useState('')
   const addRef = useRef<HTMLDivElement>(null)
@@ -123,6 +131,47 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const didDoubleTapRef = useRef(false)
   const touchSessionRef = useRef(false)
   const openDelayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const lastOpenActionsMenuTriggerRef = useRef<number>(0)
+
+  /* Open ... menu when parent increments openActionsMenuTrigger (e.g. ` or M key) */
+  useEffect(() => {
+    if (openActionsMenuTrigger == null) return
+    if (openActionsMenuTrigger === lastOpenActionsMenuTriggerRef.current) return
+    lastOpenActionsMenuTriggerRef.current = openActionsMenuTrigger
+    setActionsMenuOpen(true)
+  }, [openActionsMenuTrigger])
+
+  /* Close ... menu when focus, pointer, or mouse goes to another item (e.g. another card) */
+  useEffect(() => {
+    if (!actionsMenuOpen) return
+    const isOutside = (target: Node | null) => {
+      if (!target) return true
+      if (cardRef.current?.contains(target)) return false
+      if (actionsMenuDropdownRef.current?.contains(target)) return false
+      return true
+    }
+    const onFocusIn = (e: FocusEvent) => {
+      if (isOutside(e.target as Node)) setActionsMenuOpen(false)
+    }
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      const target = (e as MouseEvent).target ?? (e as TouchEvent).target
+      if (isOutside(target as Node)) setActionsMenuOpen(false)
+    }
+    const onMouseOver = (e: MouseEvent) => {
+      if (isOutside(e.target as Node)) setActionsMenuOpen(false)
+    }
+    document.addEventListener('focusin', onFocusIn)
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('touchstart', onPointerDown, { passive: true })
+    document.addEventListener('mouseover', onMouseOver)
+    return () => {
+      document.removeEventListener('focusin', onFocusIn)
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('touchstart', onPointerDown)
+      document.removeEventListener('mouseover', onMouseOver)
+    }
+  }, [actionsMenuOpen])
 
   useEffect(() => {
     if (likedUriOverride !== undefined) {
@@ -218,17 +267,29 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
     prevAddOpenRef.current = addOpen
   }, [addOpen, onAddClose])
 
+  const updateAddDropdownPosition = useCallback(() => {
+    if (!addRef.current) return null
+    const rect = addRef.current.getBoundingClientRect()
+    return {
+      bottom: window.innerHeight - rect.top,
+      left: rect.left + rect.width / 2,
+    }
+  }, [])
+
   useLayoutEffect(() => {
     if (!addOpen || !addRef.current) {
       setAddDropdownPosition(null)
       return
     }
-    const rect = addRef.current.getBoundingClientRect()
-    setAddDropdownPosition({
-      bottom: window.innerHeight - rect.top,
-      left: rect.left + rect.width / 2,
-    })
-  }, [addOpen])
+    setAddDropdownPosition(updateAddDropdownPosition())
+  }, [addOpen, updateAddDropdownPosition])
+
+  useEffect(() => {
+    if (!addOpen) return
+    const onScroll = () => setAddDropdownPosition((prev) => (prev ? updateAddDropdownPosition() ?? prev : prev))
+    window.addEventListener('scroll', onScroll, true)
+    return () => window.removeEventListener('scroll', onScroll, true)
+  }, [addOpen, updateAddDropdownPosition])
 
   useEffect(() => {
     if (!addOpen) return
@@ -476,10 +537,28 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
           if (onPostClick) onPostClick(post.uri)
           else navigate(`/post/${encodeURIComponent(post.uri)}`)
         }}
-        onTouchStart={() => {
+        onTouchStart={(e) => {
           touchSessionRef.current = true
+          const t = e.touches[0]
+          touchStartRef.current = t ? { x: t.clientX, y: t.clientY } : null
         }}
         onTouchEnd={(e) => {
+          const start = touchStartRef.current
+          touchStartRef.current = null
+          const end = e.changedTouches[0]
+          const moved =
+            start && end
+              ? Math.hypot(end.clientX - start.x, end.clientY - start.y)
+              : 0
+          const isScroll = moved > 12
+          if (isScroll) {
+            if (openDelayTimerRef.current) {
+              clearTimeout(openDelayTimerRef.current)
+              openDelayTimerRef.current = null
+            }
+            touchSessionRef.current = false
+            return
+          }
           const now = Date.now()
           if (now - lastTapRef.current < 400) {
             lastTapRef.current = 0
@@ -659,8 +738,10 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                       ref={addDropdownRef}
                       className={`${styles.addDropdown} ${styles.addDropdownFixed}`}
                       style={{
+                        position: 'fixed',
                         bottom: addDropdownPosition.bottom,
                         left: addDropdownPosition.left,
+                        transform: 'translateX(-50%)',
                         zIndex: 1001,
                       }}
                     >
@@ -755,6 +836,15 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                 compact
                 verticalIcon
                 className={styles.cardActionsMenu}
+                open={actionsMenuOpen}
+                onOpenChange={(open) => {
+                  setActionsMenuOpen(open)
+                  onActionsMenuOpenChange?.(open)
+                }}
+                openTrigger={openActionsMenuTrigger}
+                dropdownRef={actionsMenuDropdownRef}
+                feedLabel={feedLabel}
+                postedAt={(post.record as { createdAt?: string })?.createdAt}
                 onDownload={hasMedia ? handleDownload : undefined}
                 downloadLabel={hasMedia ? (isVideo ? 'Download video' : isMultipleImages ? 'Download photos' : 'Download photo') : undefined}
                 downloadLoading={downloadLoading}

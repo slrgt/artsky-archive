@@ -11,7 +11,7 @@ import { useModeration } from '../context/ModerationContext'
 import { useMediaOnly } from '../context/MediaOnlyContext'
 import { useScrollLock } from '../context/ScrollLockContext'
 import { useSeenPosts } from '../context/SeenPostsContext'
-import { publicAgent, createPost, getNotifications, getSavedFeedsFromPreferences, getFeedDisplayName, resolveFeedUri, addSavedFeed } from '../lib/bsky'
+import { publicAgent, createPost, getNotifications, getSavedFeedsFromPreferences, getFeedDisplayName, resolveFeedUri, addSavedFeed, removeSavedFeedByUri, getFeedShareUrl } from '../lib/bsky'
 import type { FeedSource } from '../types'
 import { GUEST_FEED_SOURCES, GUEST_MIX_ENTRIES } from '../config/feedSources'
 import { useFeedMix } from '../context/FeedMixContext'
@@ -243,7 +243,7 @@ function subscribeDesktop(cb: () => void) {
 export default function Layout({ title, children, showNav }: Props) {
   const loc = useLocation()
   const navigate = useNavigate()
-  const { openProfileModal, isModalOpen, openForumModal, openArtboardsModal } = useProfileModal()
+  const { openProfileModal, openPostModal, isModalOpen, openForumModal, openArtboardsModal } = useProfileModal()
   const search = loc.search
   const isForumModalOpen = /\bforum=1\b/.test(search)
   const isArtboardsModalOpen = /\bartboards=1\b/.test(search) || /\bartboard=/.test(search)
@@ -321,6 +321,7 @@ export default function Layout({ title, children, showNav }: Props) {
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'reply' | 'follow'>('all')
   const [feedsDropdownOpen, setFeedsDropdownOpen] = useState(false)
   const [savedFeedSources, setSavedFeedSources] = useState<FeedSource[]>([])
+  const [feedAddError, setFeedAddError] = useState<string | null>(null)
   const feedsDropdownRef = useRef<HTMLDivElement>(null)
   const feedsBtnRef = useRef<HTMLButtonElement>(null)
   const [notifications, setNotifications] = useState<{ uri: string; author: { handle?: string; did: string; avatar?: string; displayName?: string }; reason: string; reasonSubject?: string; isRead: boolean; indexedAt: string; replyPreview?: string }[]>([])
@@ -363,6 +364,11 @@ export default function Layout({ title, children, showNav }: Props) {
       }
     },
     [mixEntries.length, addEntry, toggleSource]
+  )
+
+  const removableSourceUris = useMemo(
+    () => new Set(savedDeduped.map((s) => s.uri).filter(Boolean) as string[]),
+    [savedDeduped]
   )
 
   const startHomeHold = useCallback(() => {
@@ -421,12 +427,14 @@ export default function Layout({ title, children, showNav }: Props) {
         return
       }
       if (key !== 'q' && e.key !== 'Backspace') return
+      /* On feed, Q is reserved for closing the ... actions menu; don't treat it as back */
+      if (key === 'q' && (loc.pathname === '/' || loc.pathname.startsWith('/feed'))) return
       e.preventDefault()
       navigate(-1)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [navigate, isModalOpen, setViewMode, toggleMediaOnly])
+  }, [navigate, isModalOpen, setViewMode, toggleMediaOnly, loc.pathname])
 
   useEffect(() => {
     if (!accountMenuOpen) return
@@ -477,15 +485,55 @@ export default function Layout({ title, children, showNav }: Props) {
           uri: f.value,
         }))
       )
-      setSavedFeedSources(withLabels)
+      const serverUris = new Set(withLabels.map((s) => s.uri).filter(Boolean))
+      setSavedFeedSources((prev) => {
+        const merged: FeedSource[] = [...withLabels]
+        for (const s of prev) {
+          if (s.uri && !serverUris.has(s.uri) && !merged.some((m) => m.uri === s.uri)) merged.push(s)
+        }
+        return merged
+      })
     } catch {
       setSavedFeedSources([])
     }
   }, [session])
 
+  const handleRemoveFeed = useCallback(
+    async (source: FeedSource) => {
+      if (!source.uri) return
+      try {
+        await removeSavedFeedByUri(source.uri)
+        setSavedFeedSources((prev) => prev.filter((s) => s.uri !== source.uri))
+        if (mixEntries.some((e) => e.source.uri === source.uri)) toggleSource(source)
+        await loadSavedFeeds()
+      } catch {
+        // ignore
+      }
+    },
+    [mixEntries, toggleSource, loadSavedFeeds]
+  )
+
+  const handleShareFeed = useCallback(async (source: FeedSource) => {
+    if (!source.uri) return
+    try {
+      const url = await getFeedShareUrl(source.uri)
+      await navigator.clipboard.writeText(url)
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  useEffect(() => {
+    if (session) loadSavedFeeds()
+  }, [session, loadSavedFeeds])
+
   useEffect(() => {
     if (feedsDropdownOpen && session) loadSavedFeeds()
   }, [feedsDropdownOpen, session, loadSavedFeeds])
+
+  useEffect(() => {
+    if (feedsDropdownOpen) setFeedAddError(null)
+  }, [feedsDropdownOpen])
 
   useEffect(() => {
     if (!feedsDropdownOpen) return
@@ -814,6 +862,7 @@ export default function Layout({ title, children, showNav }: Props) {
             {filtered.map((n) => {
               const handle = n.author.handle ?? n.author.did
               const isFollow = n.reason === 'follow'
+              const isReplyOrLike = n.reason === 'reply' || n.reason === 'like'
               const href = isFollow ? `/profile/${encodeURIComponent(handle)}` : `/post/${encodeURIComponent(n.reasonSubject ?? n.uri)}`
               const reasonLabel =
                 n.reason === 'like' ? 'liked your post' :
@@ -823,17 +872,27 @@ export default function Layout({ title, children, showNav }: Props) {
                 n.reason === 'reply' ? 'replied to you' :
                 n.reason === 'quote' ? 'quoted your post' :
                 n.reason
+              const useModalOnClick = !isDesktop && (isFollow || isReplyOrLike || n.reason === 'repost' || n.reason === 'mention' || n.reason === 'quote')
               return (
                 <li key={n.uri}>
                   <Link
                     to={href}
                     className={styles.notificationItem}
                     onClick={(e) => {
-                      if (isFollow) {
+                      setNotificationsOpen(false)
+                      if (useModalOnClick) {
+                        e.preventDefault()
+                        if (isFollow) {
+                          openProfileModal(handle)
+                        } else if (isReplyOrLike) {
+                          openPostModal(n.uri, undefined, n.uri)
+                        } else {
+                          openPostModal(n.reasonSubject ?? n.uri)
+                        }
+                      } else if (isFollow) {
                         e.preventDefault()
                         openProfileModal(handle)
                       }
-                      setNotificationsOpen(false)
                     }}
                   >
                     {n.author.avatar ? (
@@ -1065,6 +1124,11 @@ export default function Layout({ title, children, showNav }: Props) {
                       </button>
                       {feedsDropdownOpen && (
                         <div className={styles.feedsDropdown} role="dialog" aria-label="Remix feeds">
+                          {feedAddError && (
+                            <p className={styles.feedAddError} role="alert">
+                              {feedAddError}
+                            </p>
+                          )}
                           <FeedSelector
                             variant="dropdown"
                             sources={session ? allFeedSources : GUEST_FEED_SOURCES}
@@ -1074,17 +1138,22 @@ export default function Layout({ title, children, showNav }: Props) {
                             setEntryPercent={setEntryPercent}
                             onAddCustom={async (input) => {
                               if (!session) return
+                              setFeedAddError(null)
                               try {
                                 const uri = await resolveFeedUri(input)
                                 await addSavedFeed(uri)
-                                await loadSavedFeeds()
                                 const label = await getFeedDisplayName(uri)
+                                setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, { kind: 'custom', label, uri }]))
                                 handleFeedsToggleSource({ kind: 'custom', label, uri })
-                              } catch {
-                                // ignore
+                                await loadSavedFeeds()
+                              } catch (err) {
+                                setFeedAddError(err instanceof Error ? err.message : 'Could not add feed. Try again.')
                               }
                             }}
                             onToggleWhenGuest={session ? undefined : openLoginModal}
+                            removableSourceUris={session ? removableSourceUris : undefined}
+                            onRemoveFeed={session ? handleRemoveFeed : undefined}
+                            onShareFeed={session ? handleShareFeed : undefined}
                           />
                         </div>
                       )}
@@ -1120,6 +1189,11 @@ export default function Layout({ title, children, showNav }: Props) {
                     </button>
                     {feedsDropdownOpen && (
                       <div className={styles.feedsDropdown} role="dialog" aria-label="Remix feeds">
+                        {feedAddError && (
+                          <p className={styles.feedAddError} role="alert">
+                            {feedAddError}
+                          </p>
+                        )}
                         <FeedSelector
                           variant="dropdown"
                           sources={session ? allFeedSources : GUEST_FEED_SOURCES}
@@ -1129,17 +1203,22 @@ export default function Layout({ title, children, showNav }: Props) {
                           setEntryPercent={setEntryPercent}
                           onAddCustom={async (input) => {
                             if (!session) return
+                            setFeedAddError(null)
                             try {
                               const uri = await resolveFeedUri(input)
                               await addSavedFeed(uri)
-                              await loadSavedFeeds()
                               const label = await getFeedDisplayName(uri)
+                              setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, { kind: 'custom', label, uri }]))
                               handleFeedsToggleSource({ kind: 'custom', label, uri })
-                            } catch {
-                              // ignore
+                              await loadSavedFeeds()
+                            } catch (err) {
+                              setFeedAddError(err instanceof Error ? err.message : 'Could not add feed. Try again.')
                             }
                           }}
                           onToggleWhenGuest={session ? undefined : openLoginModal}
+                          removableSourceUris={session ? removableSourceUris : undefined}
+                          onRemoveFeed={session ? handleRemoveFeed : undefined}
+                          onShareFeed={session ? handleShareFeed : undefined}
                         />
                       </div>
                     )}
@@ -1267,6 +1346,34 @@ export default function Layout({ title, children, showNav }: Props) {
         )}
       </header>
       <main id="main-content" className={styles.main} aria-label="Main content">
+        {showNav && path === '/feed' && (
+          <FeedSelector
+            variant="page"
+            sources={session ? allFeedSources : GUEST_FEED_SOURCES}
+            fallbackSource={session ? fallbackFeedSource : GUEST_FEED_SOURCES[0]}
+            mixEntries={session ? mixEntries : GUEST_MIX_ENTRIES}
+            onToggle={handleFeedsToggleSource}
+            setEntryPercent={setEntryPercent}
+            onAddCustom={async (input) => {
+              if (!session) return
+              setFeedAddError(null)
+              try {
+                const uri = await resolveFeedUri(input)
+                await addSavedFeed(uri)
+                const label = await getFeedDisplayName(uri)
+                setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, { kind: 'custom', label, uri }]))
+                handleFeedsToggleSource({ kind: 'custom', label, uri })
+                await loadSavedFeeds()
+              } catch (err) {
+                setFeedAddError(err instanceof Error ? err.message : 'Could not add feed. Try again.')
+              }
+            }}
+            onToggleWhenGuest={session ? undefined : openLoginModal}
+            removableSourceUris={session ? removableSourceUris : undefined}
+            onRemoveFeed={session ? handleRemoveFeed : undefined}
+            onShareFeed={session ? handleShareFeed : undefined}
+          />
+        )}
         {children}
       </main>
       {showNav && (
@@ -1466,7 +1573,7 @@ export default function Layout({ title, children, showNav }: Props) {
                 <div className={styles.aboutCard} onClick={(e) => e.stopPropagation()}>
                   <h2 className={styles.aboutTitle}>ArtSky</h2>
                   <p className={styles.aboutIntro}>
-                    A Bluesky client focused on art. Hide seen posts with the home button, reveal them by holding the home button. keyboard-friendly navigation.
+                    A Bluesky client focused on art. Hide seen posts with the home or logo button, reveal them by holding the home or logo button. keyboard-friendly navigation.
                   </p>
                   <h3 className={styles.aboutSubtitle}>Keyboard shortcuts</h3>
                   <dl className={styles.aboutShortcuts}>

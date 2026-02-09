@@ -287,6 +287,15 @@
   z-index: 100;
 }
 
+.feedAddError {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--error, #c00);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
 .headerRight {
   display: none;
 }
@@ -369,8 +378,9 @@
     min-width: 0;
   }
   .headerCenterMobile .feedsDropdown {
-    left: 0;
+    left: 50%;
     right: auto;
+    transform: translateX(-50%);
     max-width: calc(100vw - 2rem);
   }
 }
@@ -1555,7 +1565,7 @@
   animation: popIn 0.2s ease;
 }
 
-/* Notifications popup – same overlay pattern as compose so it scales like post windows */
+/* Notifications popup – overlay and card styled like post modal for consistency */
 .notificationsOverlay {
   position: fixed;
   inset: 0;
@@ -1569,14 +1579,14 @@
   padding-bottom: 1.75rem;
   padding-bottom: max(1.75rem, env(safe-area-inset-bottom));
   pointer-events: auto;
+  background: var(--overlay-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 @media (max-width: 767px) {
   .notificationsOverlayMobile {
     align-items: flex-end;
-    justify-content: center;
-    padding-bottom: 1.75rem;
-    padding-bottom: calc(1.75rem + env(safe-area-inset-bottom));
   }
 }
 
@@ -1588,12 +1598,10 @@
   display: flex;
   flex-direction: column;
   padding: 1.25rem;
-  background: var(--glass-bg-strong);
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong));
-  backdrop-filter: blur(var(--glass-blur-strong));
-  border: 1px solid var(--glass-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--glass-radius);
-  box-shadow: var(--shadow-dropdown);
+  box-shadow: var(--shadow-card);
   pointer-events: auto;
   animation: popIn 0.2s ease;
 }

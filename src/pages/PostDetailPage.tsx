@@ -517,11 +517,13 @@ export interface PostDetailContentProps {
   uri: string
   /** When true, open the reply form focused on load */
   initialOpenReply?: boolean
+  /** When set, scroll to and focus this reply/comment in the thread (e.g. from notification) */
+  initialFocusedCommentUri?: string
   /** When provided, render in modal mode (no Layout). Call when uri is empty to close. */
   onClose?: () => void
 }
 
-export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: PostDetailContentProps) {
+export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocusedCommentUri, onClose }: PostDetailContentProps) {
   const navigate = useNavigate()
   const { openProfileModal } = useProfileModal()
   const decodedUri = uriProp
@@ -571,6 +573,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
   const keyboardFocusIndexRef = useRef(0)
   const scrollIntoViewFromKeyboardRef = useRef(false)
+  const appliedInitialFocusUriRef = useRef<string | null>(null)
   const prevSectionIndexRef = useRef(0)
   const boards = getArtboards()
   const session = getSession()
@@ -1166,6 +1169,26 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
       setFocusedCommentIndex((i) => Math.min(i, threadRepliesFlat.length - 1))
     }
   }, [threadRepliesFlat.length])
+
+  /* When opened with initialFocusedCommentUri (e.g. from notification), scroll to that reply */
+  useEffect(() => {
+    if (!initialFocusedCommentUri || !thread || !isThreadViewPost(thread) || threadRepliesFlat.length === 0) return
+    if (appliedInitialFocusUriRef.current === initialFocusedCommentUri) return
+    appliedInitialFocusUriRef.current = initialFocusedCommentUri
+    const commentIdx = threadRepliesFlat.findIndex((f) => f.uri === initialFocusedCommentUri)
+    if (commentIdx < 0) return
+    setFocusedCommentIndex(commentIdx)
+    const focusIdx = focusItems.findIndex((it) => (it.type === 'comment' || it.type === 'commentMedia') && it.commentUri === initialFocusedCommentUri)
+    if (focusIdx >= 0) setKeyboardFocusIndex(focusIdx)
+    requestAnimationFrame(() => {
+      const commentsSection = commentsSectionRef.current
+      if (!commentsSection) return
+      const el = Array.from(commentsSection.querySelectorAll('[data-comment-uri]')).find(
+        (n) => n.getAttribute('data-comment-uri') === initialFocusedCommentUri
+      )
+      if (el) (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+    })
+  }, [initialFocusedCommentUri, thread, threadRepliesFlat, focusItems])
 
   useEffect(() => {
     const inCommentsSection = hasRepliesSection && postSectionIndex === postSectionCount - 1

@@ -1652,15 +1652,71 @@ export async function resolveFeedUri(input: string): Promise<string> {
   return res.data.view.uri
 }
 
-/** Add a feed to the account's saved feeds (pinned). */
+/** Add a feed to the account's saved feeds (pinned). Persists via app.bsky.actor preferences. */
 export async function addSavedFeed(uri: string): Promise<void> {
-  await agent.addSavedFeeds([{ type: 'feed', value: uri, pinned: true }])
+  const a = getAgent()
+  try {
+    if (typeof (a as { addSavedFeeds?: unknown }).addSavedFeeds === 'function') {
+      await (a as { addSavedFeeds: (feeds: { type: string; value: string; pinned: boolean }[]) => Promise<unknown> }).addSavedFeeds([
+        { type: 'feed', value: uri, pinned: true },
+      ])
+      return
+    }
+  } catch (_) {
+    /* fall through to low-level implementation */
+  }
+  const { data } = await a.app.bsky.actor.getPreferences({})
+  const prefs = (data?.preferences ?? []) as { $type?: string; items?: { id: string; type: string; value: string; pinned: boolean }[] }[]
+  const v2Type = 'app.bsky.actor.defs#savedFeedsPrefV2'
+  const existing = prefs.find((p) => p.$type === v2Type)
+  const items = existing?.items ?? []
+  if (items.some((f) => f.type === 'feed' && f.value === uri)) return
+  const newFeed = {
+    id: `artsky-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+    type: 'feed' as const,
+    value: uri,
+    pinned: true,
+  }
+  const updated = prefs.filter((p) => p.$type !== v2Type)
+  updated.push({ $type: v2Type, items: [...items, newFeed].sort((x, y) => (x.pinned === y.pinned ? 0 : x.pinned ? -1 : 1)) })
+  await a.app.bsky.actor.putPreferences({ preferences: updated as AppBskyActorDefs.Preferences })
 }
 
 /** Get display name for a feed URI. */
 export async function getFeedDisplayName(uri: string): Promise<string> {
   const res = await agent.app.bsky.feed.getFeedGenerator({ feed: uri })
   return (res.data?.view as { displayName?: string })?.displayName ?? uri
+}
+
+/** Get a shareable bsky.app URL for a feed (at://...). */
+export async function getFeedShareUrl(uri: string): Promise<string> {
+  if (!uri.startsWith('at://')) return uri
+  const res = await publicAgent.app.bsky.feed.getFeedGenerator({ feed: uri })
+  const view = res.data?.view as { creator?: { handle?: string }; uri?: string } | undefined
+  const handle = view?.creator?.handle
+  const slug = uri.replace(/^at:\/\/[^/]+\/app\.bsky\.feed\.generator\//, '')
+  if (handle) return `https://bsky.app/profile/${encodeURIComponent(handle)}/feed/${encodeURIComponent(slug)}`
+  return uri
+}
+
+/** Remove a feed from the account's saved feeds by its at:// URI. */
+export async function removeSavedFeedByUri(uri: string): Promise<void> {
+  const a = getAgent()
+  const list = await getSavedFeedsFromPreferences()
+  const item = list.find((f) => f.type === 'feed' && f.value === uri)
+  if (!item) return
+  if (typeof (a as { removeSavedFeeds?: unknown }).removeSavedFeeds === 'function') {
+    await (a as { removeSavedFeeds: (ids: string[]) => Promise<unknown> }).removeSavedFeeds([item.id])
+    return
+  }
+  const { data } = await a.app.bsky.actor.getPreferences({})
+  const prefs = (data?.preferences ?? []) as { $type?: string; items?: { id: string; type: string; value: string; pinned: boolean }[] }[]
+  const v2Type = 'app.bsky.actor.defs#savedFeedsPrefV2'
+  const existing = prefs.find((p) => p.$type === v2Type)
+  const items = (existing?.items ?? []).filter((f) => !(f.type === 'feed' && f.value === uri))
+  const updated = prefs.filter((p) => p.$type !== v2Type)
+  updated.push({ $type: v2Type, items })
+  await a.app.bsky.actor.putPreferences({ preferences: updated as AppBskyActorDefs.Preferences })
 }
 
 const COMPOSE_IMAGE_MAX = 4
