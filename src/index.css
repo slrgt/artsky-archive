@@ -199,10 +199,10 @@ body {
     min-height: 100dvh;
     min-height: -webkit-fill-available;
   }
-  /* Grey background only inside safe areas so the strips above/below navbars stay transparent */
+  /* Content background fixed to viewport so safe-area strips stay transparent even when navbars hide or page scrolls */
   #root::before {
     content: '';
-    position: absolute;
+    position: fixed;
     top: env(safe-area-inset-top);
     right: env(safe-area-inset-right);
     bottom: env(safe-area-inset-bottom);
