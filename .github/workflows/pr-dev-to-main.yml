@@ -1,0 +1,40 @@
+# When you push to dev, open or update a PR from dev → main so you can merge when ready.
+name: PR dev → main
+
+on:
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  open-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open or update PR from dev to main
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: existing } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              base: 'main',
+              head: `${context.repo.owner}:dev`,
+            });
+            if (existing.length > 0) {
+              console.log('Open PR already exists:', existing[0].html_url);
+              return;
+            }
+            const { data: pr } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Dev → main',
+              head: 'dev',
+              base: 'main',
+              body: 'Auto-opened from push to `dev`. Review and merge when ready to update the live site.',
+            });
+            console.log('Created PR:', pr.html_url);
+          github-token: ${{ secrets.GITHUB_TOKEN }}
