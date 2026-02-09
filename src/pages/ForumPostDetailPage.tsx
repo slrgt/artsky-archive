@@ -413,7 +413,7 @@ export default function ForumPostDetailPage() {
   }
 
   return (
-    <Layout title={doc?.title ?? 'Forum post'} showNav>
+    <Layout title={doc?.title ?? 'Forums post'} showNav>
       <div className={styles.wrap}>
         {loading && <div className={styles.loading}>Loading…</div>}
         {error && <p className={styles.error}>{error}</p>}

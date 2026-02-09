@@ -662,7 +662,7 @@ export default function Layout({ title, children, showNav }: Props) {
         aria-current={path === '/forum' ? 'page' : undefined}
       >
         <span className={styles.navIcon}><ForumIcon /></span>
-        <span className={styles.navLabel}>Forum</span>
+        <span className={styles.navLabel}>Forums</span>
       </Link>
     </>
   )
@@ -695,7 +695,7 @@ export default function Layout({ title, children, showNav }: Props) {
             aria-current={path === '/forum' ? 'page' : undefined}
           >
             <span className={styles.navIcon}><ForumIcon /></span>
-            <span className={styles.navLabel}>Forum</span>
+            <span className={styles.navLabel}>Forums</span>
           </Link>
           <button type="button" className={styles.navBtn} onClick={openCompose} aria-label="New post">
             <span className={styles.navIcon}><PlusIcon /></span>
@@ -1093,8 +1093,12 @@ export default function Layout({ title, children, showNav }: Props) {
                     <SearchBar inputRef={searchInputRef} compact={isDesktop} />
                   </div>
                   <div className={styles.headerSearchSide}>
-                    <Link to="/forum" className={styles.headerForumLink} aria-label="Forum">
-                      Forum
+                    <Link
+                      to="/forum"
+                      className={session ? styles.headerForumLink : styles.headerForumLinkLoggedOut}
+                      aria-label="Forums"
+                    >
+                      Forums
                     </Link>
                   </div>
                 </div>
