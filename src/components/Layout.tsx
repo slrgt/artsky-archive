@@ -336,6 +336,7 @@ export default function Layout({ title, children, showNav }: Props) {
   const composeFileInputRef = useRef<HTMLInputElement>(null)
   const composeFormRef = useRef<HTMLFormElement>(null)
   const [navVisible, setNavVisible] = useState(true)
+  const [aboutOpen, setAboutOpen] = useState(false)
   const [searchOverlayBottom, setSearchOverlayBottom] = useState(0)
   const lastScrollY = useRef(0)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -414,13 +415,18 @@ export default function Layout({ title, children, showNav }: Props) {
         setViewMode(key as '1' | '2' | '3')
         return
       }
+      if (key === 't') {
+        e.preventDefault()
+        toggleMediaOnly()
+        return
+      }
       if (key !== 'q' && e.key !== 'Backspace') return
       e.preventDefault()
       navigate(-1)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [navigate, isModalOpen, setViewMode])
+  }, [navigate, isModalOpen, setViewMode, toggleMediaOnly])
 
   useEffect(() => {
     if (!accountMenuOpen) return
@@ -432,6 +438,18 @@ export default function Layout({ title, children, showNav }: Props) {
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [accountMenuOpen])
+
+  useEffect(() => {
+    if (!aboutOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setAboutOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [aboutOpen])
 
   useEffect(() => {
     if (!notificationsOpen) return
@@ -490,7 +508,7 @@ export default function Layout({ title, children, showNav }: Props) {
   }, [notificationsOpen, session])
 
   /* When any full-screen popup is open, lock body scroll so only the popup scrolls */
-  const anyPopupOpen = isModalOpen || (mobileSearchOpen && !isDesktop) || (notificationsOpen && !isDesktop) || composeOpen
+  const anyPopupOpen = isModalOpen || (mobileSearchOpen && !isDesktop) || (notificationsOpen && !isDesktop) || composeOpen || aboutOpen
   useEffect(() => {
     if (!scrollLock || !anyPopupOpen) return
     scrollLock.lockScroll()
@@ -871,24 +889,7 @@ export default function Layout({ title, children, showNav }: Props) {
             <div className={styles.menuProfileAndAccounts}>
               <button
                 type="button"
-                className={styles.menuProfileBtn}
-                onClick={() => {
-                  setAccountMenuOpen(false)
-                  setAccountSheetOpen(false)
-                  const currentProfile = accountProfiles[session.did]
-                  const currentHandle = currentProfile?.handle ?? (session as { handle?: string }).handle ?? session.did
-                  openProfileModal(currentHandle)
-                }}
-                title="View my profile"
-              >
-                <span className={styles.menuProfileIconWrap} aria-hidden>
-                  <AccountIcon />
-                </span>
-                <span>Profile</span>
-              </button>
-              <button
-                type="button"
-                className={styles.menuProfileBtn}
+                className={`${styles.menuProfileBtn} ${styles.menuProfileBtnAccentHover}`}
                 onClick={() => {
                   setAccountMenuOpen(false)
                   setAccountSheetOpen(false)
@@ -927,7 +928,14 @@ export default function Layout({ title, children, showNav }: Props) {
                 ) : (
                   <span className={styles.accountMenuAvatarPlaceholder} aria-hidden>{(handle || s.did).slice(0, 1).toUpperCase()}</span>
                 )}
-                <span>@{handle}</span>
+                {isCurrent ? (
+                  <span className={styles.menuAccountLabel}>
+                    <span className={styles.menuAccountLabelDefault}>@{handle}</span>
+                    <span className={styles.menuAccountLabelHover}>Open profile</span>
+                  </span>
+                ) : (
+                  <span>@{handle}</span>
+                )}
                 {isCurrent && <span className={styles.sheetCheck} aria-hidden> ✓</span>}
               </button>
             )
@@ -951,7 +959,7 @@ export default function Layout({ title, children, showNav }: Props) {
             {isDesktop ? (
               <button
                 type="button"
-                className={styles.menuProfileBtn}
+                className={`${styles.menuProfileBtn} ${styles.menuProfileBtnAccentHover}`}
                 onClick={() => {
                   setAccountMenuOpen(false)
                   setAccountSheetOpen(false)
@@ -968,7 +976,7 @@ export default function Layout({ title, children, showNav }: Props) {
                 href="https://bsky.app"
                 target="_blank"
                 rel="noopener noreferrer"
-                className={styles.menuProfileBtn}
+                className={`${styles.menuProfileBtn} ${styles.menuProfileBtnAccentHover}`}
                 onClick={() => {
                   setAccountMenuOpen(false)
                   setAccountSheetOpen(false)
@@ -997,6 +1005,19 @@ export default function Layout({ title, children, showNav }: Props) {
           </div>
         </section>
       )}
+      <section className={styles.menuSection}>
+        <button
+          type="button"
+          className={`${styles.menuProfileBtn} ${styles.menuProfileBtnAccentHover}`}
+          onClick={() => {
+            setAccountMenuOpen(false)
+            setAboutOpen(true)
+          }}
+          title="About ArtSky and keyboard shortcuts"
+        >
+          <span>About</span>
+        </button>
+      </section>
     </>
   )
 
@@ -1425,6 +1446,53 @@ export default function Layout({ title, children, showNav }: Props) {
                       {composeError && <p className={styles.composeError}>{composeError}</p>}
                     </form>
                   )}
+                </div>
+              </div>
+            </>
+          )}
+          {aboutOpen && (
+            <>
+              <div
+                className={styles.searchOverlayBackdrop}
+                onClick={() => setAboutOpen(false)}
+                aria-hidden
+              />
+              <div
+                className={styles.aboutOverlay}
+                role="dialog"
+                aria-label="About ArtSky"
+                onClick={() => setAboutOpen(false)}
+              >
+                <div className={styles.aboutCard} onClick={(e) => e.stopPropagation()}>
+                  <h2 className={styles.aboutTitle}>ArtSky</h2>
+                  <p className={styles.aboutIntro}>
+                    A Bluesky client focused on art. Hide seen posts with the home button, reveal them by holding the home button. keyboard-friendly navigation.
+                  </p>
+                  <h3 className={styles.aboutSubtitle}>Keyboard shortcuts</h3>
+                  <dl className={styles.aboutShortcuts}>
+                    <dt>W / ↑</dt><dd>Move up</dd>
+                    <dt>A / ←</dt><dd>Move left</dd>
+                    <dt>S / ↓</dt><dd>Move down</dd>
+                    <dt>D / →</dt><dd>Move right</dd>
+                    <dt>Q</dt><dd>Quit / close window</dd>
+                    <dt>E</dt><dd>Enter post</dd>
+                    <dt>R</dt><dd>Reply to post</dd>
+                    <dt>T</dt><dd>Toggle media only / media &amp; text</dd>
+                    <dt>F</dt><dd>Like / unlike</dd>
+                    <dt>C</dt><dd>Collect post</dd>
+                    <dt>B</dt><dd>Block author (feed)</dd>
+                    <dt>4</dt><dd>Follow author</dd>
+                    <dt>Escape</dt><dd>Escape all windows</dd>
+                    <dt>1 / 2 / 3</dt><dd>1, 2, or 3 column view</dd>
+                  </dl>
+                  <button
+                    type="button"
+                    className={styles.aboutClose}
+                    onClick={() => setAboutOpen(false)}
+                    aria-label="Close"
+                  >
+                    Close
+                  </button>
                 </div>
               </div>
             </>

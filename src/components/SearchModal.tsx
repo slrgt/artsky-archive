@@ -135,7 +135,8 @@ function SearchContent({ query }: { query: string }) {
       setItems((prev) => (nextCursor ? [...prev, ...timelineItems] : timelineItems))
       setCursor(next)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Search failed')
+      const msg = err instanceof Error ? err.message : 'Search failed'
+      setError(msg === 'Failed to fetch' ? 'Search couldn’t be completed. Check your connection or try again.' : msg)
     } finally {
       setLoading(false)
       setLoadingMore(false)

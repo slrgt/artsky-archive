@@ -99,16 +99,85 @@ export function downloadImageWithHandle(
   })
 }
 
-/** Trigger download of a video URL; filename is derived from postUri. */
-export function downloadVideoWithPostUri(videoUrl: string, postUri: string): void {
+function isM3u8Url(url: string): boolean {
+  return /\.m3u8(\?|$)/i.test(url) || url.includes('m3u8')
+}
+
+/** Try to get an mp4 URL from the same path as an m3u8 (some CDNs serve both). */
+async function tryMp4Url(m3u8Url: string): Promise<string | null> {
+  try {
+    const withoutQuery = m3u8Url.split('?')[0]
+    const mp4Url = withoutQuery.replace(/\.m3u8$/i, '.mp4') + (m3u8Url.includes('?') ? '?' + m3u8Url.split('?')[1] : '')
+    const res = await fetch(mp4Url, { method: 'HEAD' })
+    if (res.ok) {
+      const ct = res.headers.get('content-type') || ''
+      if (ct.includes('video/mp4') || ct.includes('video/')) return mp4Url
+    }
+  } catch {
+    // ignore
+  }
+  return null
+}
+
+function isVideoBlob(blob: Blob): boolean {
+  const t = (blob.type || '').toLowerCase()
+  return t.startsWith('video/') && !t.includes('mpegurl') && !t.includes('x-mpegurl')
+}
+
+/** Trigger download of a video URL; filename is derived from postUri. Always downloads as video (mp4 etc), never m3u8. */
+export async function downloadVideoWithPostUri(videoUrl: string, postUri: string): Promise<void> {
+  let downloadUrl = videoUrl
+  let ext = 'mp4'
   const match = videoUrl.match(/\.(mp4|webm|mov|m4v)(\?|$)/i)
-  const ext = match ? match[1].toLowerCase() : 'mp4'
+  if (match) {
+    ext = match[1].toLowerCase()
+  } else if (isM3u8Url(videoUrl)) {
+    const mp4Url = await tryMp4Url(videoUrl)
+    if (mp4Url) downloadUrl = mp4Url
+  }
   const filename = filenameFromPostUri(postUri, ext)
-  const a = document.createElement('a')
-  a.href = videoUrl
-  a.download = filename
-  a.rel = 'noopener'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
+  try {
+    const res = await fetch(downloadUrl, { mode: 'cors', headers: { Accept: 'video/mp4,video/*' } })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const blob = await res.blob()
+    if (isM3u8Url(videoUrl) && !isVideoBlob(blob)) {
+      const mp4Url = await tryMp4Url(videoUrl)
+      if (mp4Url) {
+        const res2 = await fetch(mp4Url, { mode: 'cors' })
+        if (res2.ok) {
+          const blob2 = await res2.blob()
+          if (isVideoBlob(blob2)) {
+            const url = URL.createObjectURL(blob2)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = filename
+            a.rel = 'noopener'
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
+            URL.revokeObjectURL(url)
+            return
+          }
+        }
+      }
+      throw new Error('Video format not available')
+    }
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch {
+    const a = document.createElement('a')
+    a.href = downloadUrl
+    a.download = filename
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
 }

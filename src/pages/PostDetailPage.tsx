@@ -163,48 +163,10 @@ function MediaGallery({
   autoPlayFirstVideo?: boolean
   onFocusItem?: (index: number) => void
 }) {
-  const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null)
-  const imageIndices = useMemo(
-    () => items.map((m, i) => (m.type === 'image' ? i : -1)).filter((i) => i >= 0),
-    [items]
-  )
-
-  useEffect(() => {
-    if (fullscreenIndex === null) return
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        setFullscreenIndex(null)
-        return
-      }
-      if (e.key === 'ArrowLeft') {
-        const idx = imageIndices.indexOf(fullscreenIndex!)
-        if (idx > 0) {
-          e.preventDefault()
-          setFullscreenIndex(imageIndices[idx - 1])
-        }
-        return
-      }
-      if (e.key === 'ArrowRight') {
-        const idx = imageIndices.indexOf(fullscreenIndex!)
-        if (idx >= 0 && idx < imageIndices.length - 1) {
-          e.preventDefault()
-          setFullscreenIndex(imageIndices[idx + 1])
-        }
-        return
-      }
-    }
-    window.addEventListener('keydown', onKeyDown, true)
-    return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [fullscreenIndex, imageIndices])
-
   if (items.length === 0) return null
   const firstVideoIndex = autoPlayFirstVideo
     ? items.findIndex((m) => m.type === 'video' && m.videoPlaylist)
     : -1
-
-  const currentFullscreenItem =
-    fullscreenIndex != null ? items[fullscreenIndex] : null
 
   return (
     <div className={styles.galleryWrap}>
@@ -231,80 +193,19 @@ function MediaGallery({
           }
           const aspect = m.type === 'image' && m.aspectRatio != null ? m.aspectRatio : 1
           return (
-            <button
+            <div
               key={i}
-              type="button"
               className={styles.galleryImageBtn}
               style={{ aspectRatio: aspect }}
-              onClick={() => setFullscreenIndex(i)}
-              onFocus={() => onFocusItem?.(i)}
-              aria-label="View full screen"
               data-media-item={i}
+              tabIndex={0}
+              onFocus={() => onFocusItem?.(i)}
             >
               <img src={m.url} alt="" className={styles.galleryMedia} loading="lazy" />
-            </button>
+            </div>
           )
         })}
       </div>
-      {currentFullscreenItem?.type === 'image' && (
-        <div
-          className={styles.fullscreenOverlay}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Image full screen"
-        >
-          <div
-            className={styles.fullscreenBackdrop}
-            onClick={() => setFullscreenIndex(null)}
-            aria-hidden
-          />
-          <button
-            type="button"
-            className={styles.fullscreenClose}
-            onClick={() => setFullscreenIndex(null)}
-            aria-label="Close"
-          >
-            ×
-          </button>
-          {imageIndices.length > 1 && (
-            <>
-              <button
-                type="button"
-                className={styles.fullscreenPrev}
-                aria-label="Previous image"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  const idx = imageIndices.indexOf(fullscreenIndex!)
-                  if (idx > 0) setFullscreenIndex(imageIndices[idx - 1])
-                }}
-              >
-                ‹
-              </button>
-              <button
-                type="button"
-                className={styles.fullscreenNext}
-                aria-label="Next image"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  const idx = imageIndices.indexOf(fullscreenIndex!)
-                  if (idx < imageIndices.length - 1)
-                    setFullscreenIndex(imageIndices[idx + 1])
-                }}
-              >
-                ›
-              </button>
-            </>
-          )}
-          <div className={styles.fullscreenImageWrap}>
-            <img
-              src={currentFullscreenItem.url}
-              alt=""
-              className={styles.fullscreenImage}
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -763,7 +664,12 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
     const handle = thread.post.author.handle ?? thread.post.author.did
     const postUri = thread.post.uri
     if (first.type === 'video' && first.videoPlaylist) {
-      downloadVideoWithPostUri(first.videoPlaylist, postUri)
+      setDownloadLoading(true)
+      try {
+        await downloadVideoWithPostUri(first.videoPlaylist, postUri)
+      } finally {
+        setDownloadLoading(false)
+      }
       return
     }
     setDownloadLoading(true)
