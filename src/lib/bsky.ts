@@ -649,58 +649,37 @@ export async function getActorFeeds(actor: string, limit = 50): Promise<ActorFee
   return data.feeds ?? []
 }
 
-/** Search posts by hashtag (tag without #). When logged out uses direct fetch to public API to avoid CORS. Returns PostView[]; use with cursor for pagination. */
+/** Search posts by hashtag (tag without #). Uses public App View API so search works regardless of PDS. Returns PostView[]; use with cursor for pagination. */
 export async function searchPostsByTag(tag: string, cursor?: string) {
   const normalized = tag.replace(/^#/, '').trim()
   if (!normalized) return { posts: [], cursor: undefined as string | undefined }
 
-  if (!getSession()) {
-    const params = new URLSearchParams()
-    params.set('q', normalized)
-    params.set('tag', normalized)
-    params.set('limit', '30')
-    params.set('sort', 'latest')
-    if (cursor) params.set('cursor', cursor)
-    const res = await fetch(`${PUBLIC_BSKY}/xrpc/app.bsky.feed.searchPosts?${params.toString()}`)
-    const data = (await res.json()) as { posts?: AppBskyFeedDefs.PostView[]; cursor?: string; message?: string }
-    if (!res.ok) throw new Error(data.message ?? 'Failed to load tag')
-    return { posts: data.posts ?? [], cursor: data.cursor }
-  }
-
-  const res = await agent.app.bsky.feed.searchPosts({
-    q: normalized,
-    tag: [normalized],
-    limit: 30,
-    cursor,
-    sort: 'latest',
-  })
-  return { posts: res.data.posts, cursor: res.data.cursor }
+  const params = new URLSearchParams()
+  params.set('q', normalized)
+  params.set('tag', normalized)
+  params.set('limit', '30')
+  params.set('sort', 'latest')
+  if (cursor) params.set('cursor', cursor)
+  const res = await fetch(`${PUBLIC_BSKY}/xrpc/app.bsky.feed.searchPosts?${params.toString()}`)
+  const data = (await res.json()) as { posts?: AppBskyFeedDefs.PostView[]; cursor?: string; message?: string }
+  if (!res.ok) throw new Error(data.message ?? 'Failed to load tag')
+  return { posts: data.posts ?? [], cursor: data.cursor }
 }
 
-/** Search posts by full-text query (no tag filter). When logged out uses public API. Used for multi-word search. */
+/** Search posts by full-text query (no tag filter). Uses public App View API so search works regardless of PDS. Used for multi-word search. */
 export async function searchPostsByQuery(q: string, cursor?: string) {
   const term = q.trim()
   if (!term) return { posts: [] as AppBskyFeedDefs.PostView[], cursor: undefined as string | undefined }
 
-  if (!getSession()) {
-    const params = new URLSearchParams()
-    params.set('q', term)
-    params.set('limit', '30')
-    params.set('sort', 'latest')
-    if (cursor) params.set('cursor', cursor)
-    const res = await fetch(`${PUBLIC_BSKY}/xrpc/app.bsky.feed.searchPosts?${params.toString()}`)
-    const data = (await res.json()) as { posts?: AppBskyFeedDefs.PostView[]; cursor?: string; message?: string }
-    if (!res.ok) throw new Error(data.message ?? 'Failed to search')
-    return { posts: data.posts ?? [], cursor: data.cursor }
-  }
-
-  const res = await agent.app.bsky.feed.searchPosts({
-    q: term,
-    limit: 30,
-    cursor,
-    sort: 'latest',
-  })
-  return { posts: res.data.posts ?? [], cursor: res.data.cursor }
+  const params = new URLSearchParams()
+  params.set('q', term)
+  params.set('limit', '30')
+  params.set('sort', 'latest')
+  if (cursor) params.set('cursor', cursor)
+  const res = await fetch(`${PUBLIC_BSKY}/xrpc/app.bsky.feed.searchPosts?${params.toString()}`)
+  const data = (await res.json()) as { posts?: AppBskyFeedDefs.PostView[]; cursor?: string; message?: string }
+  if (!res.ok) throw new Error(data.message ?? 'Failed to search')
+  return { posts: data.posts ?? [], cursor: data.cursor }
 }
 
 /** For multi-word phrase "hello world", derive tag variants: helloworld, hello-world. Returns merged, deduped posts (by uri) and cursor from phrase search for pagination. */

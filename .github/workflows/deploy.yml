@@ -98,6 +98,6 @@ jobs:
           external_repository: slrgt/artsky-dev
           publish_branch: main
           publish_dir: ./dist
-          force_orphan: true
+          force_orphan: false
           user_name: github-actions[bot]
           user_email: github-actions[bot]@users.noreply.github.com

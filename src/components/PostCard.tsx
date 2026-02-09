@@ -178,7 +178,12 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   async function handleDownload() {
     if (!hasMedia || downloadLoading) return
     if (isVideo && media?.videoPlaylist) {
-      downloadVideoWithPostUri(media.videoPlaylist, post.uri)
+      setDownloadLoading(true)
+      try {
+        await downloadVideoWithPostUri(media.videoPlaylist, post.uri)
+      } finally {
+        setDownloadLoading(false)
+      }
       return
     }
     if (hasImage && imageItems.length > 0) {
@@ -373,14 +378,17 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
     return () => observer.disconnect()
   }, [isVideo])
 
-  /* Reblur NSFW when this card loses selection (user moved to another card). Reused across feed, profile, tag, popups. */
+  /* Unblur NSFW when this card gains focus; reblur when it loses selection. Reused across feed, profile, tag, popups. */
   useEffect(() => {
     const wasSelected = prevSelectedRef.current
     prevSelectedRef.current = isSelected
+    if (isSelected && nsfwBlurred && onNsfwUnblur) {
+      onNsfwUnblur()
+    }
     if (wasSelected && !isSelected && unblurredUris.has(post.uri)) {
       setUnblurred(post.uri, false)
     }
-  }, [isSelected, post.uri, unblurredUris, setUnblurred])
+  }, [isSelected, post.uri, unblurredUris, setUnblurred, nsfwBlurred, onNsfwUnblur])
 
   /* Reblur NSFW when focus leaves the card (click/tab outside). focusout bubbles so we listen on the card root. */
   useEffect(() => {
@@ -584,11 +592,13 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                 e.preventDefault()
                 e.stopPropagation()
                 onNsfwUnblur()
+                openPost()
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault()
                   onNsfwUnblur()
+                  openPost()
                 }
               }}
               role="button"
