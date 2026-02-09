@@ -1650,7 +1650,7 @@ export default function Layout({ title, children, showNav }: Props) {
                     <dt>Q</dt><dd>Quit / close window</dd>
                     <dt>E</dt><dd>Enter post</dd>
                     <dt>R</dt><dd>Reply to post</dd>
-                    <dt>T</dt><dd>Toggle media only / media &amp; text</dd>
+                    <dt>T</dt><dd>Toggle text view</dd>
                     <dt>F</dt><dd>Like / unlike</dd>
                     <dt>C</dt><dd>Collect post</dd>
                     <dt>B</dt><dd>Block author (feed)</dd>

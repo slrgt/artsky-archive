@@ -32,6 +32,19 @@
     padding-left: 1rem;
     padding-right: 1rem;
   }
+  /* Post description: profile picture centered above username on mobile */
+  .rootPostDescription .postHead {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .rootPostDescription .postHead .avatar {
+    width: 2rem;
+    height: 2rem;
+  }
+  .rootPostDescription .postHead .authorRow {
+    justify-content: center;
+  }
 }
 
 .loading {
@@ -282,9 +295,66 @@
 .rootPostDescription .postHead .authorRow {
   justify-content: center;
 }
+
+/* In post popup: profile picture; follow button under it; less space between follow and username */
+.wrapInModal .rootPostDescription .postHead .avatar {
+  width: 40px;
+  height: 40px;
+}
+.wrapInModal .rootPostDescription .postHead .authorRow {
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.2rem;
+}
+/* Force line break after follow button so it stays on its own row without stretching to full width */
+.wrapInModal .rootPostDescription .postHead .authorRow::after {
+  content: '';
+  flex-basis: 100%;
+  width: 0;
+  height: 0;
+  order: -1;
+}
+.wrapInModal .rootPostDescription .postHead .authorRow .followBtn {
+  order: -2;
+  flex-basis: auto;
+  width: fit-content;
+  padding: 0.2rem 0.75rem;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
 .rootPostDescription .postHead .avatar {
   width: 28px;
   height: 28px;
+}
+
+/* Desktop: profile picture on its own row centered above the follow button */
+@media (min-width: 768px) {
+  .rootPostDescription .postHead {
+    flex-direction: column;
+    align-items: center;
+  }
+  .rootPostDescription .postHead .authorRow {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .rootPostDescription .postHead .authorRow::after {
+    content: '';
+    flex-basis: 100%;
+    width: 0;
+    height: 0;
+    order: -1;
+  }
+  .rootPostDescription .postHead .authorRow .followBtn {
+    order: -2;
+    flex-basis: auto;
+    width: fit-content;
+    padding: 0.2rem 0.75rem;
+    font-size: 0.75rem;
+    text-align: center;
+  }
 }
 
 .rootPostDescription .postText {
@@ -441,6 +511,15 @@
   text-decoration: underline;
 }
 
+/* Nested comments: keep username within comment border (truncate with ellipsis) */
+.postBlock .authorRow .handleLink {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Stack media vertically so user scrolls through each image/video */
 .galleryWrap {
   margin-top: 0.5rem;
@@ -582,6 +661,14 @@
   padding-left: 4px;
   padding-right: 0.75rem;
   margin-bottom: 0.35rem;
+}
+
+/* In popup: less right padding so nested comments sit closer to the edge */
+.wrapInModal .replies {
+  padding-right: 0.5rem;
+}
+.wrapInModal .replies .postBlock {
+  padding-right: 0.35rem;
 }
 
 .collapsedCommentWrap {

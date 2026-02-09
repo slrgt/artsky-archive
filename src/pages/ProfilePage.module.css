@@ -4,6 +4,12 @@
   padding-bottom: calc(2.75rem + env(safe-area-inset-bottom));
 }
 
+.wrapInModal {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 .profileHeader {
   display: flex;
   align-items: flex-start;
@@ -39,6 +45,36 @@
 .profileMeta {
   min-width: 0;
   flex: 1;
+}
+
+/* Desktop: profile picture on its own row centered above the follow button */
+@media (min-width: 768px) {
+  .profileHeaderMain {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .profileMeta {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .profileMeta .handleRow {
+    flex-direction: column;
+    align-items: center;
+    order: -1;
+    margin-bottom: 0.5rem;
+  }
+  .profileMeta .handleRow .followBtn,
+  .profileMeta .handleRow .blockedMutedBtn {
+    order: -1;
+  }
+  .profileMeta .handleRow .handle {
+    order: 0;
+  }
+  .profileMeta .displayName {
+    margin-top: 0.25rem;
+  }
 }
 
 .handleRow {
@@ -159,7 +195,7 @@
 @media (max-width: 767px) {
   .tabsSticky {
     top: 3.25rem;
-    justify-content: flex-start;
+    justify-content: center;
     overflow: hidden;
   }
   /* In profile popup on mobile: pin tabs to bottom of scroll (above close/back bar) */
@@ -181,10 +217,10 @@
   .wrapInModal .tabsBarHidden {
     transform: translateY(100%);
   }
-  /* Horizontal scrollable filter tabs on mobile (no scrollbar) */
+  /* Horizontal scrollable filter tabs on mobile (no scrollbar); centered when they fit */
   .tabs {
     flex-wrap: nowrap;
-    justify-content: flex-start;
+    justify-content: center;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
@@ -234,12 +270,50 @@
   justify-content: center;
 }
 
+/* Buttons portaled to modal bottom bar on mobile (column + NSFW) */
+.modalBottomBarButtons {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* NSFW/column toggle when portaled to modal bottom bar on mobile */
+.toggleBtnBottomBar {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .tabs {
   display: flex;
   gap: 0.25rem;
   flex-wrap: wrap;
   justify-content: center;
   width: 100%;
+}
+
+/* Profile popup: filter row in one line, scroll horizontally if needed; centered */
+.tabsInModal {
+  flex-wrap: nowrap;
+  justify-content: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  min-width: 0;
+  width: 100%;
+}
+
+.tabsInModal::-webkit-scrollbar {
+  display: none;
+}
+
+.tabsInModal .tab {
+  flex-shrink: 0;
 }
 
 .profileContent {

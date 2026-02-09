@@ -42,6 +42,8 @@ interface Props {
   constrainMediaHeight?: boolean
   /** Override liked state (e.g. from F key toggle); string = liked, null = unliked, undefined = use post.viewer.like */
   likedUriOverride?: string | null
+  /** Called when like state changes from double-tap (so parent can sync likeOverrides); likeRecordUri null = unliked */
+  onLikedChange?: (postUri: string, likeRecordUri: string | null) => void
   /** When true, card is marked as seen (e.g. scrolled past); shown darkened */
   seen?: boolean
   /** Called when the ... actions menu opens or closes (for parent to track which card's menu is open) */
@@ -90,7 +92,7 @@ function isHlsUrl(url: string): boolean {
   return /\.m3u8(\?|$)/i.test(url) || url.includes('m3u8')
 }
 
-export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, onAspectRatio, fillCell, nsfwBlurred, onNsfwUnblur, constrainMediaHeight, likedUriOverride, seen, onActionsMenuOpenChange, cardIndex, actionsMenuOpenForIndex }: Props) {
+export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, onAspectRatio, fillCell, nsfwBlurred, onNsfwUnblur, constrainMediaHeight, likedUriOverride, onLikedChange, seen, onActionsMenuOpenChange, cardIndex, actionsMenuOpenForIndex }: Props) {
   const navigate = useNavigate()
   const { session } = useSession()
   const { openLoginModal } = useLoginModal()
@@ -588,7 +590,17 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
               openDelayTimerRef.current = null
             }
             e.preventDefault()
-            agent.like(post.uri, post.cid).then((res) => setLikedUri(res.uri)).catch(() => {})
+            if (effectiveLikedUri) {
+              agent.deleteLike(effectiveLikedUri).then(() => {
+                setLikedUri(undefined)
+                onLikedChange?.(post.uri, null)
+              }).catch(() => {})
+            } else {
+              agent.like(post.uri, post.cid).then((res) => {
+                setLikedUri(res.uri)
+                onLikedChange?.(post.uri, res.uri)
+              }).catch(() => {})
+            }
             setTimeout(() => { touchSessionRef.current = false }, 500)
           } else {
             lastTapRef.current = now

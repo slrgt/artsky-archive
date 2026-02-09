@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams, Link } from 'react-router-dom'
 import { useProfileModal } from '../context/ProfileModalContext'
@@ -195,6 +195,8 @@ export function ProfileContent({
   const topBarSlots = useModalTopBarSlot()
   const centerSlot = topBarSlots?.centerSlot ?? null
   const rightSlot = topBarSlots?.rightSlot ?? null
+  const mobileBottomBarSlot = topBarSlots?.mobileBottomBarSlot ?? null
+  const isMobileModal = topBarSlots?.isMobile ?? false
   const openEditProfile = editProfileCtx?.openEditProfile ?? (() => {})
   const editSavedVersion = editProfileCtx?.editSavedVersion ?? 0
   const lastScrollYRef = useRef(0)
@@ -362,6 +364,44 @@ export function ProfileContent({
     .filter((item) => getPostMediaInfoForDisplay(item.post))
     .filter((item) => nsfwPreference !== 'sfw' || !isPostNsfw(item.post))
   const profileGridItems = mediaItems
+
+  /* For modal: which tabs have content (hide empty categories) */
+  const tabHasContent = useMemo(() => {
+    const postsMedia = items.filter((i) => !isRepost(i) && (!isQuotePost(i) || !!getPostMediaInfo(i.post)))
+      .filter((i) => getPostMediaInfoForDisplay(i.post))
+      .filter((i) => nsfwPreference !== 'sfw' || !isPostNsfw(i.post))
+    const repostsMedia = items.filter(isRepostOrQuote)
+      .filter((i) => getPostMediaInfoForDisplay(i.post))
+      .filter((i) => nsfwPreference !== 'sfw' || !isPostNsfw(i.post))
+    const textOnly = items.filter((i) => !isRepost(i)).filter((i) => {
+      const text = (i.post.record as { text?: string })?.text?.trim() ?? ''
+      const hasMedia = getPostMediaInfoForDisplay(i.post)
+      const isReplyPost = !!(i.post.record as { reply?: unknown })?.reply
+      return text.length > 0 && !hasMedia && !isReplyPost
+    })
+    return {
+      posts: postsMedia.length > 0,
+      reposts: repostsMedia.length > 0,
+      blog: blogDocuments.length > 0,
+      text: textOnly.length > 0,
+      feeds: feeds.length > 0,
+    }
+  }, [items, blogDocuments, feeds, nsfwPreference])
+
+  const visibleTabs = useMemo((): ProfileTab[] => {
+    const t: ProfileTab[] = []
+    if (tabHasContent.posts) t.push('posts')
+    if (tabHasContent.reposts) t.push('reposts')
+    if (tabHasContent.blog) t.push('blog')
+    if (tabHasContent.text) t.push('text')
+    if (tabHasContent.feeds) t.push('feeds')
+    return t
+  }, [tabHasContent])
+
+  useEffect(() => {
+    if (loading || visibleTabs.length === 0) return
+    if (!visibleTabs.includes(tab)) setTab(visibleTabs[0])
+  }, [loading, visibleTabs, tab])
   const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
   profileGridItemsRef.current = profileGridItems
   keyboardFocusIndexRef.current = keyboardFocusIndex
@@ -611,17 +651,22 @@ export function ProfileContent({
         )}
         {inModal && centerSlot
           ? createPortal(
-              <nav className={styles.tabs} aria-label="Profile sections">
-                <button type="button" className={`${styles.tab} ${tab === 'posts' ? styles.tabActive : ''}`} onClick={() => setTab('posts')}>Posts</button>
-                <button type="button" className={`${styles.tab} ${tab === 'reposts' ? styles.tabActive : ''}`} onClick={() => setTab('reposts')}>Reposts</button>
-                <button type="button" className={`${styles.tab} ${tab === 'blog' ? styles.tabActive : ''}`} onClick={() => setTab('blog')}>Threads</button>
-                <button type="button" className={`${styles.tab} ${tab === 'text' ? styles.tabActive : ''}`} onClick={() => setTab('text')}>Text</button>
-                <button type="button" className={`${styles.tab} ${tab === 'feeds' ? styles.tabActive : ''}`} onClick={() => setTab('feeds')}>Feeds</button>
+              <nav className={`${styles.tabs} ${styles.tabsInModal}`} aria-label="Profile sections">
+                {visibleTabs.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    className={`${styles.tab} ${tab === t ? styles.tabActive : ''}`}
+                    onClick={() => setTab(t)}
+                  >
+                    {t === 'posts' ? 'Posts' : t === 'reposts' ? 'Reposts' : t === 'blog' ? 'Threads' : t === 'text' ? 'Text' : 'Feeds'}
+                  </button>
+                ))}
               </nav>,
               centerSlot,
             )
           : null}
-        {inModal && rightSlot
+        {inModal && rightSlot && !isMobileModal
           ? createPortal(
               <div className={styles.modalTopBarRightButtons}>
                 <button
@@ -652,14 +697,50 @@ export function ProfileContent({
               rightSlot,
             )
           : null}
+        {inModal && isMobileModal && mobileBottomBarSlot
+          ? createPortal(
+              <div className={styles.modalBottomBarButtons}>
+                <button
+                  type="button"
+                  className={`${styles.toggleBtn} ${styles.toggleBtnBottomBar} ${styles.toggleBtnIcon}`}
+                  onClick={() => {
+                    const i = VIEW_MODE_CYCLE.indexOf(viewMode)
+                    setViewMode(VIEW_MODE_CYCLE[(i + 1) % VIEW_MODE_CYCLE.length])
+                  }}
+                  title={`${viewMode} column(s). Click to cycle.`}
+                  aria-label={`${viewMode} columns`}
+                >
+                  <ColumnIcon cols={viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3} />
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.toggleBtn} ${styles.toggleBtnBottomBar} ${nsfwPreference !== 'sfw' ? styles.toggleBtnActive : ''}`}
+                  onClick={() => {
+                    const i = NSFW_CYCLE.indexOf(nsfwPreference)
+                    setNsfwPreference(NSFW_CYCLE[(i + 1) % NSFW_CYCLE.length])
+                  }}
+                  title={`${nsfwPreference}. Click to cycle: SFW → Blurred → NSFW`}
+                  aria-label={`NSFW filter: ${nsfwPreference}`}
+                >
+                  {nsfwPreference === 'sfw' ? 'SFW' : nsfwPreference === 'blurred' ? 'Blurred' : 'NSFW'}
+                </button>
+              </div>,
+              mobileBottomBarSlot,
+            )
+          : null}
         {!inModal && (
           <div className={`${styles.tabsSticky} ${tabsBarVisible ? '' : styles.tabsBarHidden}`}>
             <nav className={styles.tabs} aria-label="Profile sections">
-              <button type="button" className={`${styles.tab} ${tab === 'posts' ? styles.tabActive : ''}`} onClick={() => setTab('posts')}>Posts</button>
-              <button type="button" className={`${styles.tab} ${tab === 'reposts' ? styles.tabActive : ''}`} onClick={() => setTab('reposts')}>Reposts</button>
-              <button type="button" className={`${styles.tab} ${tab === 'blog' ? styles.tabActive : ''}`} onClick={() => setTab('blog')}>Threads</button>
-              <button type="button" className={`${styles.tab} ${tab === 'text' ? styles.tabActive : ''}`} onClick={() => setTab('text')}>Text</button>
-              <button type="button" className={`${styles.tab} ${tab === 'feeds' ? styles.tabActive : ''}`} onClick={() => setTab('feeds')}>Feeds</button>
+              {visibleTabs.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  className={`${styles.tab} ${tab === t ? styles.tabActive : ''}`}
+                  onClick={() => setTab(t)}
+                >
+                  {t === 'posts' ? 'Posts' : t === 'reposts' ? 'Reposts' : t === 'blog' ? 'Threads' : t === 'text' ? 'Text' : 'Feeds'}
+                </button>
+              ))}
             </nav>
           </div>
         )}
@@ -873,6 +954,7 @@ export function ProfileContent({
                           onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
                           constrainMediaHeight={false}
                           likedUriOverride={likeOverrides[item.post.uri]}
+                          onLikedChange={(uri, likeRecordUri) => setLikeOverrides((prev) => ({ ...prev, [uri]: likeRecordUri ?? null }))}
                           onActionsMenuOpenChange={(open) => setActionsMenuOpenForIndex(open ? originalIndex : null)}
                           cardIndex={originalIndex}
                           actionsMenuOpenForIndex={actionsMenuOpenForIndex}
@@ -912,6 +994,7 @@ export function ProfileContent({
                       onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
                       constrainMediaHeight={cols === 1}
                       likedUriOverride={likeOverrides[item.post.uri]}
+                      onLikedChange={(uri, likeRecordUri) => setLikeOverrides((prev) => ({ ...prev, [uri]: likeRecordUri ?? null }))}
                       onActionsMenuOpenChange={(open) => setActionsMenuOpenForIndex(open ? index : null)}
                       cardIndex={index}
                       actionsMenuOpenForIndex={actionsMenuOpenForIndex}

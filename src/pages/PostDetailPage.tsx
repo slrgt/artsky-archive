@@ -523,9 +523,11 @@ export interface PostDetailContentProps {
   initialFocusedCommentUri?: string
   /** When provided, render in modal mode (no Layout). Call when uri is empty to close. */
   onClose?: () => void
+  /** Called when thread loads with the root post author handle (e.g. for swipe-left-to-open-profile). */
+  onAuthorHandle?: (handle: string) => void
 }
 
-export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocusedCommentUri, onClose }: PostDetailContentProps) {
+export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocusedCommentUri, onClose, onAuthorHandle }: PostDetailContentProps) {
   const navigate = useNavigate()
   const { openProfileModal } = useProfileModal()
   const decodedUri = uriProp
@@ -973,6 +975,12 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
     }
   }, [focusItems, threadRepliesFlat])
   const postUri = thread && isThreadViewPost(thread) ? thread.post.uri : null
+  useEffect(() => {
+    if (thread && isThreadViewPost(thread) && onAuthorHandle) {
+      const handle = thread.post.author?.handle ?? thread.post.author?.did ?? ''
+      if (handle) onAuthorHandle(handle)
+    }
+  }, [thread, onAuthorHandle])
   useEffect(() => {
     if (postUri) setKeyboardFocusIndex(0)
   }, [postUri])

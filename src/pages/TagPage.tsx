@@ -187,6 +187,7 @@ export function TagContent({ tag, inModal = false }: { tag: string; inModal?: bo
                   nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
                   onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
                   likedUriOverride={likeOverrides[item.post.uri]}
+                  onLikedChange={(uri, likeRecordUri) => setLikeOverrides((prev) => ({ ...prev, [uri]: likeRecordUri ?? null }))}
                 />
               </div>
             ))}

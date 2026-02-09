@@ -23,6 +23,15 @@
   padding-top: max(1rem, env(safe-area-inset-top));
 }
 
+/* Expanded: no padding so pane goes edge-to-edge (respect safe-area via pane) */
+.overlayExpanded.overlay {
+  padding: 0;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 /* Match main content width on homepage (Layout .main) */
 .pane {
   position: relative;
@@ -48,12 +57,24 @@
   border-right: none;
 }
 
+/* Expanded: full-bleed to overlay edges (overlay has safe-area padding) */
+.paneExpanded.pane {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  border-radius: 0;
+  border: none;
+}
+
 .scroll {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   flex: 1;
   min-height: 0;
+  width: 100%;
+  min-width: 0;
 }
 
 /* Top bar: close/back on left, optional slot (e.g. profile tabs) centered – pins to top of pane */
@@ -169,7 +190,33 @@
   transform: scale(0.96);
 }
 
-/* Mobile: top bar stays at top (X and back on top left), scroll below; less gap at top, gap at bottom */
+.expandBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--glass-bg-strong);
+  color: var(--text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.expandBtn:hover {
+  background: var(--glass-bg);
+  color: var(--accent);
+}
+.expandBtn:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.expandBtn:active {
+  transform: scale(0.96);
+}
+
+/* Mobile: top bar has only slot + right slot; X/back/expand move to bottom bar that hides on scroll */
 @media (max-width: 767px) {
   .overlay {
     padding-top: max(0.5rem, env(safe-area-inset-top));
@@ -185,6 +232,47 @@
   .scroll {
     padding-bottom: 0.5rem;
   }
+  /* Top bar on mobile: no left/right action buttons (they're in bottom bar) */
+  .modalTopBarMobile .modalTopBarLeft {
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0;
+  }
+  .modalTopBarMobile .modalTopBarRight {
+    width: auto;
+    min-width: 0;
+  }
+  /* Scroll area: reserve space for bottom bar so content isn't covered */
+  .scrollMobileBottomBar.scroll {
+    padding-bottom: calc(3.25rem + env(safe-area-inset-bottom));
+  }
+  /* Bottom bar: X, back, expand; fixed to bottom of pane; hides when user scrolls down */
+  .modalBottomBar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 2;
+    flex-shrink: 0;
+    transition: transform 0.2s ease-out;
+  }
+  .modalBottomBarHidden {
+    transform: translateY(100%);
+  }
+  .modalBottomBarSlot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
   /* Transparent bar on mobile: keep at top so X/back are top left */
   .modalTopBarTransparent {
     top: 0;
@@ -193,5 +281,8 @@
   .scrollWithTransparentBar {
     padding-top: 0;
     padding-bottom: 0;
+  }
+  .scrollWithTransparentBar.scrollMobileBottomBar {
+    padding-bottom: calc(3.25rem + env(safe-area-inset-bottom));
   }
 }
