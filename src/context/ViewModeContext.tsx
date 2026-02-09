@@ -19,6 +19,8 @@ export const VIEW_LABELS: Record<ViewMode, string> = {
 type ViewModeContextValue = {
   viewMode: ViewMode
   setViewMode: (mode: ViewMode) => void
+  /** Cycle 1 → 2 → 3 → 1 (uses current state, safe for header toggle). */
+  cycleViewMode: () => void
   viewOptions: ViewMode[]
 }
 
@@ -50,7 +52,10 @@ export function ViewModeProvider({ children }: { children: React.ReactNode }) {
   const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
   const stored = getStored()
   const defaultMode: ViewMode = !session && isDesktop ? '3' : '2'
-  const [viewMode, setViewModeState] = useState<ViewMode>(() => stored ?? defaultMode)
+  const [viewMode, setViewModeState] = useState<ViewMode>(() => {
+    const v = stored ?? defaultMode
+    return v === '1' || v === '2' || v === '3' ? v : defaultMode
+  })
 
   useEffect(() => {
     if (getStored() !== null) return
@@ -59,17 +64,32 @@ export function ViewModeProvider({ children }: { children: React.ReactNode }) {
   }, [session, isDesktop])
 
   const setViewMode = useCallback((mode: ViewMode) => {
-    setViewModeState(mode)
+    const safe: ViewMode = mode === '1' || mode === '2' || mode === '3' ? mode : '2'
+    setViewModeState(safe)
     try {
-      localStorage.setItem(STORAGE_KEY, mode)
+      localStorage.setItem(STORAGE_KEY, safe)
     } catch {
       // ignore
     }
   }, [])
 
+  const cycleViewMode = useCallback(() => {
+    setViewModeState((prev) => {
+      const i = VIEW_OPTIONS.indexOf(prev)
+      const next: ViewMode = VIEW_OPTIONS[i >= 0 ? (i + 1) % VIEW_OPTIONS.length : 0]
+      try {
+        localStorage.setItem(STORAGE_KEY, next)
+      } catch {
+        // ignore
+      }
+      return next
+    })
+  }, [])
+
   const value: ViewModeContextValue = {
     viewMode,
     setViewMode,
+    cycleViewMode,
     viewOptions: VIEW_OPTIONS,
   }
 

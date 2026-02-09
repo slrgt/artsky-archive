@@ -452,8 +452,8 @@
 
 .galleryImageBtn {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: stretch;
   padding: 0;
   border: none;
   scroll-margin-top: 5rem;
@@ -464,6 +464,7 @@
   max-height: 85vh;
   min-height: 0;
   border-radius: 0.25rem;
+  overflow: hidden;
 }
 
 .galleryImageBtn:focus {
@@ -472,11 +473,11 @@
 }
 
 .galleryMedia {
-  max-width: 100%;
+  width: 100%;
+  height: 100%;
   max-height: 85vh;
-  width: auto;
-  height: auto;
   object-fit: contain;
+  object-position: center;
   background: transparent;
   display: block;
   border-radius: 0.25rem;
@@ -512,7 +513,7 @@
   pointer-events: auto;
 }
 
-/* Fullscreen lightbox – use full viewport so image can be as large as possible */
+/* Fullscreen lightbox – image fills viewport (minus padding) for minimal empty space */
 .fullscreenOverlay {
   position: fixed;
   inset: 0;
@@ -525,22 +526,46 @@
   justify-content: center;
   padding: 2rem;
   box-sizing: border-box;
+}
+
+.fullscreenBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   cursor: pointer;
 }
 
-.fullscreenImage {
-  max-width: 100%;
-  max-height: calc(100dvh - 4rem);
-  max-height: calc(100vh - 4rem);
-  object-fit: contain;
-  cursor: default;
+.fullscreenImageWrap {
+  position: absolute;
+  inset: 2rem;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
   pointer-events: none;
+}
+
+.fullscreenImageWrap .fullscreenImage {
+  pointer-events: auto;
+  cursor: default;
+}
+
+.fullscreenImage {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: center;
 }
 
 .fullscreenClose {
   position: absolute;
   top: 1rem;
   right: 1rem;
+  z-index: 1;
   width: 48px;
   height: 48px;
   border: none;
@@ -565,6 +590,7 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
+  z-index: 1;
   width: 48px;
   height: 48px;
   border: none;

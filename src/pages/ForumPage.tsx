@@ -130,10 +130,10 @@ export default function ForumPage() {
   const showSignInForTab = (tab === 'followed' || tab === 'mine') && !session
 
   return (
-    <Layout title="Forum" showNav>
+    <Layout title="Forums" showNav>
       <div className={styles.wrap}>
         <header className={styles.header}>
-          <h2 className={styles.title}>Forum</h2>
+          <h2 className={styles.title}>Forums</h2>
           <p className={styles.subtitle}>
             Posts from the ATmosphere using the <a href="https://standard.site" target="_blank" rel="noopener noreferrer" className={styles.standardLink}>standard.site</a> lexicon
           </p>
@@ -170,7 +170,7 @@ export default function ForumPage() {
               placeholder="Search posts…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              aria-label="Search forum posts"
+              aria-label="Search forums posts"
             />
           </div>
         </header>
@@ -188,7 +188,7 @@ export default function ForumPage() {
                 ? 'No standard.site posts discovered yet. Add more publication URLs in forum discovery config.'
                 : tab === 'followed'
                   ? 'No posts yet from people you follow.'
-                  : 'You haven\'t posted in the forum yet.'
+                  : 'You haven\'t posted in the forums yet.'
               : 'No posts match your search.'}
           </div>
         ) : (

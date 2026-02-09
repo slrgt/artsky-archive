@@ -3,13 +3,15 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import Hls from 'hls.js'
 import { getPostMediaInfoForDisplay, getPostAllMediaForDisplay, getPostMediaUrlForDisplay, agent, type TimelineItem } from '../lib/bsky'
-import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard, getArtboard } from '../lib/artboards'
+import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard, isPostInAnyArtboard, getArtboard } from '../lib/artboards'
 import { putArtboardOnPds } from '../lib/artboardsPds'
 import { useSession } from '../context/SessionContext'
+import { useLoginModal } from '../context/LoginModalContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
 import { formatRelativeTime, formatRelativeTimeTitle } from '../lib/date'
 import PostText from './PostText'
 import ProfileLink from './ProfileLink'
+import PostActionsMenu from './PostActionsMenu'
 import styles from './PostCard.module.css'
 
 interface Props {
@@ -65,6 +67,7 @@ function isHlsUrl(url: string): boolean {
 export default function PostCard({ item, isSelected, cardRef: cardRefProp, addButtonRef: _addButtonRef, openAddDropdown, onAddClose, onPostClick, onAspectRatio, fillCell, nsfwBlurred, onNsfwUnblur, constrainMediaHeight, likedUriOverride, seen }: Props) {
   const navigate = useNavigate()
   const { session } = useSession()
+  const { openLoginModal } = useLoginModal()
   const { artOnly, minimalist } = useArtOnly()
   const videoRef = useRef<HTMLVideoElement>(null)
   const mediaWrapRef = useRef<HTMLDivElement>(null)
@@ -88,9 +91,9 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const [likeLoading, setLikeLoading] = useState(false)
   const effectiveLikedUri = likedUriOverride !== undefined ? (likedUriOverride ?? undefined) : likedUri
   const isLiked = !!effectiveLikedUri
+  const inAnyArtboard = isPostInAnyArtboard(post.uri)
+  const showTransFlagOutline = isLiked && inAnyArtboard && isFollowingAuthor
 
-  const [imageIndex, setImageIndex] = useState(0)
-  const [multiImageExpanded, setMultiImageExpanded] = useState(false)
   const [mediaAspect, setMediaAspect] = useState<number | null>(() =>
     hasMedia && media?.aspectRatio != null ? media.aspectRatio : null
   )
@@ -138,6 +141,10 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   async function handleLikeClick(e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
+    if (!session?.did) {
+      openLoginModal()
+      return
+    }
     if (likeLoading) return
     setLikeLoading(true)
     try {
@@ -254,8 +261,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const isMultipleImages = hasMedia && media!.type === 'image' && (media!.imageCount ?? 0) > 1
   const allMedia = getPostAllMediaForDisplay(post)
   const imageItems = allMedia.filter((m) => m.type === 'image')
-  const currentImageUrl = isMultipleImages && imageItems.length ? imageItems[imageIndex]?.url : (media?.url ?? '')
-  const n = imageItems.length
+  const currentImageUrl = isMultipleImages && imageItems.length ? imageItems[0]?.url : (media?.url ?? '')
 
   const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget
@@ -380,7 +386,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   )
 
   return (
-    <div ref={setCardRef} data-post-uri={post.uri} className={`${styles.card} ${isSelected ? styles.cardSelected : ''} ${isLiked ? styles.cardLiked : ''} ${seen ? styles.cardSeen : ''} ${fillCell ? styles.cardFillCell : ''} ${artOnly ? styles.cardArtOnly : ''} ${minimalist ? styles.cardMinimalist : ''}`}>
+    <div ref={setCardRef} data-post-uri={post.uri} className={`${styles.card} ${isSelected ? styles.cardSelected : ''} ${showTransFlagOutline ? styles.cardTransFlag : ''} ${!showTransFlagOutline && isLiked ? styles.cardLiked : ''} ${!showTransFlagOutline && inAnyArtboard ? styles.cardInArtboard : ''} ${seen ? styles.cardSeen : ''} ${fillCell ? styles.cardFillCell : ''} ${artOnly ? styles.cardArtOnly : ''} ${minimalist ? styles.cardMinimalist : ''}`}>
       <div
         role="button"
         tabIndex={0}
@@ -419,9 +425,10 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
       >
         <div
           ref={mediaWrapRef}
-          className={`${styles.mediaWrap} ${fillCell ? styles.mediaWrapFillCell : ''} ${constrainMediaHeight ? styles.mediaWrapConstrained : ''}`}
+          className={`${styles.mediaWrap} ${fillCell ? styles.mediaWrapFillCell : ''} ${constrainMediaHeight ? styles.mediaWrapConstrained : ''} ${isMultipleImages && imageItems.length > 1 ? styles.mediaWrapMultiStack : ''}`}
           style={
-            fillCell || constrainMediaHeight
+            fillCell || constrainMediaHeight ||
+            (isMultipleImages && imageItems.length > 1)
               ? undefined
               : {
                   aspectRatio:
@@ -465,50 +472,23 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
               />
             </div>
           ) : isMultipleImages && imageItems.length > 1 ? (
-            multiImageExpanded ? (
-              <>
-                <img
-                  src={currentImageUrl}
-                  alt=""
-                  className={styles.media}
-                  loading="lazy"
-                  onLoad={handleImageLoad}
-                />
-                <button
-                  type="button"
-                  className={styles.mediaArrow}
-                  style={{ left: 0 }}
-                  aria-label="Previous image"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    setImageIndex((i) => (n ? (i - 1 + n) % n : 0))
-                  }}
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  className={styles.mediaArrow}
-                  style={{ right: 0 }}
-                  aria-label="Next image"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    setImageIndex((i) => (n ? (i + 1) % n : 0))
-                  }}
-                >
-                  ›
-                </button>
-              </>
-            ) : (
-              <>
-                {/* In-flow spacer so mediaWrap gets height when grid is absolute (fixes 1-col scaling) */}
-                <div className={styles.mediaWrapGridSpacer} aria-hidden />
+            <>
+              {/* Spacer height = sum of each image's height at full width so all images fit without cropping */}
+                {(() => {
+                  const totalInverseAspect = imageItems.reduce((s, m) => s + 1 / (m.aspectRatio || 1), 0)
+                  const combinedAspect = 1 / totalInverseAspect
+                  return (
+                    <div className={styles.mediaWrapGridSpacer} style={{ aspectRatio: String(combinedAspect) }} aria-hidden />
+                  )
+                })()}
                 <div className={styles.mediaWrapGrid}>
                   <div className={styles.mediaGrid} style={{ minHeight: 0 }}>
                     {imageItems.map((imgItem, idx) => (
-                      <div key={idx} className={styles.mediaGridCell}>
+                      <div
+                        key={idx}
+                        className={styles.mediaGridCell}
+                        style={{ flex: `${1 / (imgItem.aspectRatio || 1)} 1 0` }}
+                      >
                         <img
                           src={imgItem.url}
                           alt=""
@@ -519,37 +499,8 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                       </div>
                     ))}
                   </div>
-                  <button
-                    type="button"
-                    className={styles.mediaArrow}
-                    style={{ left: 0 }}
-                    aria-label="Previous image"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setMultiImageExpanded(true)
-                      setImageIndex(0)
-                    }}
-                  >
-                    ‹
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.mediaArrow}
-                    style={{ right: 0 }}
-                    aria-label="Next image"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setMultiImageExpanded(true)
-                      setImageIndex(0)
-                    }}
-                  >
-                    ›
-                  </button>
                 </div>
-              </>
-            )
+            </>
           ) : (
             <>
               <img src={currentImageUrl} alt="" className={styles.media} loading="lazy" onLoad={handleImageLoad} />
@@ -592,6 +543,10 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
+                    if (!session?.did) {
+                      openLoginModal()
+                      return
+                    }
                     setAddOpen((o) => !o)
                   }}
                   aria-label="Collect"
@@ -693,6 +648,18 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
               >
                 {likeLoading ? '…' : isLiked ? '♥' : '♡'}
               </button>
+            </div>
+            <div className={styles.cardActionRowRight}>
+              <PostActionsMenu
+                postUri={post.uri}
+                postCid={post.cid}
+                authorDid={post.author.did}
+                rootUri={post.uri}
+                isOwnPost={isOwnPost}
+                compact
+                verticalIcon
+                className={styles.cardActionsMenu}
+              />
             </div>
           </div>
           {!minimalist && (

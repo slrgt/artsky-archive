@@ -54,12 +54,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     async function init() {
       // On localhost, skip OAuth init so the app doesn't redirect to 127.0.0.1 (library behavior).
       if (!isLocalhost()) {
+        const oauthAccounts = bsky.getOAuthAccountsSnapshot()
         try {
           const search = typeof window !== 'undefined' ? window.location.search : ''
           const params = new URLSearchParams(search)
           const hasCallback = params.has('state') && (params.has('code') || params.has('error'))
           const waitMs = hasCallback ? 12_000 : oauthTimeoutMs
-          const oauthAccounts = bsky.getOAuthAccountsSnapshot()
           const oauthResult = await Promise.race([
             oauth.initOAuth({
               hasCallback,
@@ -75,7 +75,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             finish(true)
             return
           }
-        } catch {
+        } catch (err) {
+          // If session was deleted elsewhere (e.g. another tab/device), clear it so user can sign in again
+          const msg = err instanceof Error ? err.message : String(err)
+          if (/session was deleted|TokenRefreshError/i.test(msg) && oauthAccounts.activeDid) {
+            bsky.removeOAuthDid(oauthAccounts.activeDid)
+          }
           // OAuth init failed; fall back to credential
         }
       }

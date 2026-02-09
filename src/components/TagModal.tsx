@@ -11,11 +11,10 @@ interface TagModalProps {
 export default function TagModal({ tag, onClose, onBack, canGoBack }: TagModalProps) {
   return (
     <AppModal
-      ariaLabel="Tag"
+      ariaLabel={`#${tag}`}
       onClose={onClose}
       onBack={onBack}
       canGoBack={canGoBack}
-      focusCloseOnOpen
     >
       <TagContent tag={tag} inModal />
     </AppModal>

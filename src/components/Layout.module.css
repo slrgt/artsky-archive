@@ -177,6 +177,7 @@
   }
 }
 
+
 /* Logged-out: show Log in + Create account in header on mobile and desktop */
 .headerLoggedOut .headerRight {
   display: flex;
@@ -220,6 +221,30 @@
   filter: brightness(0.92);
   color: var(--text-on-accent);
   text-decoration: none;
+}
+
+/* Log in in account menu – same look as header Log in, larger for menu */
+.menuAuthLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  margin-top: 0.25rem;
+  border: none;
+  border-radius: var(--glass-radius-sm);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-on-accent);
+  background: var(--accent-gradient);
+  cursor: pointer;
+  transition: filter 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.menuAuthLink:hover {
+  filter: brightness(0.92);
+  color: var(--text-on-accent);
 }
 
 @media (min-width: 768px) {
@@ -288,6 +313,21 @@
   .headerForumLink:hover {
     filter: brightness(0.92);
     color: var(--text-on-accent);
+    text-decoration: none;
+  }
+  .headerForumLinkLoggedOut {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text);
+    text-decoration: none;
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--glass-radius-sm);
+    background: var(--glass-highlight);
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .headerForumLinkLoggedOut:hover {
+    color: var(--accent);
+    background: var(--accent-subtle);
     text-decoration: none;
   }
   .headerCenter {
@@ -1093,9 +1133,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  padding-left: max(1rem, env(safe-area-inset-left));
-  padding-right: max(1rem, env(safe-area-inset-right));
+  padding: 1.5rem;
+  padding-left: max(1.5rem, env(safe-area-inset-left));
+  padding-right: max(1.5rem, env(safe-area-inset-right));
+  padding-bottom: 1.75rem;
+  padding-bottom: max(1.75rem, env(safe-area-inset-bottom));
   pointer-events: auto;
 }
 
@@ -1103,8 +1145,8 @@
   .composeOverlayMobile {
     align-items: flex-end;
     justify-content: center;
-    padding-bottom: 1rem;
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    padding-bottom: 1.75rem;
+    padding-bottom: calc(1.75rem + env(safe-area-inset-bottom));
   }
 }
 
@@ -1133,9 +1175,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  padding-left: max(1rem, env(safe-area-inset-left));
-  padding-right: max(1rem, env(safe-area-inset-right));
+  padding: 1.5rem;
+  padding-left: max(1.5rem, env(safe-area-inset-left));
+  padding-right: max(1.5rem, env(safe-area-inset-right));
+  padding-bottom: 1.75rem;
+  padding-bottom: max(1.75rem, env(safe-area-inset-bottom));
   pointer-events: auto;
 }
 
@@ -1143,8 +1187,8 @@
   .notificationsOverlayMobile {
     align-items: flex-end;
     justify-content: center;
-    padding-bottom: 1rem;
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+    padding-bottom: 1.75rem;
+    padding-bottom: calc(1.75rem + env(safe-area-inset-bottom));
   }
 }
 

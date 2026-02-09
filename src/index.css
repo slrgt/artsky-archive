@@ -244,7 +244,18 @@ button {
   .overflow-auto { overflow: overlay; }
 }
 
-/* Popup/dialog scrollbars: no extra border to the left of the scrollbar track */
+/* Popup/dialog: hide scrollbars (content still scrollable) */
+[role="dialog"] *,
+.overlay * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+[role="dialog"] ::-webkit-scrollbar,
+.overlay ::-webkit-scrollbar {
+  display: none;
+}
+
+/* Popup/dialog scrollbars: no extra border to the left of the scrollbar track (if ever shown) */
 [role="dialog"] ::-webkit-scrollbar-track,
 .overlay ::-webkit-scrollbar-track {
   border-inline-start: none;

@@ -28,6 +28,8 @@ interface PostActionsMenuProps {
   open?: boolean
   /** Called when menu should close (escape, click outside) or open (trigger click); use with open for controlled mode */
   onOpenChange?: (open: boolean) => void
+  /** When true, show vertical three dots (⋮) instead of horizontal (⋯) */
+  verticalIcon?: boolean
 }
 
 export default function PostActionsMenu({
@@ -43,6 +45,7 @@ export default function PostActionsMenu({
   openTrigger,
   open: openControlled,
   onOpenChange,
+  verticalIcon,
 }: PostActionsMenuProps) {
   const session = getSession()
   const [openUncontrolled, setOpenUncontrolled] = useState(false)
@@ -317,11 +320,19 @@ export default function PostActionsMenu({
         aria-label="More options"
         title="More options"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <circle cx="4" cy="12" r="2" fill="currentColor" />
-          <circle cx="12" cy="12" r="2" fill="currentColor" />
-          <circle cx="20" cy="12" r="2" fill="currentColor" />
-        </svg>
+        {verticalIcon ? (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <circle cx="12" cy="4" r="2" fill="currentColor" />
+            <circle cx="12" cy="12" r="2" fill="currentColor" />
+            <circle cx="12" cy="20" r="2" fill="currentColor" />
+          </svg>
+        ) : (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <circle cx="4" cy="12" r="2" fill="currentColor" />
+            <circle cx="12" cy="12" r="2" fill="currentColor" />
+            <circle cx="20" cy="12" r="2" fill="currentColor" />
+          </svg>
+        )}
       </button>
       {open && dropdownPosition &&
         createPortal(

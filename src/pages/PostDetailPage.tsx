@@ -171,19 +171,30 @@ function MediaGallery({
   useEffect(() => {
     if (fullscreenIndex === null) return
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setFullscreenIndex(null)
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setFullscreenIndex(null)
+        return
+      }
       if (e.key === 'ArrowLeft') {
         const idx = imageIndices.indexOf(fullscreenIndex!)
-        if (idx > 0) setFullscreenIndex(imageIndices[idx - 1])
+        if (idx > 0) {
+          e.preventDefault()
+          setFullscreenIndex(imageIndices[idx - 1])
+        }
+        return
       }
       if (e.key === 'ArrowRight') {
         const idx = imageIndices.indexOf(fullscreenIndex!)
-        if (idx >= 0 && idx < imageIndices.length - 1)
+        if (idx >= 0 && idx < imageIndices.length - 1) {
+          e.preventDefault()
           setFullscreenIndex(imageIndices[idx + 1])
+        }
+        return
       }
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [fullscreenIndex, imageIndices])
 
   if (items.length === 0) return null
@@ -237,11 +248,15 @@ function MediaGallery({
       {currentFullscreenItem?.type === 'image' && (
         <div
           className={styles.fullscreenOverlay}
-          onClick={() => setFullscreenIndex(null)}
           role="dialog"
           aria-modal="true"
           aria-label="Image full screen"
         >
+          <div
+            className={styles.fullscreenBackdrop}
+            onClick={() => setFullscreenIndex(null)}
+            aria-hidden
+          />
           <button
             type="button"
             className={styles.fullscreenClose}
@@ -279,12 +294,14 @@ function MediaGallery({
               </button>
             </>
           )}
-          <img
-            src={currentFullscreenItem.url}
-            alt=""
-            className={styles.fullscreenImage}
-            onClick={(e) => e.stopPropagation()}
-          />
+          <div className={styles.fullscreenImageWrap}>
+            <img
+              src={currentFullscreenItem.url}
+              alt=""
+              className={styles.fullscreenImage}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
         </div>
       )}
     </div>

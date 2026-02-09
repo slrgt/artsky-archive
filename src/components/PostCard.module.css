@@ -38,6 +38,40 @@
   box-shadow: var(--shadow-card);
 }
 
+/* Light blue ring when post is in an artboard */
+.cardInArtboard {
+  outline: 2px solid #7dd3fc;
+  outline-offset: -2px;
+  box-shadow: var(--shadow-card);
+}
+
+/* Trans flag outline (blue, pink, white, pink, blue) when liked + in artboard + following author */
+.cardTransFlag {
+  outline: none;
+  box-shadow: var(--shadow-card);
+}
+.cardTransFlag::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  z-index: -1;
+  border-radius: calc(var(--glass-radius) + 2px);
+  background: linear-gradient(
+    to bottom,
+    #5bcefa 0%,
+    #5bcefa 20%,
+    #f5a9b8 20%,
+    #f5a9b8 40%,
+    #ffffff 40%,
+    #ffffff 60%,
+    #f5a9b8 60%,
+    #f5a9b8 80%,
+    #5bcefa 80%,
+    #5bcefa 100%
+  );
+  pointer-events: none;
+}
+
 /* Darken card when marked as seen (scrolled past) */
 .cardSeen {
   filter: brightness(0.82);
@@ -62,6 +96,14 @@ html[data-theme="dark"] .cardSeen {
   outline: 2px solid #ec4899;
   outline-offset: -2px;
   box-shadow: var(--shadow-card);
+}
+[data-feed-cards][data-keyboard-nav] .card.cardInArtboard:hover:not(.cardSelected) {
+  outline: 2px solid #7dd3fc;
+  outline-offset: -2px;
+  box-shadow: var(--shadow-card);
+}
+[data-feed-cards][data-keyboard-nav] .card.cardTransFlag:hover:not(.cardSelected) {
+  outline: none;
 }
 
 /* Liked + hover: keep pink outline, add purple ring outside via box-shadow */
@@ -129,6 +171,14 @@ html[data-theme="dark"] .cardSeen {
   justify-content: center;
   gap: 0.875rem;
   min-width: 0;
+}
+
+.cardActionRowRight {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  flex-shrink: 0;
 }
 
 .cardActionRow .addWrap {
@@ -454,6 +504,13 @@ html[data-theme="dark"] .cardSeen {
   aspect-ratio: unset;
   max-height: none;
 }
+
+/* Multi-image stack: height from spacer (1/n aspect) so card isn't forced square; images get full width and scale up */
+.mediaWrapMultiStack {
+  aspect-ratio: unset;
+  max-height: none;
+  align-items: stretch;
+}
 .mediaWrapFillCell .media {
   width: 100%;
   height: 100%;
@@ -474,6 +531,8 @@ html[data-theme="dark"] .cardSeen {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
+  text-align: center;
   padding: 0.6rem 0.75rem;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -492,6 +551,8 @@ html[data-theme="dark"] .cardSeen {
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
+  text-align: center;
+  width: 100%;
 }
 
 .textOnlyPreviewEmpty {
@@ -529,17 +590,19 @@ html[data-theme="dark"] .cardSeen {
 .mediaWrapGridSpacer {
   width: 100%;
   aspect-ratio: 1;
+  flex-shrink: 0;
   pointer-events: none;
 }
 
-/* Multi-image: grid of all images; arrows on hover to cycle */
+/* Multi-image: vertical stack, no gaps – images fill card edge-to-edge */
 .mediaWrapGrid {
   position: absolute;
   inset: 0;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  grid-auto-rows: 1fr;
-  gap: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
   background: var(--bg);
   min-height: 0;
 }
@@ -547,32 +610,43 @@ html[data-theme="dark"] .cardSeen {
 .mediaGrid {
   position: absolute;
   inset: 0;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  grid-auto-rows: 1fr;
-  gap: 2px;
-  padding: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-height: 0;
 }
 
 .mediaGridCell {
   position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
   overflow: hidden;
   background: var(--bg);
-  border-radius: 2px;
+  border-radius: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: stretch;
 }
 
 .mediaGridImg {
   width: 100%;
   height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  vertical-align: top;
   object-fit: contain;
+  object-position: center;
   display: block;
-}
-
-.mediaWrapGrid .mediaArrow {
-  z-index: 2;
+  min-width: 0;
+  min-height: 0;
 }
 
 .mediaArrow:hover:not(:disabled) {
@@ -809,4 +883,5 @@ html[data-theme="dark"] .cardSeen {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  text-align: center;
 }

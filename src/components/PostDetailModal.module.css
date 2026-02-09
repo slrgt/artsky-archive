@@ -9,18 +9,18 @@
   background: var(--overlay-bg);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  padding: 0.75rem 0.5rem 0.75rem 0.5rem;
+  padding: 1.5rem;
   padding-top: 2.5rem;
-  padding-left: max(0.5rem, env(safe-area-inset-left));
-  padding-right: max(0.5rem, env(safe-area-inset-right));
-  padding-bottom: 0.75rem;
+  padding-left: max(1.5rem, env(safe-area-inset-left));
+  padding-right: max(1.5rem, env(safe-area-inset-right));
+  padding-bottom: 1.75rem;
   box-sizing: border-box;
   overflow: hidden;
 }
 
 /* Post detail etc.: small top gap so pane is not touching the top of the screen */
 .overlayFlushTop.overlay {
-  padding-top: max(0.5rem, env(safe-area-inset-top));
+  padding-top: max(1rem, env(safe-area-inset-top));
 }
 
 /* Match main content width on homepage (Layout .main) */
@@ -173,7 +173,7 @@
 @media (max-width: 767px) {
   .overlay {
     padding-top: max(0.5rem, env(safe-area-inset-top));
-    padding-bottom: 2rem;
+    padding-bottom: 1.75rem;
     justify-content: flex-start;
   }
   .overlayFlushTop.overlay {

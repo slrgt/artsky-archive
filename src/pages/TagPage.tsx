@@ -5,6 +5,7 @@ import type { TimelineItem } from '../lib/bsky'
 import type { AppBskyFeedDefs } from '@atproto/api'
 import PostCard from '../components/PostCard'
 import Layout from '../components/Layout'
+import { useSession } from '../context/SessionContext'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useViewMode } from '../context/ViewModeContext'
 import { useModeration } from '../context/ModerationContext'
@@ -17,6 +18,7 @@ function toTimelineItem(post: AppBskyFeedDefs.PostView): TimelineItem {
 
 export function TagContent({ tag, inModal = false }: { tag: string; inModal?: boolean }) {
   const navigate = useNavigate()
+  const { session } = useSession()
   const { viewMode } = useViewMode()
   const { isModalOpen, openPostModal } = useProfileModal()
   const [items, setItems] = useState<TimelineItem[]>([])
@@ -131,7 +133,7 @@ export function TagContent({ tag, inModal = false }: { tag: string; inModal?: bo
         }
         return
       }
-      if (key === 'f') {
+      if (key === 'f' && session) {
         const item = items[i]
         if (!item?.post?.uri || !item?.post?.cid) return
         const uri = item.post.uri
@@ -153,7 +155,7 @@ export function TagContent({ tag, inModal = false }: { tag: string; inModal?: bo
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [mediaItems.length, cols, navigate, isModalOpen, inModal, openPostModal, likeOverrides])
+  }, [mediaItems.length, cols, navigate, isModalOpen, inModal, openPostModal, likeOverrides, session])
 
   if (!tag) return null
 

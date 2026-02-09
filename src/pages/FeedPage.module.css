@@ -357,12 +357,23 @@
   min-width: 0;
 }
 
-/* Column layout for 2/3 col: items flow top-to-bottom per column so cards keep natural height and fill gaps */
+/* Column layout for 1/2/3 col: same structure so switching column count doesn’t glitch */
 .gridColumns {
   display: flex;
   flex-direction: row;
   gap: 0.35rem;
   align-items: flex-start;
+}
+
+/* 1-col: constrain card media height when using column layout */
+.gridColumns.gridView1 {
+  --feed-card-media-max-height: min(calc(100vh - 10rem), 85vh);
+}
+
+@media (max-width: 767px) {
+  .gridColumns.gridView1 {
+    --feed-card-media-max-height: min(100dvh - 4rem, 92dvh);
+  }
 }
 
 .gridColumn {
@@ -387,6 +398,36 @@
   font-size: 0.9rem;
   padding: 0.75rem;
   margin: 0;
+}
+
+.loadMoreRow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0 1rem;
+}
+
+.loadMoreBtn {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-on-accent);
+  background: var(--accent-gradient);
+  border: none;
+  border-radius: var(--glass-radius-sm);
+  cursor: pointer;
+  transition: filter 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.loadMoreBtn:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.loadMoreBtn:disabled {
+  opacity: 0.7;
+  cursor: default;
 }
 
 /* Block confirmation dialog */
