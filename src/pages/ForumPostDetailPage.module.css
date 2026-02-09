@@ -273,6 +273,15 @@
   border-top: 1px solid var(--border);
 }
 
+.replyFormWrap {
+  border-radius: 0.5rem;
+}
+
+.replyFormWrap:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
 .replySectionTitle {
   margin: 0 0 0.5rem;
   font-size: 1rem;
@@ -399,6 +408,11 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 0.5rem;
+}
+
+.replyItem:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
 .replyItemNested {

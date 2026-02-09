@@ -187,6 +187,58 @@
   padding: 2rem 1rem;
 }
 
+.feedLoginHint {
+  text-align: center;
+  margin: 2rem 1rem;
+  padding: 0;
+}
+
+.feedLoginHintBtnRow {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.feedLoginHintText {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
+  padding: 0;
+}
+
+.feedLoginHintBtn {
+  background: var(--accent-gradient);
+  color: var(--text-on-accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--glass-radius-sm);
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  vertical-align: middle;
+  transition: filter 0.15s ease;
+}
+
+.feedLoginHintBtn:hover {
+  filter: brightness(0.92);
+}
+
+.feedLoginHintLink {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.feedLoginHintLink:hover {
+  text-decoration: underline;
+}
+
 .guestSection {
   margin-bottom: 0.5rem;
 }

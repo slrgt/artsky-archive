@@ -191,7 +191,7 @@ export default function ProfileActionsMenu({
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBlockStep('confirm') }}
                     role="menuitem"
                   >
-                    Block account
+                    Block user
                   </button>
                 )
               )}

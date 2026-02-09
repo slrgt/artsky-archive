@@ -11,9 +11,18 @@ import { useModeration } from '../context/ModerationContext'
 import { useMediaOnly } from '../context/MediaOnlyContext'
 import { useScrollLock } from '../context/ScrollLockContext'
 import { useSeenPosts } from '../context/SeenPostsContext'
-import { publicAgent, createPost, getNotifications } from '../lib/bsky'
+import { publicAgent, createPost, getNotifications, getSavedFeedsFromPreferences, getFeedDisplayName, resolveFeedUri, addSavedFeed } from '../lib/bsky'
+import type { FeedSource } from '../types'
+import { GUEST_FEED_SOURCES, GUEST_MIX_ENTRIES } from '../config/feedSources'
+import { useFeedMix } from '../context/FeedMixContext'
 import SearchBar from './SearchBar'
+import FeedSelector from './FeedSelector'
 import styles from './Layout.module.css'
+
+const PRESET_FEED_SOURCES: FeedSource[] = [
+  { kind: 'timeline', label: 'Following' },
+  { kind: 'custom', label: "What's Hot", uri: 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot' },
+]
 
 /** NSFW preference row – subscribes to ModerationContext so it stays in sync in account menu and compact sheet. */
 function NsfwPreferenceRow({ rowClassName }: { rowClassName: string }) {
@@ -86,6 +95,16 @@ function ForumIcon() {
       <line x1="16" y1="13" x2="8" y2="13" />
       <line x1="16" y1="17" x2="8" y2="17" />
       <line x1="10" y1="9" x2="8" y2="9" />
+    </svg>
+  )
+}
+
+function FeedsIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <line x1="4" y1="6" x2="20" y2="6" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <line x1="4" y1="18" x2="20" y2="18" />
     </svg>
   )
 }
@@ -172,32 +191,12 @@ function PlusIcon() {
     </svg>
   )
 }
-function LogOutIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
-  )
-}
 function LogInIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
       <polyline points="10 17 15 12 10 7" />
       <line x1="15" y1="12" x2="3" y2="12" />
-    </svg>
-  )
-}
-
-function UserPlusIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <line x1="19" y1="8" x2="19" y2="14" />
-      <line x1="22" y1="11" x2="16" y2="11" />
     </svg>
   )
 }
@@ -244,7 +243,10 @@ function subscribeDesktop(cb: () => void) {
 export default function Layout({ title, children, showNav }: Props) {
   const loc = useLocation()
   const navigate = useNavigate()
-  const { openProfileModal, isModalOpen } = useProfileModal()
+  const { openProfileModal, isModalOpen, openForumModal, openArtboardsModal } = useProfileModal()
+  const search = loc.search
+  const isForumModalOpen = /\bforum=1\b/.test(search)
+  const isArtboardsModalOpen = /\bartboards=1\b/.test(search) || /\bartboard=/.test(search)
   const { openLoginModal } = useLoginModal()
   const editProfile = useEditProfile()
   const { session, sessionsList, logout, switchAccount } = useSession()
@@ -307,16 +309,20 @@ export default function Layout({ title, children, showNav }: Props) {
       </button>
     </div>
   )
-  const { viewMode, setViewMode, cycleViewMode, viewOptions } = useViewMode()
+  const { viewMode, setViewMode, cycleViewMode } = useViewMode()
   const { cardViewMode, cycleCardView } = useArtOnly()
   const { mediaOnly, toggleMediaOnly } = useMediaOnly()
   const path = loc.pathname
   const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
   const scrollLock = useScrollLock()
-  const [accountSheetOpen, setAccountSheetOpen] = useState(false)
+  const [, setAccountSheetOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'reply' | 'follow'>('all')
+  const [feedsDropdownOpen, setFeedsDropdownOpen] = useState(false)
+  const [savedFeedSources, setSavedFeedSources] = useState<FeedSource[]>([])
+  const feedsDropdownRef = useRef<HTMLDivElement>(null)
+  const feedsBtnRef = useRef<HTMLButtonElement>(null)
   const [notifications, setNotifications] = useState<{ uri: string; author: { handle?: string; did: string; avatar?: string; displayName?: string }; reason: string; reasonSubject?: string; isRead: boolean; indexedAt: string; replyPreview?: string }[]>([])
   const [notificationsLoading, setNotificationsLoading] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
@@ -341,6 +347,22 @@ export default function Layout({ title, children, showNav }: Props) {
   const homeHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const seenPosts = useSeenPosts()
   const HOME_HOLD_MS = 500
+  const { entries: mixEntries, setEntryPercent, toggleSource, addEntry } = useFeedMix()
+  const presetUris = new Set((PRESET_FEED_SOURCES.map((s) => s.uri).filter(Boolean) as string[]))
+  const savedDeduped = savedFeedSources.filter((s) => !s.uri || !presetUris.has(s.uri))
+  const allFeedSources = [...PRESET_FEED_SOURCES, ...savedDeduped]
+  const fallbackFeedSource = PRESET_FEED_SOURCES[0]
+  const handleFeedsToggleSource = useCallback(
+    (clicked: FeedSource) => {
+      if (mixEntries.length === 0) {
+        addEntry(fallbackFeedSource)
+        addEntry(clicked)
+      } else {
+        toggleSource(clicked)
+      }
+    },
+    [mixEntries.length, addEntry, toggleSource]
+  )
 
   const startHomeHold = useCallback(() => {
     homeHoldTimerRef.current = setTimeout(() => {
@@ -422,6 +444,42 @@ export default function Layout({ title, children, showNav }: Props) {
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [notificationsOpen])
 
+  const loadSavedFeeds = useCallback(async () => {
+    if (!session) {
+      setSavedFeedSources([])
+      return
+    }
+    try {
+      const list = await getSavedFeedsFromPreferences()
+      const feeds = list.filter((f) => f.type === 'feed' && f.pinned)
+      const withLabels = await Promise.all(
+        feeds.map(async (f) => ({
+          kind: 'custom' as const,
+          label: await getFeedDisplayName(f.value).catch(() => f.value),
+          uri: f.value,
+        }))
+      )
+      setSavedFeedSources(withLabels)
+    } catch {
+      setSavedFeedSources([])
+    }
+  }, [session])
+
+  useEffect(() => {
+    if (feedsDropdownOpen && session) loadSavedFeeds()
+  }, [feedsDropdownOpen, session, loadSavedFeeds])
+
+  useEffect(() => {
+    if (!feedsDropdownOpen) return
+    const onDocClick = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (feedsDropdownRef.current?.contains(t) || feedsBtnRef.current?.contains(t)) return
+      setFeedsDropdownOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [feedsDropdownOpen])
+
   useEffect(() => {
     if (!notificationsOpen || !session) return
     setNotificationsLoading(true)
@@ -432,7 +490,7 @@ export default function Layout({ title, children, showNav }: Props) {
   }, [notificationsOpen, session])
 
   /* When any full-screen popup is open, lock body scroll so only the popup scrolls */
-  const anyPopupOpen = (mobileSearchOpen && !isDesktop) || (accountSheetOpen && !isDesktop) || (notificationsOpen && !isDesktop) || composeOpen
+  const anyPopupOpen = isModalOpen || (mobileSearchOpen && !isDesktop) || (notificationsOpen && !isDesktop) || composeOpen
   useEffect(() => {
     if (!scrollLock || !anyPopupOpen) return
     scrollLock.lockScroll()
@@ -509,11 +567,6 @@ export default function Layout({ title, children, showNav }: Props) {
   function closeMobileSearch() {
     setMobileSearchOpen(false)
     searchInputRef.current?.blur()
-  }
-
-  function openAccountPanel() {
-    if (isDesktop) setAccountMenuOpen(true)
-    else setAccountSheetOpen(true)
   }
 
   async function handleSelectAccount(did: string) {
@@ -634,14 +687,15 @@ export default function Layout({ title, children, showNav }: Props) {
         <span className={styles.navLabel}>Home</span>
       </Link>
       {isDesktop && (
-        <Link
-          to="/artboards"
-          className={path === '/artboards' ? styles.navActive : ''}
-          aria-current={path === '/artboards' ? 'page' : undefined}
+        <button
+          type="button"
+          className={isArtboardsModalOpen ? styles.navActive : ''}
+          onClick={openArtboardsModal}
+          aria-pressed={isArtboardsModalOpen}
         >
           <span className={styles.navIcon}><ArtboardsIcon /></span>
           <span className={styles.navLabel}>Collections</span>
-        </Link>
+        </button>
       )}
       <button
         type="button"
@@ -656,14 +710,15 @@ export default function Layout({ title, children, showNav }: Props) {
         <span className={styles.navIcon}><SearchIcon /></span>
         <span className={styles.navLabel}>Search</span>
       </button>
-      <Link
-        to="/forum"
-        className={path === '/forum' ? styles.navActive : ''}
-        aria-current={path === '/forum' ? 'page' : undefined}
+      <button
+        type="button"
+        className={isForumModalOpen ? styles.navActive : ''}
+        onClick={openForumModal}
+        aria-pressed={isForumModalOpen}
       >
         <span className={styles.navIcon}><ForumIcon /></span>
         <span className={styles.navLabel}>Forums</span>
-      </Link>
+      </button>
     </>
   )
 
@@ -689,14 +744,15 @@ export default function Layout({ title, children, showNav }: Props) {
 <span className={styles.navIcon}><HomeIcon active={path === '/feed'} /></span>
             <span className={styles.navLabel}>Home</span>
           </Link>
-          <Link
-            to="/forum"
-            className={path === '/forum' ? styles.navActive : ''}
-            aria-current={path === '/forum' ? 'page' : undefined}
+          <button
+            type="button"
+            className={isForumModalOpen ? styles.navActive : ''}
+            onClick={openForumModal}
+            aria-pressed={isForumModalOpen}
           >
             <span className={styles.navIcon}><ForumIcon /></span>
             <span className={styles.navLabel}>Forums</span>
-          </Link>
+          </button>
           <button type="button" className={styles.navBtn} onClick={openCompose} aria-label="New post">
             <span className={styles.navIcon}><PlusIcon /></span>
             <span className={styles.navLabel}>New</span>
@@ -705,14 +761,15 @@ export default function Layout({ title, children, showNav }: Props) {
             <span className={styles.navIcon}><SearchIcon /></span>
             <span className={styles.navLabel}>Search</span>
           </button>
-          <Link
-            to="/artboards"
-            className={path === '/artboards' ? styles.navActive : ''}
-            aria-current={path === '/artboards' ? 'page' : undefined}
+          <button
+            type="button"
+            className={isArtboardsModalOpen ? styles.navActive : ''}
+            onClick={openArtboardsModal}
+            aria-pressed={isArtboardsModalOpen}
           >
             <span className={styles.navIcon}><ArtboardsIcon /></span>
             <span className={styles.navLabel}>Collections</span>
-          </Link>
+          </button>
         </>
       )}
     </>
@@ -787,24 +844,8 @@ export default function Layout({ title, children, showNav }: Props) {
   const accountPanelContent = (
     <>
       <section className={styles.menuSection}>
-        <div className={styles.menuThemeColumnRow}>
+        <div className={styles.menuThemeRow}>
           {themeButtons}
-          <div className={styles.menuRow}>
-            {viewOptions.map((m) => (
-              <button
-                key={m}
-                type="button"
-                className={viewMode === m ? styles.menuOptionActive : styles.menuOption}
-                onClick={() => setViewMode(m)}
-                title={VIEW_LABELS[m]}
-                aria-label={VIEW_LABELS[m]}
-              >
-                {m === '1' && <Column1Icon />}
-                {m === '2' && <Column2Icon />}
-                {m === '3' && <Column3Icon />}
-              </button>
-            ))}
-          </div>
         </div>
         <NsfwPreferenceRow rowClassName={styles.menuNsfwRow} />
         <div className={styles.menuNsfwRow} role="group" aria-label="Feed content">
@@ -844,6 +885,21 @@ export default function Layout({ title, children, showNav }: Props) {
                   <AccountIcon />
                 </span>
                 <span>Profile</span>
+              </button>
+              <button
+                type="button"
+                className={styles.menuProfileBtn}
+                onClick={() => {
+                  setAccountMenuOpen(false)
+                  setAccountSheetOpen(false)
+                  openArtboardsModal()
+                }}
+                title="Collections"
+              >
+                <span className={styles.menuProfileIconWrap} aria-hidden>
+                  <ArtboardsIcon />
+                </span>
+                <span>Collections</span>
               </button>
               <div className={styles.menuAccountsBlock}>
                 {sessionsList.map((s) => {
@@ -892,20 +948,38 @@ export default function Layout({ title, children, showNav }: Props) {
       {!session && (
         <section className={styles.menuSection}>
           <div className={styles.menuProfileAndAccounts}>
-            <button
-              type="button"
-              className={styles.menuProfileBtn}
-              onClick={() => {
-                setAccountMenuOpen(false)
-                setAccountSheetOpen(false)
-                openLoginModal('create')
-              }}
-            >
-              <span className={styles.menuProfileIconWrap} aria-hidden>
-                <AccountIcon />
-              </span>
-              <span>Create account</span>
-            </button>
+            {isDesktop ? (
+              <button
+                type="button"
+                className={styles.menuProfileBtn}
+                onClick={() => {
+                  setAccountMenuOpen(false)
+                  setAccountSheetOpen(false)
+                  openLoginModal('create')
+                }}
+              >
+                <span className={styles.menuProfileIconWrap} aria-hidden>
+                  <AccountIcon />
+                </span>
+                <span>Create account</span>
+              </button>
+            ) : (
+              <a
+                href="https://bsky.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.menuProfileBtn}
+                onClick={() => {
+                  setAccountMenuOpen(false)
+                  setAccountSheetOpen(false)
+                }}
+              >
+                <span className={styles.menuProfileIconWrap} aria-hidden>
+                  <AccountIcon />
+                </span>
+                <span>Create account</span>
+              </a>
+            )}
             <div className={styles.menuAccountsBlock}>
               <button
                 type="button"
@@ -916,141 +990,13 @@ export default function Layout({ title, children, showNav }: Props) {
                   openLoginModal()
                 }}
               >
-                Log in
+                <LogInIcon />
+                <span>Log in with Bluesky</span>
               </button>
             </div>
           </div>
         </section>
       )}
-    </>
-  )
-
-  const accountPanelContentCompact = (
-    <>
-      {session && (
-        <>
-          <div className={styles.menuCompactProfileAndAccounts}>
-            <button
-              type="button"
-              className={styles.menuCompactProfileBtn}
-              onClick={() => {
-                setAccountSheetOpen(false)
-                const currentProfile = accountProfiles[session.did]
-                const currentHandle = currentProfile?.handle ?? (session as { handle?: string }).handle ?? session.did
-                openProfileModal(currentHandle)
-              }}
-              title="View my profile"
-            >
-              <span className={styles.menuProfileIconWrapCompact} aria-hidden>
-                <AccountIcon />
-              </span>
-              <span>Profile</span>
-            </button>
-            <div className={styles.menuCompactAccounts}>
-            {sessionsList.map((s) => {
-              const profile = accountProfiles[s.did]
-              const handle = profile?.handle ?? (s as { handle?: string }).handle ?? s.did
-              const isCurrent = s.did === session?.did
-              return (
-                <button
-                  key={s.did}
-                  type="button"
-                  className={isCurrent ? styles.menuCompactItemActive : styles.menuCompactItem}
-                  onClick={() => {
-                    if (isCurrent) {
-                      setAccountSheetOpen(false)
-                      openProfileModal(handle)
-                    } else {
-                      handleSelectAccount(s.did)
-                    }
-                  }}
-                  title={isCurrent ? 'View my profile' : `@${handle}`}
-                >
-                  {profile?.avatar ? (
-                    <img src={profile.avatar} alt="" className={styles.accountMenuAvatar} loading="lazy" />
-                  ) : (
-                    <span className={styles.accountMenuAvatarPlaceholder} aria-hidden>{(handle || s.did).slice(0, 1).toUpperCase()}</span>
-                  )}
-                  <span className={styles.menuCompactHandle}>@{handle}</span>
-                </button>
-              )
-            })}
-            </div>
-          </div>
-          <div className={styles.menuCompactActions}>
-            <div className={styles.menuCompactActionsRow}>
-              <button type="button" className={styles.menuCompactActionBtn} onClick={handleAddAccount} title="Add account" aria-label="Add account">
-                <PlusIcon />
-                <span>Add account</span>
-              </button>
-              <button type="button" className={styles.menuCompactActionSec} onClick={handleLogout} title="Log out" aria-label="Log out">
-                <LogOutIcon />
-                <span>Log out</span>
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-      {!session && (
-        <div className={styles.menuCompactAuthRow}>
-          <button
-            type="button"
-            className={styles.menuCompactAuthBtn}
-            onClick={() => {
-              setAccountSheetOpen(false)
-              openLoginModal()
-            }}
-          >
-            <LogInIcon />
-            <span>Log in</span>
-          </button>
-          <button
-            type="button"
-            className={styles.menuCreateAccountBtn}
-            onClick={() => {
-              setAccountSheetOpen(false)
-              openLoginModal('create')
-            }}
-          >
-            <UserPlusIcon />
-            <span>Create account</span>
-          </button>
-        </div>
-      )}
-      <div className={styles.menuCompactRow}>
-        {themeButtons}
-        {viewOptions.map((m) => (
-          <button
-            key={m}
-            type="button"
-            className={viewMode === m ? styles.menuCompactBtnActive : styles.menuCompactBtn}
-            onClick={() => setViewMode(m)}
-            title={VIEW_LABELS[m]}
-            aria-label={VIEW_LABELS[m]}
-          >
-            {m === '1' && <Column1Icon />}
-            {m === '2' && <Column2Icon />}
-            {m === '3' && <Column3Icon />}
-          </button>
-        ))}
-      </div>
-      <NsfwPreferenceRow rowClassName={styles.menuCompactNsfwRow} />
-      <div className={styles.menuCompactNsfwRow} role="group" aria-label="Feed content">
-        <button
-          type="button"
-          className={mediaOnly ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
-          onClick={() => toggleMediaOnly()}
-        >
-          Media only
-        </button>
-        <button
-          type="button"
-          className={!mediaOnly ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
-          onClick={() => toggleMediaOnly()}
-        >
-          Media & Text
-        </button>
-      </div>
     </>
   )
 
@@ -1085,38 +1031,102 @@ export default function Layout({ title, children, showNav }: Props) {
               {isDesktop ? (
                 <div className={styles.headerSearchRow}>
                   <div className={styles.headerSearchSide}>
-                    <Link to="/artboards" className={styles.headerArtboardsLink} aria-label="Collections">
-                      Collections
-                    </Link>
+                    <div className={styles.headerFeedsWrap} ref={feedsDropdownRef}>
+                      <button
+                        ref={feedsBtnRef}
+                        type="button"
+                        className={feedsDropdownOpen ? styles.headerFeedsLinkActive : styles.headerFeedsLink}
+                        aria-label="Feeds"
+                        aria-expanded={feedsDropdownOpen}
+                        onClick={() => setFeedsDropdownOpen((o) => !o)}
+                      >
+                        Feeds
+                      </button>
+                      {feedsDropdownOpen && (
+                        <div className={styles.feedsDropdown} role="dialog" aria-label="Remix feeds">
+                          <FeedSelector
+                            variant="dropdown"
+                            sources={session ? allFeedSources : GUEST_FEED_SOURCES}
+                            fallbackSource={session ? fallbackFeedSource : GUEST_FEED_SOURCES[0]}
+                            mixEntries={session ? mixEntries : GUEST_MIX_ENTRIES}
+                            onToggle={handleFeedsToggleSource}
+                            setEntryPercent={setEntryPercent}
+                            onAddCustom={async (input) => {
+                              if (!session) return
+                              try {
+                                const uri = await resolveFeedUri(input)
+                                await addSavedFeed(uri)
+                                await loadSavedFeeds()
+                                const label = await getFeedDisplayName(uri)
+                                handleFeedsToggleSource({ kind: 'custom', label, uri })
+                              } catch {
+                                // ignore
+                              }
+                            }}
+                            onToggleWhenGuest={session ? undefined : openLoginModal}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className={styles.headerSearchBarWrap}>
                     <SearchBar inputRef={searchInputRef} compact={isDesktop} />
                   </div>
                   <div className={styles.headerSearchSide}>
-                    <Link
-                      to="/forum"
+                    <button
+                      type="button"
                       className={session ? styles.headerForumLink : styles.headerForumLinkLoggedOut}
                       aria-label="Forums"
+                      onClick={openForumModal}
                     >
                       Forums
-                    </Link>
+                    </button>
                   </div>
                 </div>
               ) : (
-                <SearchBar inputRef={searchInputRef} compact={isDesktop} />
+                <div className={styles.headerCenterMobile}>
+                  <div className={styles.headerFeedsWrap} ref={feedsDropdownRef}>
+                    <button
+                      ref={feedsBtnRef}
+                      type="button"
+                      className={feedsDropdownOpen ? styles.headerFeedsBtnActive : styles.headerFeedsBtn}
+                      aria-label="Feeds"
+                      aria-expanded={feedsDropdownOpen}
+                      onClick={() => setFeedsDropdownOpen((o) => !o)}
+                    >
+                      <FeedsIcon />
+                      <span className={styles.headerFeedsBtnLabel}>Feeds</span>
+                    </button>
+                    {feedsDropdownOpen && (
+                      <div className={styles.feedsDropdown} role="dialog" aria-label="Remix feeds">
+                        <FeedSelector
+                          variant="dropdown"
+                          sources={session ? allFeedSources : GUEST_FEED_SOURCES}
+                          fallbackSource={session ? fallbackFeedSource : GUEST_FEED_SOURCES[0]}
+                          mixEntries={session ? mixEntries : GUEST_MIX_ENTRIES}
+                          onToggle={handleFeedsToggleSource}
+                          setEntryPercent={setEntryPercent}
+                          onAddCustom={async (input) => {
+                            if (!session) return
+                            try {
+                              const uri = await resolveFeedUri(input)
+                              await addSavedFeed(uri)
+                              await loadSavedFeeds()
+                              const label = await getFeedDisplayName(uri)
+                              handleFeedsToggleSource({ kind: 'custom', label, uri })
+                            } catch {
+                              // ignore
+                            }
+                          }}
+                          onToggleWhenGuest={session ? undefined : openLoginModal}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
             <div className={styles.headerRight}>
-              {!session && !isDesktop && (
-                <button
-                  type="button"
-                  className={styles.headerAuthLink}
-                  onClick={() => openLoginModal()}
-                  aria-label="Log in"
-                >
-                  Log in
-                </button>
-              )}
               {session && isDesktop && (
                 <button
                   type="button"
@@ -1205,23 +1215,31 @@ export default function Layout({ title, children, showNav }: Props) {
                   </div>
                 </>
               )}
-              {/* Mobile: account button in header (right of Log in when logged out, same spot when logged in) */}
+              {/* Mobile: account button in header – same dropdown as desktop */}
               {!isDesktop && (
-                <button
-                  type="button"
-                  className={styles.headerAccountNavBtn}
-                  onClick={() => openAccountPanel()}
-                  aria-label="Accounts and settings"
-                  aria-expanded={accountSheetOpen || accountMenuOpen}
-                >
-                  <span className={styles.navIcon}>
-                    {currentAccountAvatar ? (
-                      <img src={currentAccountAvatar} alt="" className={styles.headerAccountAvatar} loading="lazy" />
-                    ) : (
-                      <AccountIcon />
-                    )}
-                  </span>
-                </button>
+                <div className={styles.headerAccountMenuWrap}>
+                  <button
+                    ref={accountBtnRef}
+                    type="button"
+                    className={styles.headerAccountNavBtn}
+                    onClick={() => setAccountMenuOpen((o) => !o)}
+                    aria-label="Accounts and settings"
+                    aria-expanded={accountMenuOpen}
+                  >
+                    <span className={styles.navIcon}>
+                      {currentAccountAvatar ? (
+                        <img src={currentAccountAvatar} alt="" className={styles.headerAccountAvatar} loading="lazy" />
+                      ) : (
+                        <AccountIcon />
+                      )}
+                    </span>
+                  </button>
+                  {accountMenuOpen && (
+                    <div ref={accountMenuRef} className={styles.accountMenu} role="menu" aria-label="Accounts and settings">
+                      {accountPanelContent}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </>
@@ -1253,20 +1271,6 @@ export default function Layout({ title, children, showNav }: Props) {
               >
                 <div className={styles.searchOverlayCard}>
                   <SearchBar inputRef={searchInputRef} onClose={closeMobileSearch} suggestionsAbove={isDesktop} />
-                </div>
-              </div>
-            </>
-          )}
-          {accountSheetOpen && !isDesktop && (
-            <>
-              <div
-                className={styles.sheetBackdrop}
-                onClick={() => setAccountSheetOpen(false)}
-                aria-hidden
-              />
-              <div className={styles.accountPopup} role="dialog" aria-label="Accounts and settings">
-                <div className={styles.accountPopupContentCompact}>
-                  {accountPanelContentCompact}
                 </div>
               </div>
             </>

@@ -8,7 +8,9 @@ import { putArtboardOnPds } from '../lib/artboardsPds'
 import { useSession } from '../context/SessionContext'
 import { useLoginModal } from '../context/LoginModalContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
+import { useModeration } from '../context/ModerationContext'
 import { formatRelativeTime, formatRelativeTimeTitle } from '../lib/date'
+import { downloadImageWithHandle, downloadVideoWithPostUri } from '../lib/downloadImage'
 import PostText from './PostText'
 import ProfileLink from './ProfileLink'
 import PostActionsMenu from './PostActionsMenu'
@@ -60,6 +62,14 @@ function CollectIcon() {
   )
 }
 
+function DownloadIcon() {
+  return (
+    <svg className={styles.downloadIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 5v14m0 0l-4-4m4 4l4-4" />
+    </svg>
+  )
+}
+
 function isHlsUrl(url: string): boolean {
   return /\.m3u8(\?|$)/i.test(url) || url.includes('m3u8')
 }
@@ -69,6 +79,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const { session } = useSession()
   const { openLoginModal } = useLoginModal()
   const { artOnly, minimalist } = useArtOnly()
+  const { unblurredUris, setUnblurred } = useModeration()
   const videoRef = useRef<HTMLVideoElement>(null)
   const mediaWrapRef = useRef<HTMLDivElement>(null)
   const hlsRef = useRef<Hls | null>(null)
@@ -89,10 +100,11 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const initialLikedUri = postViewer?.like
   const [likedUri, setLikedUri] = useState<string | undefined>(initialLikedUri)
   const [likeLoading, setLikeLoading] = useState(false)
+  const [downloadLoading, setDownloadLoading] = useState(false)
   const effectiveLikedUri = likedUriOverride !== undefined ? (likedUriOverride ?? undefined) : likedUri
   const isLiked = !!effectiveLikedUri
   const inAnyArtboard = isPostInAnyArtboard(post.uri)
-  const showTransFlagOutline = isLiked && inAnyArtboard && isFollowingAuthor
+  const showTransFlagOutline = isLiked && inAnyArtboard
 
   const [mediaAspect, setMediaAspect] = useState<number | null>(() =>
     hasMedia && media?.aspectRatio != null ? media.aspectRatio : null
@@ -106,6 +118,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const addDropdownRef = useRef<HTMLDivElement>(null)
   const [addDropdownPosition, setAddDropdownPosition] = useState<{ bottom: number; left: number } | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
+  const prevSelectedRef = useRef(isSelected)
   const lastTapRef = useRef(0)
   const didDoubleTapRef = useRef(false)
   const touchSessionRef = useRef(false)
@@ -159,6 +172,25 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
       // leave state unchanged
     } finally {
       setLikeLoading(false)
+    }
+  }
+
+  async function handleDownload() {
+    if (!hasMedia || downloadLoading) return
+    if (isVideo && media?.videoPlaylist) {
+      downloadVideoWithPostUri(media.videoPlaylist, post.uri)
+      return
+    }
+    if (hasImage && imageItems.length > 0) {
+      setDownloadLoading(true)
+      try {
+        for (let i = 0; i < imageItems.length; i++) {
+          const url = imageItems[i]?.url
+          if (url) await downloadImageWithHandle(url, handle, post.uri, imageItems.length > 1 ? i : undefined)
+        }
+      } finally {
+        setDownloadLoading(false)
+      }
     }
   }
 
@@ -261,6 +293,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const isMultipleImages = hasMedia && media!.type === 'image' && (media!.imageCount ?? 0) > 1
   const allMedia = getPostAllMediaForDisplay(post)
   const imageItems = allMedia.filter((m) => m.type === 'image')
+  const hasImage = imageItems.length > 0
   const currentImageUrl = isMultipleImages && imageItems.length ? imageItems[0]?.url : (media?.url ?? '')
 
   const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -339,6 +372,44 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
     observer.observe(el)
     return () => observer.disconnect()
   }, [isVideo])
+
+  /* Reblur NSFW when this card loses selection (user moved to another card). Reused across feed, profile, tag, popups. */
+  useEffect(() => {
+    const wasSelected = prevSelectedRef.current
+    prevSelectedRef.current = isSelected
+    if (wasSelected && !isSelected && unblurredUris.has(post.uri)) {
+      setUnblurred(post.uri, false)
+    }
+  }, [isSelected, post.uri, unblurredUris, setUnblurred])
+
+  /* Reblur NSFW when focus leaves the card (click/tab outside). focusout bubbles so we listen on the card root. */
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el || !unblurredUris.has(post.uri)) return
+    const onFocusOut = (e: FocusEvent) => {
+      const next = e.relatedTarget as Node | null
+      if (next != null && el.contains(next)) return
+      setUnblurred(post.uri, false)
+    }
+    el.addEventListener('focusout', onFocusOut)
+    return () => el.removeEventListener('focusout', onFocusOut)
+  }, [post.uri, unblurredUris, setUnblurred])
+
+  /* Reblur NSFW when media scrolls out of view. */
+  useEffect(() => {
+    if (!hasMedia || !unblurredUris.has(post.uri) || !mediaWrapRef.current) return
+    const el = mediaWrapRef.current
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        if (!entry || entry.intersectionRatio > 0) return
+        setUnblurred(post.uri, false)
+      },
+      { threshold: 0, rootMargin: '0px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMedia, post.uri, unblurredUris, setUnblurred])
 
   function onMediaEnter() {
     if (videoRef.current) {
@@ -531,6 +602,24 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
         {(!artOnly || minimalist) && (
         <div className={styles.meta}>
           <div className={styles.cardActionRow} onClick={(e) => e.stopPropagation()}>
+            {(hasImage || isVideo) && (
+              <div className={styles.cardActionRowLeft}>
+                <button
+                  type="button"
+                  className={styles.cardDownloadBtn}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleDownload()
+                  }}
+                  disabled={downloadLoading}
+                  title={isVideo ? 'Download video' : 'Download image (with @handle)'}
+                  aria-label={isVideo ? 'Download video' : 'Download image'}
+                >
+                  {downloadLoading ? '…' : <DownloadIcon />}
+                </button>
+              </div>
+            )}
             <div className={styles.cardActionRowCenter}>
               <div
                 className={`${styles.addWrap} ${addOpen ? styles.addWrapOpen : ''}`}
@@ -539,7 +628,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                 <button
                   ref={addBtnRef}
                   type="button"
-                  className={styles.addToBoardBtn}
+                  className={`${styles.addToBoardBtn} ${inAnyArtboard ? styles.addToBoardBtnInCollection : ''}`}
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
@@ -558,13 +647,10 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                   createPortal(
                     <div
                       ref={addDropdownRef}
-                      className={styles.addDropdown}
+                      className={`${styles.addDropdown} ${styles.addDropdownFixed}`}
                       style={{
-                        position: 'fixed',
                         bottom: addDropdownPosition.bottom,
                         left: addDropdownPosition.left,
-                        transform: 'translateX(-50%)',
-                        marginBottom: '0.25rem',
                         zIndex: 1001,
                       }}
                     >
@@ -659,6 +745,9 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                 compact
                 verticalIcon
                 className={styles.cardActionsMenu}
+                onDownload={hasMedia ? handleDownload : undefined}
+                downloadLabel={hasMedia ? (isVideo ? 'Download video' : isMultipleImages ? 'Download photos' : 'Download photo') : undefined}
+                downloadLoading={downloadLoading}
               />
             </div>
           </div>

@@ -12,7 +12,7 @@ interface PostActionsMenuProps {
   authorDid: string
   /** Root post URI of the thread (for "Mute thread"). If same as postUri, this is the root post. */
   rootUri: string
-  /** When true, hide "Block account" (own content) */
+  /** When true, hide "Block user" (own content) */
   isOwnPost?: boolean
   /** Called after delete (e.g. close modal) */
   onHidden?: () => void
@@ -30,6 +30,12 @@ interface PostActionsMenuProps {
   onOpenChange?: (open: boolean) => void
   /** When true, show vertical three dots (⋮) instead of horizontal (⋯) */
   verticalIcon?: boolean
+  /** Optional download action; when set with downloadLabel, show "Download …" menu item */
+  onDownload?: () => void
+  /** Label for download item: e.g. "Download photo", "Download photos", "Download video" */
+  downloadLabel?: string
+  /** When true, show loading state on the download menu item */
+  downloadLoading?: boolean
 }
 
 export default function PostActionsMenu({
@@ -46,6 +52,9 @@ export default function PostActionsMenu({
   open: openControlled,
   onOpenChange,
   verticalIcon,
+  onDownload,
+  downloadLabel,
+  downloadLoading,
 }: PostActionsMenuProps) {
   const session = getSession()
   const [openUncontrolled, setOpenUncontrolled] = useState(false)
@@ -355,6 +364,17 @@ export default function PostActionsMenu({
             </div>
           ) : !loggedIn ? (
             <>
+              {onDownload && downloadLabel && (
+                <button
+                  type="button"
+                  className={styles.item}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDownload() }}
+                  disabled={downloadLoading}
+                  role="menuitem"
+                >
+                  {downloadLoading ? '…' : downloadLabel}
+                </button>
+              )}
               <button
                 type="button"
                 className={styles.item}
@@ -375,7 +395,7 @@ export default function PostActionsMenu({
                 ← Back
               </button>
               <div className={styles.reportReasonLabel}>
-                Block {authorHandle ? `@${authorHandle}` : 'this account'}?
+                Block {authorHandle ? `@${authorHandle}` : 'this user'}?
               </div>
               <button
                 type="button"
@@ -442,7 +462,7 @@ export default function PostActionsMenu({
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBlockStep('confirm') }}
                     role="menuitem"
                   >
-                    Block account
+                    Block user
                   </button>
                 )
               )}
@@ -463,6 +483,17 @@ export default function PostActionsMenu({
               >
                 {loading === 'mute' ? '…' : 'Mute thread'}
               </button>
+              {onDownload && downloadLabel && (
+                <button
+                  type="button"
+                  className={styles.item}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDownload() }}
+                  disabled={downloadLoading}
+                  role="menuitem"
+                >
+                  {downloadLoading ? '…' : downloadLabel}
+                </button>
+              )}
               <button
                 type="button"
                 className={styles.item}

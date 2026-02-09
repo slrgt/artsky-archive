@@ -1,6 +1,7 @@
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
-import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { REPO_URL } from './config/repo'
 import * as bsky from './lib/bsky'
 import { SessionProvider } from './context/SessionContext'
 import { ThemeProvider } from './context/ThemeContext'
@@ -15,13 +16,18 @@ import { ScrollLockProvider } from './context/ScrollLockContext'
 import { ModerationProvider } from './context/ModerationContext'
 import { SeenPostsProvider } from './context/SeenPostsContext'
 import FeedPage from './pages/FeedPage'
-import ArtboardsPage from './pages/ArtboardsPage'
-import ArtboardDetailPage from './pages/ArtboardDetailPage'
 import PostDetailPage from './pages/PostDetailPage'
 import ProfilePage from './pages/ProfilePage'
 import TagPage from './pages/TagPage'
-import ForumPage from './pages/ForumPage'
-import ForumPostDetailPage from './pages/ForumPostDetailPage'
+
+/** Generic Git logo (not GitHub) – Git SCM branching icon. */
+function GitLogo() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 32 32" fill="currentColor" aria-hidden style={{ flexShrink: 0 }}>
+      <path d="M29.472 14.753a6.028 6.028 0 0 0-1.723-4.53 5.965 5.965 0 0 0-4.532-1.722c-1.31-.063-2.64.145-3.875.563-2.537-1.737-5.747-2.193-8.657-1.23-2.91.964-5.257 3.165-6.687 5.91-1.43 2.745-1.817 5.93-1.067 8.93-.91.59-1.96.987-3.067 1.157a5.965 5.965 0 0 0-4.532 1.722 6.028 6.028 0 0 0-1.723 4.53c0 1.588.619 3.082 1.742 4.2a5.965 5.965 0 0 0 4.532 1.722c.995 0 1.96-.194 2.867-.567 2.537 1.737 5.747 2.193 8.657 1.23 2.91-.964 5.257-3.165 6.687-5.91 1.43-2.745 1.817-5.93 1.067-8.93.91-.59 1.96-.987 3.067-1.157a5.965 5.965 0 0 0 4.532-1.722 6.028 6.028 0 0 0 1.723-4.53z" />
+    </svg>
+  )
+}
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null }
@@ -69,9 +75,41 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
             </p>
           )}
           {!isSessionDeleted && (
-            <p style={{ margin: '1rem 0 0', fontSize: '0.9rem', color: 'var(--muted)' }}>
-              Check the browser console for details.
-            </p>
+            <>
+              <p style={{ margin: '1rem 0 0', fontSize: '0.9rem', color: 'var(--muted)' }}>
+                Try refreshing the page. Check the browser console for details.
+              </p>
+              <p style={{ margin: '0.75rem 0 0' }}>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    fontSize: '0.95rem',
+                    cursor: 'pointer',
+                    background: 'var(--accent)',
+                    color: 'var(--bg)',
+                    border: 'none',
+                    borderRadius: 'var(--glass-radius-sm, 6px)',
+                    fontWeight: 500,
+                  }}
+                >
+                  Refresh
+                </button>
+              </p>
+              <p style={{ margin: '1.25rem 0 0', fontSize: '0.9rem' }}>
+                <a
+                  href={REPO_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: 'var(--muted)', textDecoration: 'none' }}
+                  title="View source"
+                >
+                  <GitLogo />
+                  <span>View source</span>
+                </a>
+              </p>
+            </>
           )}
         </div>
       )
@@ -80,17 +118,36 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   }
 }
 
+/** Redirect to feed with artboard modal open (for direct /artboard/:id links). */
+function ArtboardRedirect() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={id ? `/feed?artboard=${encodeURIComponent(id)}` : '/feed'} replace />
+}
+
+/** Redirect to feed with forum post modal open (for direct /forum/post/:uri links). */
+function ForumPostRedirect() {
+  const { '*': splat } = useParams<{ '*': string }>()
+  const trimmed = (splat ?? '').replace(/^\/+/, '').trim()
+  if (!trimmed) return <Navigate to="/feed?forum=1" replace />
+  try {
+    const uri = decodeURIComponent(trimmed)
+    return <Navigate to={`/feed?forumPost=${encodeURIComponent(uri)}`} replace />
+  } catch {
+    return <Navigate to={`/feed?forumPost=${encodeURIComponent(trimmed)}`} replace />
+  }
+}
+
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/feed" element={<FeedPage />} />
-      <Route path="/artboards" element={<ArtboardsPage />} />
-      <Route path="/artboard/:id" element={<ArtboardDetailPage />} />
+      <Route path="/forum" element={<Navigate to="/feed?forum=1" replace />} />
+      <Route path="/artboards" element={<Navigate to="/feed?artboards=1" replace />} />
+      <Route path="/artboard/:id" element={<ArtboardRedirect />} />
       <Route path="/post/:uri" element={<PostDetailPage />} />
       <Route path="/profile/:handle" element={<ProfilePage />} />
       <Route path="/tag/:tag" element={<TagPage />} />
-      <Route path="/forum" element={<ForumPage />} />
-      <Route path="/forum/post/*" element={<ForumPostDetailPage />} />
+      <Route path="/forum/post/*" element={<ForumPostRedirect />} />
       <Route path="/" element={<Navigate to="/feed" replace />} />
       <Route path="*" element={<Navigate to="/feed" replace />} />
     </Routes>
@@ -111,11 +168,11 @@ export default function App() {
                     <SeenPostsProvider>
                       <EditProfileProvider>
                     <ModerationProvider>
-                    <ProfileModalProvider>
                     <LoginModalProvider>
+                    <ProfileModalProvider>
                       <AppRoutes />
-                    </LoginModalProvider>
                     </ProfileModalProvider>
+                    </LoginModalProvider>
                     </ModerationProvider>
                       </EditProfileProvider>
                     </SeenPostsProvider>

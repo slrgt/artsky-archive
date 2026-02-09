@@ -677,6 +677,67 @@ export async function searchPostsByTag(tag: string, cursor?: string) {
   return { posts: res.data.posts, cursor: res.data.cursor }
 }
 
+/** Search posts by full-text query (no tag filter). When logged out uses public API. Used for multi-word search. */
+export async function searchPostsByQuery(q: string, cursor?: string) {
+  const term = q.trim()
+  if (!term) return { posts: [] as AppBskyFeedDefs.PostView[], cursor: undefined as string | undefined }
+
+  if (!getSession()) {
+    const params = new URLSearchParams()
+    params.set('q', term)
+    params.set('limit', '30')
+    params.set('sort', 'latest')
+    if (cursor) params.set('cursor', cursor)
+    const res = await fetch(`${PUBLIC_BSKY}/xrpc/app.bsky.feed.searchPosts?${params.toString()}`)
+    const data = (await res.json()) as { posts?: AppBskyFeedDefs.PostView[]; cursor?: string; message?: string }
+    if (!res.ok) throw new Error(data.message ?? 'Failed to search')
+    return { posts: data.posts ?? [], cursor: data.cursor }
+  }
+
+  const res = await agent.app.bsky.feed.searchPosts({
+    q: term,
+    limit: 30,
+    cursor,
+    sort: 'latest',
+  })
+  return { posts: res.data.posts ?? [], cursor: res.data.cursor }
+}
+
+/** For multi-word phrase "hello world", derive tag variants: helloworld, hello-world. Returns merged, deduped posts (by uri) and cursor from phrase search for pagination. */
+export async function searchPostsByPhraseAndTags(phrase: string, cursor?: string): Promise<{
+  posts: AppBskyFeedDefs.PostView[]
+  cursor: string | undefined
+}> {
+  const trimmed = phrase.trim()
+  if (!trimmed) return { posts: [], cursor: undefined }
+
+  const words = trimmed.split(/\s+/).filter(Boolean)
+  const tagNoSpace = words.join('').toLowerCase()
+  const tagHyphen = words.join('-').toLowerCase()
+  const tagSlugs = [...new Set([tagNoSpace, tagHyphen].filter(Boolean))]
+
+  const [phraseResult, ...tagResults] = await Promise.all([
+    searchPostsByQuery(trimmed, cursor),
+    ...tagSlugs.map((tag) => searchPostsByTag(tag).then((r) => r.posts)),
+  ])
+
+  const byUri = new Map<string, AppBskyFeedDefs.PostView>()
+  for (const p of phraseResult.posts ?? []) {
+    if (p.uri) byUri.set(p.uri, p)
+  }
+  for (const posts of tagResults) {
+    for (const p of posts ?? []) {
+      if (p.uri && !byUri.has(p.uri)) byUri.set(p.uri, p)
+    }
+  }
+  const merged = Array.from(byUri.values())
+  const sortKey = (p: AppBskyFeedDefs.PostView) =>
+    (p.record as { createdAt?: string })?.createdAt ?? p.indexedAt ?? ''
+  merged.sort((a, b) => (sortKey(b) > sortKey(a) ? 1 : -1))
+
+  return { posts: merged, cursor: phraseResult.cursor }
+}
+
 /** Domain used for standard.site / long-form blog posts. */
 export const STANDARD_SITE_DOMAIN = 'standard.site'
 

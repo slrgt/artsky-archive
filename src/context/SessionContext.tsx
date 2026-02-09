@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { Agent } from '@atproto/api'
 import type { AtpSessionData } from '@atproto/api'
+import { REPO_URL } from '../config/repo'
 import * as bsky from '../lib/bsky'
 import * as oauth from '../lib/oauth'
 
@@ -15,9 +16,6 @@ interface SessionContextValue {
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null)
-
-/** GitHub repo for the app (e.g. source of GitHub Pages build). */
-const GITHUB_REPO_URL = 'https://github.com/slrgt/artsky'
 
 function isLocalhost(): boolean {
   if (typeof window === 'undefined') return false
@@ -140,7 +138,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         <div
           style={{
             margin: 0,
-            padding: '2rem',
+            padding: '2rem 1.5rem',
             textAlign: 'center',
             minHeight: '100dvh',
             display: 'flex',
@@ -156,18 +154,49 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           aria-live="polite"
           aria-busy="true"
         >
-          Loading…
-          <a
-            href={GITHUB_REPO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: 'var(--accent, #7c3aed)',
-              fontSize: '0.9rem',
-            }}
-          >
-            View on GitHub
-          </a>
+          <p style={{ margin: 0, fontSize: '1rem' }}>Loading…</p>
+          <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--muted, #888)' }}>
+            Try refreshing the page. Check the browser console for details.
+          </p>
+          <p style={{ margin: 0 }}>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '0.5rem 1rem',
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                background: 'var(--accent, #7c3aed)',
+                color: 'var(--bg, #0f0f1a)',
+                border: 'none',
+                borderRadius: 6,
+                fontWeight: 500,
+              }}
+            >
+              Refresh
+            </button>
+          </p>
+          <p style={{ margin: 0, fontSize: '0.9rem' }}>
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                color: 'var(--muted, #888)',
+                textDecoration: 'none',
+                fontSize: '0.9rem',
+              }}
+              title="View source"
+            >
+              <svg width="20" height="20" viewBox="0 0 32 32" fill="currentColor" aria-hidden style={{ flexShrink: 0 }}>
+                <path d="M29.472 14.753a6.028 6.028 0 0 0-1.723-4.53 5.965 5.965 0 0 0-4.532-1.722c-1.31-.063-2.64.145-3.875.563-2.537-1.737-5.747-2.193-8.657-1.23-2.91.964-5.257 3.165-6.687 5.91-1.43 2.745-1.817 5.93-1.067 8.93-.91.59-1.96.987-3.067 1.157a5.965 5.965 0 0 0-4.532 1.722 6.028 6.028 0 0 0-1.723 4.53c0 1.588.619 3.082 1.742 4.2a5.965 5.965 0 0 0 4.532 1.722c.995 0 1.96-.194 2.867-.567 2.537 1.737 5.747 2.193 8.657 1.23 2.91-.964 5.257-3.165 6.687-5.91 1.43-2.745 1.817-5.93 1.067-8.93.91-.59 1.96-.987 3.067-1.157a5.965 5.965 0 0 0 4.532-1.722 6.028 6.028 0 0 0 1.723-4.53z" />
+              </svg>
+              View source
+            </a>
+          </p>
         </div>
       ) : (
         children

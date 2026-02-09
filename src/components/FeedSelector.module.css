@@ -2,34 +2,81 @@
   margin-bottom: 0.4rem;
 }
 
+/* Dropdown: add padding; page variant has no extra padding */
+.wrapDropdown {
+  padding: 0.75rem;
+}
+
+/* Page variant: row of pills + help, then add custom feed below; center so middle pill (e.g. Popular With Friends) is in center */
 .feedRow {
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
   flex-wrap: wrap;
   justify-content: center;
+  width: 100%;
 }
 
-.remixHeader {
+.feedRow .tabs {
+  transform: translateX(-2rem);
+}
+
+.feedRowAdd {
+  margin-top: 0.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.feedRowAdd button.addFeedPage {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: unset;
+  padding: 0.5rem 0.75rem;
+}
+
+.feedRow .helpBtn {
+  width: 2.75rem;
+  height: 2.75rem;
+  font-size: 0.9rem;
+}
+
+/* Header: title + help (dropdown only) */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.headerTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.helpWrap {
   position: relative;
-  display: inline-block;
   flex-shrink: 0;
 }
 
 .helpBtn {
-  width: 2.75rem;
-  height: 2.75rem;
-  min-height: 2.75rem;
+  width: 1.75rem;
+  height: 1.75rem;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--muted);
   background: var(--glass-highlight);
   border: 1px solid var(--glass-border);
-  border-radius: var(--glass-radius-sm);
+  border-radius: 50%;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   box-sizing: border-box;
@@ -42,14 +89,14 @@
 
 .helpPopover {
   position: absolute;
-  left: 0;
+  right: 0;
   top: calc(100% + 0.35rem);
   z-index: 20;
-  min-width: 280px;
-  max-width: 360px;
+  min-width: 260px;
+  max-width: 320px;
   width: max-content;
-  padding: 0.65rem 0.9rem;
-  font-size: 0.9rem;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.85rem;
   line-height: 1.45;
   color: var(--text);
   background: var(--surface);
@@ -58,13 +105,85 @@
   box-shadow: var(--shadow-card);
 }
 
+/* Section: choose feeds */
+.section {
+  margin-bottom: 0.75rem;
+}
+
+.sectionHint {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.ratioHint {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.sectionAdd {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Dropdown: vertical list of feeds, all rows same width */
+.wrapDropdown .section .tabs {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.wrapDropdown .feedPillWrap {
+  min-height: 0;
+  width: 100%;
+  align-items: stretch;
+}
+
+/* Dropdown: − and + on left and right of feed button */
+.feedPillRow {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.feedPillRow .feedPillWithFill {
+  flex: 1;
+  min-width: 0;
+}
+
+.feedPillRow .ratioBtnSide {
+  flex-shrink: 0;
+}
+
 .tabs {
   display: flex;
   gap: 0.35rem;
   flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
 }
 
+/* Homepage: line up ? with the top of the feed pill buttons */
+.feedRow .tabs {
+  align-items: flex-start;
+}
+
+.tabs .helpWrap .helpBtn {
+  border-radius: 50%;
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0;
+  background: var(--glass-highlight);
+  border: 1px solid var(--glass-border);
+}
 .feedPillWrap {
   display: flex;
   flex-direction: column;
@@ -102,13 +221,14 @@
   font-size: 0.85rem;
   line-height: 1;
   font-weight: 600;
-  color: var(--muted);
-  background: var(--surface);
+  color: var(--text);
+  background: var(--glass-highlight);
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius-sm);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   flex-shrink: 0;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 
 .ratioBtnSide:hover {
@@ -120,9 +240,10 @@
   padding: 0.5rem 0.75rem;
   height: 2.75rem;
   min-height: 2.75rem;
+  max-height: 2.75rem;
   min-width: 4rem;
   box-sizing: border-box;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius-sm);
   color: var(--text-on-accent);
   font-size: 0.9rem;
@@ -139,23 +260,49 @@
   transition: filter 0.15s ease;
 }
 
+.feedPillWithFill .feedPillLabel,
+.feedPillWithFill .feedPillRatio {
+  margin: 0;
+  line-height: 1.25;
+}
+
 .feedPillWithFill:hover {
   filter: brightness(1.1);
+}
+
+/* Same size as feedPillWithFill but neutral when not in mix */
+.feedPillInactive {
+  background: var(--glass-highlight) !important;
+  color: var(--text) !important;
+  text-shadow: none;
+}
+
+.feedPillInactive:hover {
+  filter: none;
+  border-color: var(--accent);
+}
+
+.ratioBtnSide:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .feedPillLabel {
   display: block;
   font-weight: 500;
+  line-height: 1.25;
 }
 
 .feedPillRatio {
   display: block;
   font-size: 0.75rem;
   font-weight: 400;
+  line-height: 1.25;
   opacity: 0.95;
 }
 
-.tabs button:not(.ratioBtnSide) {
+.tabs button:not(.ratioBtnSide):not(.addFeedPage) {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
@@ -164,31 +311,40 @@
   padding: 0.5rem 0.75rem;
   height: 2.75rem;
   min-height: 2.75rem;
-  min-width: 4.5rem;
+  max-height: 2.75rem;
+  min-width: 4rem;
   box-sizing: border-box;
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius-sm);
   background: var(--glass-highlight);
   color: var(--text);
   font-size: 0.9rem;
+  font-weight: 500;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.tabs button:not(.ratioBtnSide):hover {
+.tabs button:not(.ratioBtnSide):not(.addFeedPage):hover {
   border-color: var(--accent);
 }
 
-.tabs button:not(.ratioBtnSide).active {
+.tabs button:not(.ratioBtnSide):not(.addFeedPage).active {
   background: var(--accent-gradient);
   border-color: var(--accent);
   color: var(--text-on-accent);
   transition: filter 0.15s ease;
 }
 
-.tabs button:not(.ratioBtnSide).active:hover {
+.tabs button:not(.ratioBtnSide):not(.addFeedPage).active:hover {
   filter: brightness(0.92);
+}
+
+/* Ratio pills: glass border by default (avoids purple at right edge when not hovered); hover gets accent outline */
+.tabs button.feedPillWithFill,
+.tabs button.feedPillWithFill:focus,
+.tabs button.feedPillWithFill:active {
+  border-color: var(--glass-border);
 }
 
 .customForm {
@@ -206,6 +362,33 @@
   background: var(--glass-highlight);
   color: var(--text);
   font-size: 16px;
+}
+
+.customSuggestions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  background: var(--glass-bg);
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.customSuggestionItem {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.customSuggestionItem:hover {
+  background: var(--glass-highlight);
 }
 
 .customActions {
@@ -239,28 +422,87 @@
 }
 
 .addFeed {
-  margin-top: 0.5rem;
-  padding: 0.4rem 0;
-  background: none;
-  border: none;
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: var(--glass-radius-sm);
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 
-/* Mobile: scale down so feed selector fits without overflowing */
+.addFeed:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Page variant: same look as dropdown add feed – dashed border */
+.addFeedPage {
+  margin-top: 0;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: var(--glass-radius-sm);
+  color: var(--muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.addFeedPage:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Mobile: scale down so feed selector fits without overflowing; ? button last in row */
 @media (max-width: 767px) {
   .wrap {
     margin-bottom: 0.3rem;
   }
+  .wrapDropdown {
+    padding: 0.5rem;
+  }
   .feedRow {
     gap: 0.35rem;
   }
+  .feedRow .tabs {
+    transform: none;
+  }
+  .feedRow .helpBtn,
+  .tabs .helpWrap .helpBtn {
+    width: 2rem;
+    height: 2rem;
+    min-width: 2rem;
+    min-height: 2rem;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+  .header {
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.4rem;
+  }
+  .headerTitle {
+    font-size: 0.95rem;
+  }
   .helpBtn {
-    width: 2.25rem;
-    height: 2.25rem;
-    min-height: 2.25rem;
-    font-size: 0.8rem;
+    width: 1.6rem;
+    height: 1.6rem;
+    font-size: 0.75rem;
+  }
+  .section {
+    margin-bottom: 0.5rem;
+  }
+  .sectionHint,
+  .ratioHint {
+    font-size: 0.72rem;
+    margin-bottom: 0.35rem;
   }
   .helpPopover {
     min-width: 240px;
@@ -269,45 +511,51 @@
     font-size: 0.8rem;
   }
   .tabs {
-    gap: 0.25rem;
+    gap: 0.3rem;
   }
   .feedPillWrap {
-    min-height: calc(2.25rem + 0.25rem + 1.35rem);
+    min-height: calc(2rem + 0.2rem + 1.2rem);
   }
   .feedPillColumn {
-    gap: 0.25rem;
+    gap: 0.2rem;
   }
   .ratioBtnRow {
-    gap: 0.25rem;
+    gap: 0.2rem;
   }
   .ratioBtnSide {
-    width: 1.1rem;
-    min-width: 1.1rem;
-    height: 1.35rem;
-    min-height: 1.35rem;
-    font-size: 0.75rem;
+    width: 1rem;
+    min-width: 1rem;
+    height: 1.2rem;
+    min-height: 1.2rem;
+    font-size: 0.7rem;
   }
   .feedPillWithFill {
-    padding: 0.4rem 0.55rem;
-    height: 2.25rem;
-    min-height: 2.25rem;
-    min-width: 3.25rem;
-    font-size: 0.8rem;
-    gap: 0.1rem;
+    padding: 0.35rem 0.5rem;
+    height: 2rem;
+    min-height: 2rem;
+    max-height: 2rem;
+    min-width: 2.75rem;
+    font-size: 0.75rem;
+    gap: 0.05rem;
   }
   .feedPillLabel {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
   }
   .feedPillRatio {
-    font-size: 0.68rem;
+    font-size: 0.65rem;
   }
-  .tabs button:not(.ratioBtnSide) {
-    padding: 0.4rem 0.55rem;
-    height: 2.25rem;
-    min-height: 2.25rem;
-    min-width: 3.5rem;
+  .tabs button:not(.ratioBtnSide):not(.addFeedPage) {
+    padding: 0.35rem 0.5rem;
+    height: 2rem;
+    min-height: 2rem;
+    max-height: 2rem;
+    min-width: 2.75rem;
+    font-size: 0.75rem;
+    gap: 0.05rem;
+  }
+  .feedRowAdd button.addFeedPage {
+    padding: 0.35rem 0.5rem;
     font-size: 0.8rem;
-    gap: 0.1rem;
   }
   .customForm {
     margin-top: 0.35rem;
@@ -328,5 +576,65 @@
   .addFeed {
     margin-top: 0.35rem;
     font-size: 0.8rem;
+  }
+}
+
+/* Really small screens: scale feed row items down together */
+@media (max-width: 480px) {
+  .feedRow {
+    gap: 0.25rem;
+  }
+  .feedRow .helpBtn,
+  .tabs .helpWrap .helpBtn {
+    width: 1.75rem;
+    height: 1.75rem;
+    min-width: 1.75rem;
+    min-height: 1.75rem;
+    font-size: 0.7rem;
+  }
+  .feedRow .tabs {
+    gap: 0.25rem;
+  }
+  .feedPillWrap {
+    min-height: calc(1.75rem + 0.2rem + 1.1rem);
+  }
+  .feedPillColumn {
+    gap: 0.15rem;
+  }
+  .ratioBtnRow {
+    gap: 0.15rem;
+  }
+  .ratioBtnSide {
+    width: 0.9rem;
+    min-width: 0.9rem;
+    height: 1.1rem;
+    min-height: 1.1rem;
+    font-size: 0.65rem;
+  }
+  .feedPillWithFill {
+    padding: 0.3rem 0.45rem;
+    height: 1.75rem;
+    min-height: 1.75rem;
+    max-height: 1.75rem;
+    min-width: 2.5rem;
+    font-size: 0.7rem;
+  }
+  .feedPillLabel {
+    font-size: 0.75rem;
+  }
+  .feedPillRatio {
+    font-size: 0.6rem;
+  }
+  .tabs button:not(.ratioBtnSide):not(.addFeedPage) {
+    padding: 0.3rem 0.45rem;
+    height: 1.75rem;
+    min-height: 1.75rem;
+    max-height: 1.75rem;
+    min-width: 2.5rem;
+    font-size: 0.7rem;
+  }
+  .feedRowAdd button.addFeedPage {
+    padding: 0.3rem 0.45rem;
+    font-size: 0.75rem;
   }
 }

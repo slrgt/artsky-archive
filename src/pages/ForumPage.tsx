@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { listStandardSiteDocumentsAll, listStandardSiteDocumentsForForum, getSession, type StandardSiteDocumentView } from '../lib/bsky'
 import { FORUM_DISCOVERY_URLS } from '../config/forumDiscovery'
 import { formatRelativeTime, formatRelativeTimeTitle } from '../lib/date'
+import { useListKeyboardNav } from '../hooks/useListKeyboardNav'
 import Layout from '../components/Layout'
 import ProfileLink from '../components/ProfileLink'
 import { useProfileModal } from '../context/ProfileModalContext'
@@ -37,7 +38,7 @@ function bodyPreview(body: string | undefined): string {
 
 type ForumTab = 'all' | 'followed' | 'mine'
 
-export default function ForumPage() {
+export function ForumContent({ inModal = false }: { inModal?: boolean }) {
   const [tab, setTab] = useState<ForumTab>('all')
   const [documents, setDocuments] = useState<StandardSiteDocumentView[]>([])
   const [loading, setLoading] = useState(true)
@@ -45,11 +46,8 @@ export default function ForumPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [focusedIndex, setFocusedIndex] = useState(0)
   const session = getSession()
-  const navigate = useNavigate()
-  const { isModalOpen } = useProfileModal()
+  const { isModalOpen, openForumPostModal } = useProfileModal()
   const listRef = useRef<HTMLUListElement>(null)
-  const focusedIndexRef = useRef(focusedIndex)
-  focusedIndexRef.current = focusedIndex
 
   const load = useCallback(async () => {
     try {
@@ -93,45 +91,22 @@ export default function ForumPage() {
     if (li) li.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [focusedIndex])
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (isModalOpen) return
-      const target = e.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) {
-        if (e.key === 'Escape') {
-          e.preventDefault()
-          target.blur()
-        }
-        return
-      }
-      if (e.ctrlKey || e.metaKey) return
-      if (!listRef.current || filteredDocuments.length === 0) return
-      const key = e.key.toLowerCase()
-      if (key === 'w' || key === 's' || key === 'a') {
-        e.preventDefault()
-        if (key === 'w' || key === 'a') {
-          setFocusedIndex((i) => Math.max(0, i - 1))
-        } else {
-          setFocusedIndex((i) => Math.min(filteredDocuments.length - 1, i + 1))
-        }
-        return
-      }
-      if (key === 'enter' || key === 'e') {
-        e.preventDefault()
-        const doc = filteredDocuments[focusedIndexRef.current]
-        if (doc) navigate(`/forum/post/${encodeURIComponent(doc.uri)}`)
-        return
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [filteredDocuments, navigate, isModalOpen])
+  useListKeyboardNav({
+    enabled: filteredDocuments.length > 0 && (inModal || !isModalOpen),
+    itemCount: filteredDocuments.length,
+    focusedIndex,
+    setFocusedIndex,
+    onActivate: (index) => {
+      const doc = filteredDocuments[index]
+      if (doc) openForumPostModal(doc.uri)
+    },
+    useCapture: true,
+  })
 
   const showSignInForTab = (tab === 'followed' || tab === 'mine') && !session
 
-  return (
-    <Layout title="Forums" showNav>
-      <div className={styles.wrap}>
+  const wrap = (
+    <div className={styles.wrap}>
         <header className={styles.header}>
           <h2 className={styles.title}>Forums</h2>
           <p className={styles.subtitle}>
@@ -198,7 +173,6 @@ export default function ForumPage() {
               const url = documentUrl(doc)
               const createdAt = doc.createdAt
               const title = doc.title || doc.path || 'Untitled'
-              const forumPostUrl = `/forum/post/${encodeURIComponent(doc.uri)}`
               const head = (
                 <div className={postBlockStyles.postHead}>
                   {doc.authorAvatar ? (
@@ -229,8 +203,12 @@ export default function ForumPage() {
               return (
                 <li key={doc.uri} data-forum-index={index}>
                   <Link
-                    to={forumPostUrl}
+                    to="#"
                     className={isFocused ? `${styles.postLink} ${styles.postLinkFocused}` : styles.postLink}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      openForumPostModal(doc.uri)
+                    }}
                   >
                     <article className={postBlockStyles.postBlock}>
                       <div className={postBlockStyles.postBlockContent}>
@@ -249,6 +227,15 @@ export default function ForumPage() {
           </ul>
         )}
       </div>
+  )
+
+  return wrap
+}
+
+export default function ForumPage() {
+  return (
+    <Layout title="Forums" showNav>
+      <ForumContent />
     </Layout>
   )
 }

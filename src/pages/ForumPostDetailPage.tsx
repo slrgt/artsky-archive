@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useListKeyboardNav } from '../hooks/useListKeyboardNav'
+import { Link } from 'react-router-dom'
 import {
   getStandardSiteDocument,
   deleteStandardSiteDocument,
@@ -13,10 +14,8 @@ import {
   type StandardSiteDocumentBlobRef,
   type ForumReplyView,
 } from '../lib/bsky'
-import { useProfileModal } from '../context/ProfileModalContext'
 import { useSession } from '../context/SessionContext'
 import { formatRelativeTime, formatRelativeTimeTitle } from '../lib/date'
-import Layout from '../components/Layout'
 import PostText from '../components/PostText'
 import ProfileLink from '../components/ProfileLink'
 import { ReplyAsRow } from './PostDetailPage'
@@ -35,19 +34,6 @@ function domainFromBaseUrl(baseUrl: string): string {
     return new URL(baseUrl).hostname
   } catch {
     return ''
-  }
-}
-
-const FORUM_POST_PREFIX = '/forum/post/'
-
-/** Get document URI from route splat (encoded) or pathname fallback. Handles refresh. */
-function getDecodedUriFromRoute(splat: string | undefined, pathname: string): string {
-  const encoded = splat ?? (pathname.startsWith(FORUM_POST_PREFIX) ? pathname.slice(FORUM_POST_PREFIX.length).replace(/^\/+/, '') : '')
-  if (!encoded) return ''
-  try {
-    return decodeURIComponent(encoded)
-  } catch {
-    return encoded
   }
 }
 
@@ -87,11 +73,13 @@ function flattenReplyTree(nodes: ReplyTreeNode[]): { reply: ForumReplyView; dept
 
 const REPLY_THREAD_INDENT = 20
 
-export default function ForumPostDetailPage() {
-  const { pathname } = useLocation()
-  const { '*': splat } = useParams()
-  const navigate = useNavigate()
-  const decodedUri = useMemo(() => getDecodedUriFromRoute(splat, pathname), [splat, pathname])
+export interface ForumPostContentProps {
+  documentUri: string
+  onClose: () => void
+}
+
+export function ForumPostContent({ documentUri, onClose }: ForumPostContentProps) {
+  const decodedUri = documentUri
   const [doc, setDoc] = useState<StandardSiteDocumentView | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -107,11 +95,10 @@ export default function ForumPostDetailPage() {
   const [editSaving, setEditSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const replyFormRef = useRef<HTMLFormElement>(null)
-  const docSectionRef = useRef<HTMLDivElement>(null)
+  const docSectionRef = useRef<HTMLElement>(null)
   const replyFormWrapRef = useRef<HTMLDivElement>(null)
   const repliesSectionRef = useRef<HTMLUListElement>(null)
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
-  const keyboardFocusIndexRef = useRef(0)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [replyingTo, setReplyingTo] = useState<ForumReplyView | null>(null)
@@ -119,7 +106,6 @@ export default function ForumPostDetailPage() {
   const [likeUriOverrideMap, setLikeUriOverrideMap] = useState<Record<string, string>>({})
   const [replyAs, setReplyAs] = useState<{ handle: string; avatar?: string }>({ handle: '' })
   const { session, sessionsList, switchAccount } = useSession()
-  const { isModalOpen } = useProfileModal()
   const currentDid = session?.did ?? ''
   const inlineReplyTextareaRef = useRef<HTMLTextAreaElement>(null)
   const loadDocRetriedRef = useRef(false)
@@ -225,7 +211,30 @@ export default function ForumPostDetailPage() {
   }, [doc, loadReplies])
 
   const forumFocusTotal = 1 + replyTreeFlat.length + (session ? 1 : 0)
-  keyboardFocusIndexRef.current = keyboardFocusIndex
+
+  const focusItemAtIndex = useCallback((idx: number) => {
+    if (idx === 0) {
+      requestAnimationFrame(() => {
+        docSectionRef.current?.focus()
+        docSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      })
+    } else if (idx <= replyTreeFlat.length) {
+      const replyIdx = idx - 1
+      const replyEl = repliesSectionRef.current?.querySelectorAll<HTMLElement>('[data-forum-reply-index]')?.[replyIdx]
+      if (replyEl) {
+        requestAnimationFrame(() => {
+          replyEl.focus()
+          replyEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        })
+      }
+    } else {
+      requestAnimationFrame(() => {
+        replyFormWrapRef.current?.focus()
+        replyFormWrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      })
+    }
+  }, [replyTreeFlat.length])
+
   useEffect(() => {
     if (doc) setKeyboardFocusIndex(0)
   }, [decodedUri])
@@ -235,57 +244,18 @@ export default function ForumPostDetailPage() {
   }, [forumFocusTotal])
 
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (isModalOpen) return
-      const target = e.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) {
-        if (e.key === 'Escape') {
-          e.preventDefault()
-          target.blur()
-        }
-        return
-      }
-      if (e.ctrlKey || e.metaKey) return
-      if (!pathname.startsWith(FORUM_POST_PREFIX) || !doc) return
-      const key = e.key.toLowerCase()
-      if (key !== 'w' && key !== 's' && key !== 'a') return
-      const totalItems = forumFocusTotal
-      if (totalItems <= 0) return
+    if (forumFocusTotal <= 0) return
+    focusItemAtIndex(keyboardFocusIndex)
+  }, [keyboardFocusIndex, forumFocusTotal, focusItemAtIndex])
 
-      const focusItemAtIndex = (idx: number) => {
-        if (idx === 0) {
-          requestAnimationFrame(() => {
-            docSectionRef.current?.focus()
-            docSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-          })
-        } else if (idx <= replyTreeFlat.length) {
-          const replyIdx = idx - 1
-          const replyEl = repliesSectionRef.current?.querySelectorAll<HTMLElement>('[data-forum-reply-index]')?.[replyIdx]
-          if (replyEl) {
-            requestAnimationFrame(() => {
-              replyEl.focus()
-              replyEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-            })
-          }
-        } else {
-          requestAnimationFrame(() => {
-            replyFormWrapRef.current?.focus()
-            replyFormWrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-          })
-        }
-      }
-
-      const current = keyboardFocusIndexRef.current
-      const next = key === 'w' ? Math.max(0, current - 1) : Math.min(totalItems - 1, current + 1)
-      if (next !== current) {
-        e.preventDefault()
-        setKeyboardFocusIndex(next)
-        focusItemAtIndex(next)
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [pathname, doc, forumFocusTotal, replyTreeFlat.length, isModalOpen])
+  useListKeyboardNav({
+    enabled: !!doc && forumFocusTotal > 0,
+    itemCount: forumFocusTotal,
+    focusedIndex: keyboardFocusIndex,
+    setFocusedIndex: setKeyboardFocusIndex,
+    onActivate: focusItemAtIndex,
+    useCapture: false,
+  })
 
   async function handleReplySubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -374,7 +344,7 @@ export default function ForumPostDetailPage() {
     setDeleteLoading(true)
     try {
       await deleteStandardSiteDocument(decodedUri)
-      navigate('/forum', { replace: true })
+      onClose()
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Failed to delete')
     } finally {
@@ -408,19 +378,23 @@ export default function ForumPostDetailPage() {
   }
 
   if (!decodedUri) {
-    navigate('/forum', { replace: true })
+    onClose()
     return null
   }
 
   return (
-    <Layout title={doc?.title ?? 'Forums post'} showNav>
       <div className={styles.wrap}>
         {loading && <div className={styles.loading}>Loading…</div>}
         {error && <p className={styles.error}>{error}</p>}
         {doc && !loading && (
           <>
-            <article className={`${postBlockStyles.postBlock} ${postBlockStyles.rootPostBlock}`}>
-              <div ref={docSectionRef} tabIndex={-1} className={postBlockStyles.postBlockContent} onFocus={() => setKeyboardFocusIndex(0)}>
+            <article
+              ref={docSectionRef}
+              tabIndex={-1}
+              className={`${postBlockStyles.postBlock} ${postBlockStyles.rootPostBlock}`}
+              onFocus={() => setKeyboardFocusIndex(0)}
+            >
+              <div className={postBlockStyles.postBlockContent}>
                 <div className={postBlockStyles.postHead}>
                   {doc.authorAvatar ? (
                     <img src={doc.authorAvatar} alt="" className={postBlockStyles.avatar} loading="lazy" />
@@ -568,6 +542,7 @@ export default function ForumPostDetailPage() {
               <section className={styles.replySection}>
                 <div
                   ref={replyFormWrapRef}
+                  className={styles.replyFormWrap}
                   tabIndex={-1}
                   onFocus={() => setKeyboardFocusIndex(forumFocusTotal - 1)}
                 >
@@ -732,6 +707,5 @@ export default function ForumPostDetailPage() {
           </>
         )}
       </div>
-    </Layout>
   )
 }

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { useListKeyboardNav } from '../hooks/useListKeyboardNav'
 import {
   getArtboards,
   createArtboard,
@@ -17,11 +18,13 @@ import {
 } from '../lib/artboardsPds'
 import { agent } from '../lib/bsky'
 import { useSession } from '../context/SessionContext'
+import { useProfileModal } from '../context/ProfileModalContext'
 import Layout from '../components/Layout'
 import styles from './ArtboardsPage.module.css'
 
-export default function ArtboardsPage() {
+export function ArtboardsContent({ inModal = false }: { inModal?: boolean }) {
   const { session } = useSession()
+  const { openArtboardModal } = useProfileModal()
   const [boards, setBoards] = useState<Artboard[]>(() => getArtboards())
   const [newName, setNewName] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -29,6 +32,8 @@ export default function ArtboardsPage() {
   const [editName, setEditName] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [pdsError, setPdsError] = useState<string | null>(null)
+  const [focusedIndex, setFocusedIndex] = useState(0)
+  const bentoRef = useRef<HTMLDivElement>(null)
 
   function refresh() {
     setBoards(getArtboards())
@@ -101,29 +106,73 @@ export default function ArtboardsPage() {
     }
   }
 
-  return (
-    <Layout title="Collections" showNav>
-      <div className={styles.wrap}>
-        {syncing && <p className={styles.syncing}>Syncing collections…</p>}
-        {pdsError && <p className={styles.pdsError}>{pdsError}</p>}
-        <form onSubmit={handleCreate} className={styles.createForm}>
-          <input
-            type="text"
-            placeholder="New collection name"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className={styles.input}
-          />
-          <button type="submit" className={styles.createBtn}>Create</button>
-        </form>
-        {boards.length === 0 ? (
-          <p className={styles.empty}>
-            No collections yet. Open a post from the feed and use "Collect" to save it here.
-          </p>
-        ) : (
-          <div className={styles.bento}>
-            {boards.map((board) => (
-              <div key={board.id} className={styles.bentoCard}>
+  useEffect(() => {
+    setFocusedIndex((i) => (boards.length ? Math.min(i, boards.length - 1) : 0))
+  }, [boards.length])
+
+  useEffect(() => {
+    if (!inModal || !bentoRef.current || focusedIndex < 0) return
+    const el = bentoRef.current.querySelector(`[data-collection-index="${focusedIndex}"]`)
+    if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [inModal, focusedIndex])
+
+  useListKeyboardNav({
+    enabled: inModal && boards.length > 0,
+    itemCount: boards.length,
+    focusedIndex,
+    setFocusedIndex,
+    onActivate: (index) => {
+      const board = boards[index]
+      if (board) openArtboardModal(board.id)
+    },
+    useCapture: true,
+  })
+
+  const wrap = (
+    <div className={styles.wrap}>
+      {syncing && <p className={styles.syncing}>Syncing collections…</p>}
+      {pdsError && <p className={styles.pdsError}>{pdsError}</p>}
+      <form onSubmit={handleCreate} className={styles.createForm}>
+        <input
+          type="text"
+          placeholder="New collection name"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          className={styles.input}
+        />
+        <button type="submit" className={styles.createBtn}>Create</button>
+      </form>
+      {boards.length === 0 ? (
+        <p className={styles.empty}>
+          No collections yet. Open a post from the feed and use "Collect" to save it here.
+        </p>
+      ) : (
+        <div ref={bentoRef} className={styles.bento}>
+          {boards.map((board, index) => (
+            <div key={board.id} className={`${styles.bentoCard} ${inModal && index === focusedIndex ? styles.bentoCardFocused : ''}`} data-collection-index={inModal ? index : undefined}>
+              {inModal ? (
+                <button type="button" className={styles.bentoLink} onClick={() => openArtboardModal(board.id)}>
+                  {board.posts.length > 0 ? (
+                    <div className={styles.bentoThumbs}>
+                      {board.posts.slice(0, 4).map((p) => (
+                        <div key={p.uri} className={styles.bentoThumb}>
+                          {p.thumb ? (
+                            <img src={p.thumb} alt="" loading="lazy" />
+                          ) : (
+                            <span className={styles.thumbPlaceholder}>📌</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.bentoEmpty}>No posts yet</div>
+                  )}
+                  <div className={styles.bentoInfo}>
+                    <span className={styles.bentoName}>{board.name}</span>
+                    <span className={styles.bentoCount}>{board.posts.length} post{board.posts.length !== 1 ? 's' : ''}</span>
+                  </div>
+                </button>
+              ) : (
                 <Link to={`/artboard/${board.id}`} className={styles.bentoLink}>
                   {board.posts.length > 0 ? (
                     <div className={styles.bentoThumbs}>
@@ -145,6 +194,7 @@ export default function ArtboardsPage() {
                     <span className={styles.bentoCount}>{board.posts.length} post{board.posts.length !== 1 ? 's' : ''}</span>
                   </div>
                 </Link>
+              )}
                 <div className={styles.bentoActions}>
                   {editingId === board.id ? (
                     <>
@@ -174,6 +224,15 @@ export default function ArtboardsPage() {
           </div>
         )}
       </div>
+  )
+
+  return wrap
+}
+
+export default function ArtboardsPage() {
+  return (
+    <Layout title="Collections" showNav>
+      <ArtboardsContent />
     </Layout>
   )
 }

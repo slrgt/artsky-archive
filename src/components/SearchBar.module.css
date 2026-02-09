@@ -20,6 +20,12 @@
   font-size: 14px;
 }
 
+.compact .searchSubmitBtn {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+}
+
 .searchRow {
   display: flex;
   align-items: center;
@@ -67,15 +73,35 @@
 .input {
   flex: 1;
   min-width: 0;
-  padding: 0.6rem 0.75rem;
+  padding: 0.6rem 0.5rem 0.6rem 0.75rem;
   min-height: var(--touch-min);
   font-size: 16px; /* prevents iOS zoom on focus */
   color: var(--text);
   background: transparent;
   border: none;
-  border-radius: 0 var(--glass-radius-sm) var(--glass-radius-sm) 0;
+  border-radius: 0;
   outline: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+.searchSubmitBtn {
+  flex-shrink: 0;
+  width: var(--touch-min);
+  height: var(--touch-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 0 var(--glass-radius-sm) var(--glass-radius-sm) 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.searchSubmitBtn:hover {
+  color: var(--accent);
+  background: var(--glass-highlight);
 }
 
 .input:focus,
@@ -123,6 +149,13 @@
 
 .input::placeholder {
   color: var(--muted);
+}
+
+/* Hide native search clear (X) button */
+.input::-webkit-search-cancel-button,
+.input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .dropdown {

@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import type { AppBskyFeedDefs } from '@atproto/api'
 import type { AtpSessionData } from '@atproto/api'
 import { agent, publicAgent, postReply, getPostAllMedia, getPostMediaUrl, getQuotedPostView, getSession, createQuotePost, createDownvote, deleteDownvote, listMyDownvotes } from '../lib/bsky'
+import { downloadImageWithHandle, downloadVideoWithPostUri } from '../lib/downloadImage'
 import { useSession } from '../context/SessionContext'
 import { getArtboards, createArtboard, addPostToArtboard, isPostInArtboard } from '../lib/artboards'
 import { formatRelativeTime, formatRelativeTimeTitle } from '../lib/date'
@@ -648,6 +649,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
   const [openActionsMenuCommentUri, setOpenActionsMenuCommentUri] = useState<string | null>(null)
   const [newBoardName, setNewBoardName] = useState('')
   const [showBoardDropdown, setShowBoardDropdown] = useState(false)
+  const [downloadLoading, setDownloadLoading] = useState(false)
   const [showRepostDropdown, setShowRepostDropdown] = useState(false)
   const [showQuoteComposer, setShowQuoteComposer] = useState(false)
   const [quoteText, setQuoteText] = useState('')
@@ -750,6 +752,25 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
       // leave state unchanged
     } finally {
       setLikeLoading(false)
+    }
+  }
+
+  async function handleDownload() {
+    if (!thread || !isThreadViewPost(thread) || downloadLoading) return
+    const mediaList = getPostAllMedia(thread.post)
+    if (mediaList.length === 0) return
+    const first = mediaList[0]
+    const handle = thread.post.author.handle ?? thread.post.author.did
+    const postUri = thread.post.uri
+    if (first.type === 'video' && first.videoPlaylist) {
+      downloadVideoWithPostUri(first.videoPlaylist, postUri)
+      return
+    }
+    setDownloadLoading(true)
+    try {
+      await downloadImageWithHandle(first.url, handle, postUri)
+    } finally {
+      setDownloadLoading(false)
     }
   }
 
@@ -1304,6 +1325,18 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, onClose }: P
               )}
             <section className={styles.actions} aria-label="Post actions">
               <div className={styles.actionRow}>
+                {rootMedia.length > 0 && (
+                  <button
+                    type="button"
+                    className={styles.downloadBtn}
+                    onClick={handleDownload}
+                    disabled={downloadLoading}
+                    title={rootMedia[0].type === 'video' ? 'Download video' : 'Download image'}
+                    aria-label={rootMedia[0].type === 'video' ? 'Download video' : 'Download image'}
+                  >
+                    {downloadLoading ? '…' : '↓'} Download
+                  </button>
+                )}
                 <div className={styles.addToBoardWrap}>
                   <button
                     type="button"

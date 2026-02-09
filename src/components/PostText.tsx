@@ -6,9 +6,9 @@ import styles from './PostText.module.css'
 /** Bluesky facet from post record (optional). When present, links/mentions/tags render from facets. */
 export type PostTextFacet = { index: { byteStart: number; byteEnd: number }; features: Array<{ $type?: string; uri?: string; did?: string; tag?: string }> }
 
-/** Matches: explicit URLs, www. URLs, bare domains, hashtags, and @mentions (not after alphanumeric, to avoid emails). */
+/** Matches: emails (first so domain-only part isn’t linked), explicit URLs, www., bare domains, hashtags, @mentions. */
 const LINKIFY_REGEX =
-  /(https?:\/\/[^\s<>"']+)|(www\.[^\s<>"'\],;:)!?]+)|(?<![@\/])((?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(?:\/[^\s<>"']*)?)|(#[\w]+)|(?<![a-zA-Z0-9])(@[\w.-]+)/gi
+  /([\w.%+-]+@(?:[\w-]+\.)+[a-zA-Z]{2,})|(https?:\/\/[^\s<>"']+)|(www\.[^\s<>"'\],;:)!?]+)|(?<![@\/])((?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(?:\/[^\s<>"']*)?)|(#[\w]+)|(?<![a-zA-Z0-9])(@[\w.-]+)/gi
 
 function linkDisplayText(href: string, value: string, display: 'url' | 'domain'): string {
   if (display !== 'domain') return value
@@ -34,13 +34,21 @@ export interface PostTextProps {
 }
 
 function renderSegment(
-  seg: { type: 'text' | 'url' | 'bareUrl' | 'hashtag' | 'mention'; value: string; href?: string; tag?: string; did?: string },
+  seg: { type: 'text' | 'url' | 'bareUrl' | 'email' | 'hashtag' | 'mention'; value: string; href?: string; tag?: string; did?: string },
   i: number,
   linkDisplay: 'url' | 'domain',
   onClick: ((e: React.MouseEvent) => void) | undefined
 ) {
   if (seg.type === 'text') {
     return <span key={i}>{seg.value}</span>
+  }
+  if (seg.type === 'email') {
+    const raw = seg.value.replace(/[.,;:)!?]+$/, '')
+    return (
+      <a key={i} href={`mailto:${raw}`} className={styles.link} onClick={onClick} title={raw}>
+        {seg.value}
+      </a>
+    )
   }
   if (seg.type === 'url' || (seg.type === 'bareUrl' && seg.href)) {
     const href = seg.href ?? seg.value
@@ -83,12 +91,25 @@ export default function PostText({ text, facets, className, maxLength, stopPropa
   if (facets && Array.isArray(facets) && facets.length > 0) {
     try {
       const rt = new AtpRichText({ text, facets: facets as NonNullable<ConstructorParameters<typeof AtpRichText>[0]>['facets'] })
-      const segs: Array<{ type: 'text' | 'url' | 'bareUrl' | 'hashtag' | 'mention'; value: string; href?: string; tag?: string; did?: string }> = []
+      const segs: Array<{ type: 'text' | 'url' | 'bareUrl' | 'email' | 'hashtag' | 'mention'; value: string; href?: string; tag?: string; did?: string }> = []
       let len = 0
       for (const seg of rt.segments()) {
         const value = seg.text
+        let added = value.length
         if (seg.isLink() && seg.link?.uri) {
-          segs.push({ type: 'url', value, href: seg.link.uri })
+          const uri = seg.link.uri
+          const looksLikeDomainOnly = /^https?:\/\/[^/]+$/.test(uri) || !/^https?:\/\//i.test(uri)
+          const prev = segs[segs.length - 1]
+          if (looksLikeDomainOnly && prev?.type === 'text' && /@\s*$/.test(prev.value)) {
+            const localPart = prev.value.replace(/\s*@\s*$/, '')
+            segs.pop()
+            len -= prev.value.length
+            const email = localPart ? `${localPart}@${value}` : value
+            segs.push({ type: 'email', value: email })
+            added = email.length
+          } else {
+            segs.push({ type: 'url', value, href: uri })
+          }
         } else if (seg.isMention() && seg.mention?.did) {
           segs.push({ type: 'mention', value, did: seg.mention.did })
         } else if (seg.isTag() && seg.tag?.tag != null) {
@@ -96,7 +117,7 @@ export default function PostText({ text, facets, className, maxLength, stopPropa
         } else {
           segs.push({ type: 'text', value })
         }
-        len += value.length
+        len += added
         if (maxLength != null && len >= maxLength && segs[segs.length - 1].type === 'text') {
           const last = segs[segs.length - 1]
           const take = last.value.length - (len - maxLength)
@@ -118,7 +139,7 @@ export default function PostText({ text, facets, className, maxLength, stopPropa
     }
   }
 
-  const segments: Array<{ type: 'text' | 'url' | 'bareUrl' | 'hashtag' | 'mention'; value: string }> = []
+  const segments: Array<{ type: 'text' | 'url' | 'bareUrl' | 'email' | 'hashtag' | 'mention'; value: string }> = []
   let lastIndex = 0
   let match: RegExpExecArray | null
   const re = new RegExp(LINKIFY_REGEX.source, 'gi')
@@ -126,14 +147,16 @@ export default function PostText({ text, facets, className, maxLength, stopPropa
     if (match.index > lastIndex) {
       segments.push({ type: 'text', value: text.slice(lastIndex, match.index) })
     }
-    const value = match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5]
+    const value = match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5] ?? match[6]
     if (match[1]) {
+      segments.push({ type: 'email', value })
+    } else if (match[2]) {
       segments.push({ type: 'url', value })
-    } else if (match[2] || match[3]) {
+    } else if (match[3] || match[4]) {
       segments.push({ type: 'bareUrl', value })
-    } else if (match[4]) {
-      segments.push({ type: 'hashtag', value })
     } else if (match[5]) {
+      segments.push({ type: 'hashtag', value })
+    } else if (match[6]) {
       segments.push({ type: 'mention', value })
     }
     lastIndex = re.lastIndex

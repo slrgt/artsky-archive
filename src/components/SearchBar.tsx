@@ -8,12 +8,40 @@ import styles from './SearchBar.module.css'
 
 const DEBOUNCE_MS = 200
 
+/** Extract profile handle from pasted URL: bsky.app/profile/handle or ...?profile=handle (ArtSky). */
+function extractProfileHandleFromSearchQuery(text: string): string | null {
+  const pathMatch = text.match(/\/profile\/([^/?\s#]+)/i)
+  if (pathMatch) {
+    try {
+      return decodeURIComponent(pathMatch[1].trim())
+    } catch {
+      return pathMatch[1].trim()
+    }
+  }
+  const paramMatch = text.match(/profile=([^&\s]+)/i)
+  if (!paramMatch) return null
+  try {
+    return decodeURIComponent(paramMatch[1].trim())
+  } catch {
+    return paramMatch[1].trim()
+  }
+}
+
 export type SearchFilter = 'all' | 'users' | 'feeds'
 
 function FilterIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M4 6h16M4 12h10M4 18h6" />
+    </svg>
+  )
+}
+
+function SearchIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.35-4.35" />
     </svg>
   )
 }
@@ -32,7 +60,7 @@ interface Props {
 
 export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, compact, onClose, suggestionsAbove }: Props) {
   const navigate = useNavigate()
-  const { openProfileModal, openTagModal } = useProfileModal()
+  const { openProfileModal, openTagModal, openSearchModal } = useProfileModal()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<SearchFilter>('all')
   const [open, setOpen] = useState(false)
@@ -136,10 +164,52 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
   const placeholder =
     filter === 'users' ? 'Search users, #hashtags…' : filter === 'feeds' ? 'Browse feeds…' : 'Search users, feeds, #hashtags…'
 
+  /** Treat as profile only when clearly a handle: pasted URL, or single token that starts with @ or contains a period (e.g. bsky.app, @user). Single words with no period = text/hashtag search. */
+  const looksLikeHandle =
+    trimmed.length > 0 &&
+    !/\s/.test(trimmed) &&
+    (trimmed.startsWith('@') || trimmed.includes('.'))
+
+  function handleSubmit() {
+    const profileHandle = extractProfileHandleFromSearchQuery(trimmed)
+    if (profileHandle) {
+      openProfileModal(profileHandle)
+      setQuery('')
+      setOpen(false)
+      inputRef.current?.blur()
+      onClose?.()
+      return
+    }
+    if (looksLikeHandle) {
+      openProfileModal(trimmed.replace(/^@/, ''))
+      setQuery('')
+      setOpen(false)
+      inputRef.current?.blur()
+      onClose?.()
+      return
+    }
+    if (trimmed.length > 0) {
+      openSearchModal(trimmed)
+      setQuery('')
+      setOpen(false)
+      inputRef.current?.blur()
+      onClose?.()
+      return
+    }
+    if (open && options.length > 0 && activeIndex >= 0) {
+      handleSelect(activeIndex)
+    }
+  }
+
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Escape') {
       setOpen(false)
       onClose?.()
+      return
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSubmit()
       return
     }
     if (!open || options.length === 0) return
@@ -149,9 +219,6 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setActiveIndex((i) => (i <= 0 ? options.length - 1 : i - 1))
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      if (activeIndex >= 0) handleSelect(activeIndex)
     }
   }
 
@@ -186,6 +253,14 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
           aria-autocomplete="list"
           aria-expanded={open && options.length > 0}
         />
+        <button
+          type="button"
+          className={styles.searchSubmitBtn}
+          onClick={handleSubmit}
+          aria-label="Search"
+        >
+          <SearchIcon />
+        </button>
         {filterOpen && (
           <div className={styles.filterDropdown}>
             {(['all', 'users', 'feeds'] as const).map((f) => (

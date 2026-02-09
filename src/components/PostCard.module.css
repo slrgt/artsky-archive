@@ -1,4 +1,4 @@
-/* Liquid glass card */
+/* Liquid glass card – no shadow/glow, outline only */
 .card {
   position: relative;
   border-radius: var(--glass-radius);
@@ -9,7 +9,7 @@
   -webkit-backdrop-filter: blur(var(--glass-blur));
   backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
   -webkit-tap-highlight-color: transparent;
   /* Reserve space above when scrollIntoView runs so fixed header doesn't cover the card */
   scroll-margin-top: 5rem;
@@ -35,41 +35,72 @@
 .cardLiked {
   outline: 2px solid #ec4899;
   outline-offset: -2px;
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
 }
 
 /* Light blue ring when post is in an artboard */
 .cardInArtboard {
   outline: 2px solid #7dd3fc;
   outline-offset: -2px;
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
 }
 
-/* Trans flag outline (blue, pink, white, pink, blue) when liked + in artboard + following author */
+/* Trans flag border (pink, light blue, white, light blue, pink) when liked + in artboard */
 .cardTransFlag {
   outline: none;
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
+  overflow: visible;
+  background: transparent;
+  padding: 2px;
+  border: none;
 }
 .cardTransFlag::before {
   content: '';
   position: absolute;
-  inset: -3px;
+  inset: 0;
   z-index: -1;
-  border-radius: calc(var(--glass-radius) + 2px);
+  border-radius: var(--glass-radius);
   background: linear-gradient(
     to bottom,
-    #5bcefa 0%,
-    #5bcefa 20%,
-    #f5a9b8 20%,
-    #f5a9b8 40%,
-    #ffffff 40%,
-    #ffffff 60%,
-    #f5a9b8 60%,
-    #f5a9b8 80%,
-    #5bcefa 80%,
-    #5bcefa 100%
+    #5BCCFA 0%,
+    #7DD3FC 10%,
+    #9EE0FD 20%,
+    #ec4899 20%,
+    #ec4899 40%,
+    #ec4899 49%,
+    #000000 49%,
+    #4a4a4a 49.45%,
+    #ffffff 50%,
+    #4a4a4a 50.55%,
+    #000000 51%,
+    #ec4899 51%,
+    #ec4899 60%,
+    #ec4899 80%,
+    #5BCCFA 80%,
+    #7DD3FC 90%,
+    #9EE0FD 100%
   );
   pointer-events: none;
+}
+.cardTransFlag .cardLink {
+  background: var(--surface);
+  border-radius: calc(var(--glass-radius) - 1px);
+  border: 1px solid var(--glass-border);
+  position: relative;
+  z-index: 0;
+}
+
+/* Keep media (and overlays) inside the inner radius so they don’t cover the trans-flag ring */
+.cardTransFlag .cardLink .mediaWrap,
+.cardTransFlag .cardLink .nsfwOverlay {
+  border-radius: calc(var(--glass-radius) - 1px) calc(var(--glass-radius) - 1px) 0 0;
+}
+.cardTransFlag.cardArtOnly .cardLink .mediaWrap,
+.cardTransFlag.cardArtOnly .cardLink .nsfwOverlay {
+  border-radius: calc(var(--glass-radius) - 1px);
+}
+.cardTransFlag .cardLink .textOnlyPreview {
+  border-radius: calc(var(--glass-radius-sm) - 1px) calc(var(--glass-radius-sm) - 1px) 0 0;
 }
 
 /* Darken card when marked as seen (scrolled past) */
@@ -90,27 +121,27 @@ html[data-theme="dark"] .cardSeen {
 /* When navigating with keyboard (W/S/A/D), only the selected card gets the outline – not the card under the mouse */
 [data-feed-cards][data-keyboard-nav] .card:hover:not(.cardSelected) {
   outline: none;
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
 }
 [data-feed-cards][data-keyboard-nav] .card.cardLiked:hover:not(.cardSelected) {
   outline: 2px solid #ec4899;
   outline-offset: -2px;
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
 }
 [data-feed-cards][data-keyboard-nav] .card.cardInArtboard:hover:not(.cardSelected) {
   outline: 2px solid #7dd3fc;
   outline-offset: -2px;
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
 }
 [data-feed-cards][data-keyboard-nav] .card.cardTransFlag:hover:not(.cardSelected) {
   outline: none;
 }
 
-/* Liked + hover: keep pink outline, add purple ring outside via box-shadow */
+/* Liked + hover: keep pink outline only */
 .card.cardLiked:hover {
   outline: 2px solid #ec4899;
   outline-offset: -2px;
-  box-shadow: var(--shadow-card), 0 0 0 1px transparent, 0 0 0 3px var(--accent);
+  box-shadow: none;
 }
 
 /* Bento grid: card fills cell height */
@@ -156,7 +187,7 @@ html[data-theme="dark"] .cardSeen {
   opacity: 1;
 }
 
-/* Action row: Collect, Like, Repost centered in card; ... menu absolutely on the right so it doesn't shift center */
+/* Action row: download absolute left; center (Collect, avatar, Like); menu absolute right */
 .cardActionRow {
   position: relative;
   display: flex;
@@ -171,6 +202,20 @@ html[data-theme="dark"] .cardSeen {
   justify-content: center;
   gap: 0.875rem;
   min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .cardActionRowCenter {
+    gap: 0.35rem;
+  }
+}
+
+.cardActionRowLeft {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  flex-shrink: 0;
 }
 
 .cardActionRowRight {
@@ -238,6 +283,15 @@ html[data-theme="dark"] .cardSeen {
   .handleRow .authorAvatar {
     display: none;
   }
+  /* 3-column view on mobile only: half-size avatar on preview cards */
+  [data-feed-cards][data-view-mode="3"] .cardActionRowAvatar img {
+    width: 1rem;
+    height: 1rem;
+  }
+  [data-feed-cards][data-view-mode="3"] .cardActionRowAvatar {
+    width: 1rem;
+    height: 1rem;
+  }
 }
 
 /* Minimalist: only collect + like; no handle/text so trim meta spacing */
@@ -293,6 +347,32 @@ html[data-theme="dark"] .cardSeen {
   cursor: default;
 }
 
+.cardDownloadBtn {
+  width: 1.85rem;
+  height: 1.85rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.cardDownloadBtn:hover:not(:disabled) {
+  color: var(--accent);
+}
+.cardDownloadBtn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+.cardDownloadBtn .downloadIcon {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
 .addToBoardBtn {
   width: 2rem;
   height: 2rem;
@@ -320,6 +400,18 @@ html[data-theme="dark"] .cardSeen {
   outline-offset: -2px;
 }
 
+.addToBoardBtnInCollection {
+  color: #55CDFC;
+}
+
+.addToBoardBtnInCollection .collectIcon {
+  fill: currentColor;
+}
+
+.addToBoardBtnInCollection:hover {
+  color: #4bc4f0;
+}
+
 .collectIcon {
   width: 1.1rem;
   height: 1.1rem;
@@ -345,6 +437,13 @@ html[data-theme="dark"] .cardSeen {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+/* Portaled to body: stay fixed in viewport where opened (don't scroll with feed) */
+.addDropdownFixed {
+  position: fixed !important;
+  transform: translateX(-50%);
+  margin-bottom: 0.25rem;
 }
 
 .addBoardLabel {
@@ -564,13 +663,13 @@ html[data-theme="dark"] .cardSeen {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem;
+  height: 1.75rem;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
+  font-size: 1.75rem;
   line-height: 1;
   color: var(--text);
   background: var(--media-control-bg);
@@ -833,7 +932,6 @@ html[data-theme="dark"] .cardSeen {
 .handleLinkWrapLiked {
   display: inline;
   color: #ec4899;
-  text-shadow: 0 0 12px rgba(236, 72, 153, 0.75), 0 1px 4px rgba(236, 72, 153, 0.6);
 }
 
 .handleLink {

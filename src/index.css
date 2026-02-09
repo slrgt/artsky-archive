@@ -23,7 +23,7 @@
   --accent-muted: rgba(124, 58, 237, 0.15);
   --accent-strong: rgba(124, 58, 237, 0.25);
   --accent-focus-ring: rgba(124, 58, 237, 0.5);
-  --accent-gradient: linear-gradient(165deg, color-mix(in srgb, var(--accent) 82%, white), var(--accent));
+  --accent-gradient: linear-gradient(to right, #8B52EE, #7D55FC);
   --error-bg: rgba(239, 68, 68, 0.1);
 
   /* Liquid glass (frosted, translucent) */

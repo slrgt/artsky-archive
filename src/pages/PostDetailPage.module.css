@@ -261,6 +261,12 @@
   min-width: 0;
 }
 
+/* Focus on root post block (e.g. forum post doc): use existing border as focus ring */
+.rootPostBlock:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .postHead {
   display: flex;
   align-items: center;
@@ -769,6 +775,26 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem 1rem;
+}
+
+.downloadBtn {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+
+.downloadBtn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.downloadBtn:disabled {
+  opacity: 0.7;
+  cursor: default;
 }
 
 .likeRepostBtn {

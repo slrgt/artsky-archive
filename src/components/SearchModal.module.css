@@ -1,0 +1,11 @@
+/* Search term in modal top bar center slot */
+.searchQueryCenter {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
