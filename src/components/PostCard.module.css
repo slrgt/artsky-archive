@@ -8,13 +8,13 @@
   background: var(--glass-bg);
   -webkit-backdrop-filter: blur(var(--glass-blur));
   backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--glass-border);
   box-shadow: none;
   -webkit-tap-highlight-color: transparent;
   /* Reserve space above when scrollIntoView runs so fixed header doesn't cover the card */
   scroll-margin-top: 5rem;
   container-type: inline-size;
   container-name: postcard;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .cardLink {
@@ -38,13 +38,18 @@
   box-shadow: none;
 }
 
-/* Purple ring when focused/selected */
+/* Focused/selected: lift toward user (scale + shadow), no outline */
 .cardSelected {
   outline: none;
   z-index: 1;
+  transform: scale(1.05);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
 }
 .cardSelected::after {
-  box-shadow: inset 0 0 0 3px var(--accent);
+  box-shadow: none;
+}
+html[data-theme="dark"] .cardSelected {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
 }
 
 /* Pink ring when post is liked */
@@ -130,15 +135,25 @@ html[data-theme="dark"] .cardSeen {
   filter: brightness(0.68);
 }
 
-/* Purple ring on hover */
+/* Hover: lift toward user (scale + shadow, no purple ring) */
 .card:hover {
   outline: none;
+  transform: scale(1.05);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
 }
 .card:hover::after {
-  box-shadow: inset 0 0 0 3px var(--accent);
+  box-shadow: none;
+}
+html[data-theme="dark"] .card:hover {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
 }
 
-/* When navigating with keyboard (W/S/A/D), only the selected card gets the ring – not the card under the mouse */
+/* When navigating with keyboard (W/S/A/D), only the selected card lifts – not the card under the mouse */
+[data-feed-cards][data-keyboard-nav] .card:hover:not(.cardSelected) {
+  outline: none;
+  transform: none;
+  box-shadow: none;
+}
 [data-feed-cards][data-keyboard-nav] .card:hover:not(.cardSelected)::after {
   box-shadow: none;
 }
@@ -157,14 +172,14 @@ html[data-theme="dark"] .cardSeen {
   box-shadow: inset 0 0 0 2px #ec4899;
 }
 
-/* When focused/selected: purple ring; if also liked, add pink ring inside */
+/* When focused/selected: card lifts; ::after only has liked/artboard inset rings */
 .card.cardSelected::after,
 .card.cardSelected.cardInArtboard::after {
-  box-shadow: inset 0 0 0 3px var(--accent);
+  box-shadow: none;
 }
-/* Purple outer, pink inset so both visible when liked + focused */
+/* Pink inset when liked + focused */
 .card.cardSelected.cardLiked::after {
-  box-shadow: inset 0 0 0 3px var(--accent), inset 0 0 0 5px #ec4899;
+  box-shadow: inset 0 0 0 2px #ec4899;
 }
 
 /* Bento grid: card fills cell height */
@@ -192,9 +207,23 @@ html[data-theme="dark"] .cardSeen {
   outline: none;
 }
 
+/* No purple focus ring – card uses lift instead; override global [tabindex="0"]:focus-visible */
 .cardLink:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 0px;
+  outline: none !important;
+  box-shadow: none !important;
+}
+/* Keyboard focus: card lifts toward user (scale + drop shadow) */
+.card:focus-within {
+  outline: none !important;
+  z-index: 1;
+  transform: scale(1.05);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+}
+.card:focus-within::after {
+  box-shadow: none;
+}
+html[data-theme="dark"] .card:focus-within {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
 }
 
 .addWrap {
@@ -377,12 +406,39 @@ html[data-theme="dark"] .cardSeen {
   }
 }
 
-/* Minimalist: only collect + like; no handle/text so trim meta spacing */
+/* Minimalist: only collect + like; no handle/text. Card rounded top only so it doesn’t clip the media; meta row draws rounded bottom so media corners stay visible (like full card view). */
+.cardMinimalist {
+  border-radius: var(--glass-radius) var(--glass-radius) 0 0;
+  overflow: visible;
+}
+/* Same as full card: preview (cardLink) fully rounded – .cardLink uses border-radius: var(--glass-radius) */
+.cardMinimalist .cardLink {
+  border-radius: var(--glass-radius);
+}
+/* Match full card: media rounded so bottom of preview is rounded like full view (art-only uses same for media) */
+.cardMinimalist .mediaWrap,
+.cardMinimalist .nsfwOverlay {
+  border-radius: var(--glass-radius);
+}
 .cardMinimalist .meta {
   margin-bottom: 0;
+  border-radius: 0 0 var(--glass-radius) var(--glass-radius);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
 }
 .cardMinimalist .cardActionRow {
   margin-bottom: 0;
+}
+
+/* Mini + art-only: no meta row, so the card div is the bottom – give it rounded bottom like full card */
+.cardMinimalist.cardArtOnly {
+  border-radius: var(--glass-radius);
+}
+/* Image/media stays square at bottom; only the card wrapper is rounded there */
+.cardMinimalist.cardArtOnly .mediaWrap,
+.cardMinimalist.cardArtOnly .nsfwOverlay {
+  border-radius: var(--glass-radius) var(--glass-radius) 0 0;
 }
 
 .cardLikeRepostBtn {
@@ -400,6 +456,7 @@ html[data-theme="dark"] .cardSeen {
   border-radius: 50%;
   cursor: pointer;
   outline: none;
+  transition: transform 0.2s ease, color 0.15s ease;
 }
 
 .cardLikeRepostBtn:hover:not(:disabled) {
@@ -407,8 +464,8 @@ html[data-theme="dark"] .cardSeen {
 }
 
 .cardLikeRepostBtn:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: -2px;
+  outline: none;
+  transform: scale(1.03);
 }
 
 .cardLikeRepostBtnActive {
@@ -472,6 +529,7 @@ html[data-theme="dark"] .cardSeen {
   border-radius: 50%;
   cursor: pointer;
   outline: none;
+  transition: transform 0.2s ease, color 0.15s ease;
 }
 
 .addToBoardBtn:hover {
@@ -479,8 +537,8 @@ html[data-theme="dark"] .cardSeen {
 }
 
 .addToBoardBtn:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: -2px;
+  outline: none;
+  transform: scale(1.03);
 }
 
 .addToBoardBtnInCollection {
@@ -645,6 +703,11 @@ html[data-theme="dark"] .cardSeen {
   border-radius: var(--glass-radius);
 }
 
+/* Ensure media wrap clips the extended blur overlay so no overflow shows */
+.mediaWrap {
+  isolation: isolate;
+}
+
 /* Single-col profile/feed: fixed height from the start so media doesn't resize when image loads */
 .mediaWrapConstrained {
   height: var(--feed-card-media-max-height);
@@ -652,10 +715,10 @@ html[data-theme="dark"] .cardSeen {
   min-height: unset;
 }
 
-/* NSFW blurred mode: overlay with blur and "Tap to reveal" */
+/* NSFW blurred mode: overlay with blur and "Tap to reveal". Extended inset so blur covers corners (no color peeking). */
 .nsfwOverlay {
   position: absolute;
-  inset: 0;
+  inset: -30px;
   z-index: 2;
   display: flex;
   align-items: center;
@@ -816,12 +879,15 @@ html[data-theme="dark"] .cardSeen {
   display: flex;
   align-items: stretch;
   justify-content: stretch;
+  transition: transform 0.2s ease;
 }
 
-/* Keyboard focus ring on individual image when navigating with A/D */
+/* Keyboard focus: lift focused image toward user (scale only) when navigating with A/D */
 .mediaGridCellFocused {
-  box-shadow: inset 0 0 0 3px var(--accent);
+  outline: none;
+  box-shadow: none;
   z-index: 1;
+  transform: scale(1.04);
 }
 
 .mediaGridImg {

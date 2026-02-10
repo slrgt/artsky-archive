@@ -99,8 +99,9 @@
 }
 
 .bentoCardFocused {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: none;
+  transform: scale(1.03);
+  transition: transform 0.2s ease;
 }
 
 .bentoLink {

@@ -219,27 +219,21 @@ button {
   font-family: inherit;
 }
 
-/* Visible focus: inset ring so it replaces/overlays the edge instead of adding a second outer ring */
+/* Focus: no browser default outline (e.g. yellow ring) anywhere; we use scale for focus indication */
+*:focus,
+*:focus-visible {
+  outline: none;
+}
+
 @media (hover: hover) {
+  /* Lift toward user for links and buttons (scale only) */
   a:focus-visible,
-  button:focus-visible,
-  input:focus-visible,
-  select:focus-visible,
-  textarea:focus-visible,
-  [tabindex="0"]:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: -2px;
+  button:focus-visible {
+    transform: scale(1.03);
+    transition: transform 0.2s ease;
   }
 }
 
-/* On mobile, no purple/accent focus ring so tap doesn’t leave a visible ring */
-@media (max-width: 767px) {
-  *:focus,
-  *:focus-visible {
-    outline: none !important;
-    box-shadow: none !important;
-  }
-}
 
 /* Use --touch-min in component CSS for primary nav/CTAs on touch devices */
 

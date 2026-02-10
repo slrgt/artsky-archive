@@ -1082,7 +1082,9 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
         return
       }
 
-      if (key !== 'w' && key !== 'a' && key !== 's') return
+      const isPrevKey = key === 'w' || e.key === 'ArrowUp'
+      const isNextKey = key === 's' || key === 'd' || key === 'a' || e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'ArrowLeft'
+      if (!isPrevKey && !isNextKey) return
       if (!thread || !isThreadViewPost(thread)) return
 
       const totalItems = focusItems.length
@@ -1100,7 +1102,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
           if (el) {
             requestAnimationFrame(() => {
               el.focus()
-              el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' })
             })
           }
         } else if (item.type === 'description') {
@@ -1108,7 +1110,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
           setFocusedCommentIndex(0)
           requestAnimationFrame(() => {
             descriptionSectionRef.current?.focus()
-            descriptionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+            descriptionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
           })
         } else if (item.type === 'commentMedia') {
           setPostSectionIndex(postSectionCount - 1)
@@ -1120,8 +1122,8 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
             const commentEl = Array.from(commentsSection.querySelectorAll<HTMLElement>('[data-comment-uri]')).find((n) => n.getAttribute('data-comment-uri') === item.commentUri)
             const mediaEl = commentEl?.querySelectorAll<HTMLElement>('[data-media-item]')?.[item.mediaIndex]
             if (mediaEl) {
-              mediaEl.focus()
-              mediaEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+              mediaEl.focus({ preventScroll: true })
+              mediaEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
             }
           })
         } else if (item.type === 'comment') {
@@ -1156,12 +1158,12 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
             if (mediaIndexToFocus >= 0) {
               const mediaEl = commentEl.querySelectorAll<HTMLElement>('[data-media-item]')?.[mediaIndexToFocus]
               if (mediaEl) {
-                mediaEl.focus()
-                mediaEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+                mediaEl.focus({ preventScroll: true })
+                mediaEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
               }
             } else {
-              commentEl.focus()
-              commentEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+              commentEl.focus({ preventScroll: true })
+              commentEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
             }
           })
         } else {
@@ -1169,15 +1171,16 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
           setFocusedCommentIndex(threadRepliesFlat.length - 1)
           requestAnimationFrame(() => {
             commentFormWrapRef.current?.focus()
-            commentFormWrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+            commentFormWrapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
           })
         }
       }
 
       const current = keyboardFocusIndexRef.current
-      const next = key === 'w' ? Math.max(0, current - 1) : Math.min(totalItems - 1, current + 1)
+      const next = isPrevKey ? Math.max(0, current - 1) : Math.min(totalItems - 1, current + 1)
       if (next !== current) {
         e.preventDefault()
+        e.stopPropagation()
         scrollIntoViewFromKeyboardRef.current = true
         setKeyboardFocusIndex(next)
         focusItemAtIndex(next, current)
@@ -1230,42 +1233,22 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
     })
   }, [initialFocusedCommentUri, thread, threadRepliesFlat, focusItems])
 
-  useEffect(() => {
-    const inCommentsSection = hasRepliesSection && postSectionIndex === postSectionCount - 1
-    if (!inCommentsSection || postSectionCount <= 1) return
-    if (!commentsSectionRef.current?.contains(document.activeElement)) return
-    const flat = threadRepliesFlatRef.current
-    if (focusedCommentIndex < 0 || focusedCommentIndex >= flat.length) return
-    const uri = flat[focusedCommentIndex]?.uri
-    if (!uri || !commentsSectionRef.current) return
-    const nodes = commentsSectionRef.current.querySelectorAll('[data-comment-uri]')
-    const el = Array.from(nodes).find((n) => n.getAttribute('data-comment-uri') === uri)
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }, [focusedCommentIndex, hasRepliesSection, postSectionIndex, postSectionCount])
-
-  /* Scroll focused comment into view when focus changed by keyboard (W/S), like homepage cards */
+  /* Consume keyboard scroll ref when focused comment changes (scroll is done in focusItemAtIndex for comments) */
   useEffect(() => {
     if (!scrollIntoViewFromKeyboardRef.current) return
+    const inCommentsSection = hasRepliesSection && postSectionIndex === postSectionCount - 1
+    if (!inCommentsSection || postSectionCount <= 1) return
+    const flat = threadRepliesFlatRef.current
+    if (focusedCommentIndex < 0 || focusedCommentIndex >= flat.length) return
     scrollIntoViewFromKeyboardRef.current = false
+  }, [focusedCommentIndex, hasRepliesSection, postSectionIndex, postSectionCount])
+
+  /* Scroll focused comment into view when focus changed by keyboard (W/S) – comment/commentMedia scroll is done in focusItemAtIndex so we only consume the ref here to avoid double-scroll */
+  useEffect(() => {
+    if (!scrollIntoViewFromKeyboardRef.current) return
     const item = focusItems[keyboardFocusIndex]
-    if (!item || (item.type !== 'comment' && item.type !== 'commentMedia') || !commentsSectionRef.current) return
-    let el: Element | null = null
-    if (item.type === 'comment') {
-      el = Array.from(commentsSectionRef.current.querySelectorAll('[data-comment-uri]')).find(
-        (n) => n.getAttribute('data-comment-uri') === item.commentUri
-      ) ?? null
-    } else {
-      const commentEl = Array.from(commentsSectionRef.current.querySelectorAll('[data-comment-uri]')).find(
-        (n) => n.getAttribute('data-comment-uri') === item.commentUri
-      )
-      el = commentEl?.querySelectorAll('[data-media-item]')?.[item.mediaIndex] ?? null
-    }
-    if (el) {
-      const raf = requestAnimationFrame(() => {
-        ;(el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
-      })
-      return () => cancelAnimationFrame(raf)
-    }
+    if (!item || (item.type !== 'comment' && item.type !== 'commentMedia')) return
+    scrollIntoViewFromKeyboardRef.current = false
   }, [keyboardFocusIndex, focusItems])
 
   if (!decodedUri) {
@@ -1286,12 +1269,12 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
               {rootMedia.length > 0 && (
                 <div
                   ref={mediaSectionRef}
-                  onMouseEnter={() => rootMediaForNav.length > 0 && setKeyboardFocusIndex(0)}
+                  onMouseEnter={() => !onClose && rootMediaForNav.length > 0 && setKeyboardFocusIndex(0)}
                 >
                   <MediaGallery
                     items={rootMedia}
                     autoPlayFirstVideo
-                    onFocusItem={(i) => setKeyboardFocusIndex(i)}
+                    onFocusItem={(i) => !onClose && setKeyboardFocusIndex(i)}
                   />
                 </div>
               )}
@@ -1445,8 +1428,8 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                 ref={descriptionSectionRef}
                 className={styles.rootPostDescription}
                 tabIndex={-1}
-                onFocus={() => setKeyboardFocusIndex(rootMediaForNav.length)}
-                onMouseEnter={() => setKeyboardFocusIndex(rootMediaForNav.length)}
+                onFocus={() => !onClose && setKeyboardFocusIndex(rootMediaForNav.length)}
+                onMouseEnter={() => !onClose && setKeyboardFocusIndex(rootMediaForNav.length)}
               >
                 <div className={styles.postHead}>
                   {thread.post.author.avatar && (
@@ -1555,6 +1538,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                 ref={commentsSectionRef}
                 className={`${styles.replies} ${styles.repliesTopLevel}`}
                 onFocusCapture={(e) => {
+                  if (onClose) return
                   const target = e.target as HTMLElement
                   const commentEl = target.closest?.('[data-comment-uri]') as HTMLElement | null
                   if (!commentEl) return
@@ -1593,7 +1577,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                         data-comment-uri={r.post.uri}
                         tabIndex={-1}
                         onMouseEnter={() => {
-                          if (commentContentFocusIndex >= 0) {
+                          if (!onClose && commentContentFocusIndex >= 0) {
                             setKeyboardFocusIndex(commentContentFocusIndex)
                             setFocusedCommentIndex(threadRepliesFlat.findIndex((f) => f.uri === r.post.uri))
                           }
@@ -1602,7 +1586,7 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                       <div
                         className={`${styles.collapsedCommentWrap} ${isFocusedCollapsed ? styles.commentFocused : ''}`}
                         style={{ marginLeft: 0 }}
-                        onFocus={() => commentContentFocusIndex >= 0 && setKeyboardFocusIndex(commentContentFocusIndex)}
+                        onFocus={() => !onClose && commentContentFocusIndex >= 0 && setKeyboardFocusIndex(commentContentFocusIndex)}
                       >
                         <button type="button" className={styles.collapsedCommentBtn} onClick={() => toggleCollapse(r.post.uri)}>
                           <span className={styles.collapsedCommentExpandIcon} aria-hidden>+</span>
@@ -1623,13 +1607,13 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                       key={r.post.uri}
                       className={styles.topLevelCommentWrap}
                       onMouseEnter={() => {
-                        if (commentContentFocusIndex >= 0) {
+                        if (!onClose && commentContentFocusIndex >= 0) {
                           setKeyboardFocusIndex(commentContentFocusIndex)
                           setFocusedCommentIndex(threadRepliesFlat.findIndex((f) => f.uri === r.post.uri))
                         }
                       }}
                     >
-                      <PostBlock
+                    <PostBlock
                         node={r}
                         depth={0}
                         collapsedThreads={collapsedThreads}
@@ -1670,8 +1654,8 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                   ref={commentFormWrapRef}
                   tabIndex={-1}
                   className={commentFormFocused ? styles.commentFormWrapFocused : undefined}
-                  onFocus={() => setKeyboardFocusIndex(focusItems.length - 1)}
-                  onMouseEnter={() => setKeyboardFocusIndex(focusItems.length - 1)}
+                  onFocus={() => !onClose && setKeyboardFocusIndex(focusItems.length - 1)}
+                  onMouseEnter={() => !onClose && setKeyboardFocusIndex(focusItems.length - 1)}
                   onBlur={() => {
                     requestAnimationFrame(() => {
                       if (!commentFormRef.current?.contains(document.activeElement)) setCommentFormFocused(false)

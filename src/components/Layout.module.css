@@ -33,8 +33,9 @@
   width: auto;
   height: auto;
   margin: 0;
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  outline: none;
+  transform: scale(1.03);
+  transition: transform 0.2s ease;
 }
 
 @media (max-width: 767px) {
@@ -1796,7 +1797,8 @@ button.logoLink {
 
 .composeTextarea:focus {
   outline: none;
-  border-color: var(--accent);
+  transform: scale(1.03);
+  transition: transform 0.2s ease;
 }
 
 .composeTextarea::placeholder {
@@ -1857,8 +1859,8 @@ button.logoLink {
 
 .composeAltInput:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-subtle);
+  transform: scale(1.03);
+  transition: transform 0.2s ease;
 }
 
 .composePreviewWrap {
@@ -2092,7 +2094,8 @@ button.logoLink {
 }
 .menuCreateAccountBtn:focus {
   outline: none;
-  box-shadow: 0 0 0 2px var(--accent-focus-ring);
+  transform: scale(1.03);
+  transition: transform 0.2s ease;
 }
 
 .menuCompactAuthBtn,

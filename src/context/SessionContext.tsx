@@ -24,7 +24,9 @@ function isLocalhost(): boolean {
 
 function getInitialSession(): AtpSessionData | null {
   try {
-    return bsky.getSession()
+    const fromAgent = bsky.getSession()
+    if (fromAgent?.accessJwt) return fromAgent
+    return bsky.getStoredSession()
   } catch {
     return null
   }
@@ -37,7 +39,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    const maxWaitMs = 2500
+    const maxWaitMs = 6000
     const oauthTimeoutMs = 1500
 
     const finish = (ok: boolean) => {
@@ -84,7 +86,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       }
       const ok = await Promise.race([
         bsky.resumeSession(),
-        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), maxWaitMs - 500)),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), maxWaitMs)),
       ])
       finish(ok)
     }

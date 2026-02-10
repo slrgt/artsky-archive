@@ -40,8 +40,9 @@
 }
 
 .searchRow:focus-within {
-  border-color: var(--accent);
   outline: none;
+  transform: scale(1.03);
+  transition: transform 0.2s ease;
 }
 
 .filterIconBtn {

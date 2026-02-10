@@ -133,7 +133,8 @@
 
 .addWordInput:focus {
   outline: none;
-  border-color: var(--accent);
+  transform: scale(1.03);
+  transition: transform 0.2s ease;
 }
 
 .addWordOptions {

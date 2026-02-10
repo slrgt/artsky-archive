@@ -147,8 +147,8 @@
 
 .input:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-focus-ring);
+  transform: scale(1.03);
+  transition: transform 0.2s ease;
 }
 
 .inputWrap {
@@ -281,7 +281,8 @@
 
 .button:focus {
   outline: none;
-  box-shadow: 0 0 0 2px var(--accent-focus-ring);
+  transform: scale(1.03);
+  transition: transform 0.2s ease;
 }
 
 .buttonSecondary {
@@ -305,7 +306,8 @@
 
 .buttonSecondary:focus {
   outline: none;
-  box-shadow: 0 0 0 2px var(--accent-focus-ring);
+  transform: scale(1.03);
+  transition: transform 0.2s ease;
 }
 
 .hint {

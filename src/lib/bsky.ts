@@ -108,7 +108,7 @@ function persistSession(_evt: AtpSessionEvent, session: AtpSessionData | undefin
   }
 }
 
-function getStoredSession(): AtpSessionData | null {
+export function getStoredSession(): AtpSessionData | null {
   let accounts = getAccounts()
   if (!accounts.activeDid) {
     try {

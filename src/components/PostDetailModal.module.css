@@ -231,8 +231,9 @@
 
 .backBtn:focus,
 .closeBtn:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  outline: none;
+  transform: scale(1.03);
+  transition: transform 0.2s ease;
 }
 
 .backBtn:active,
@@ -259,8 +260,9 @@
   color: var(--accent);
 }
 .expandBtn:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  outline: none;
+  transform: scale(1.03);
+  transition: transform 0.2s ease;
 }
 .expandBtn:active {
   transform: scale(0.96);
