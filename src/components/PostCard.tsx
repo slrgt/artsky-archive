@@ -234,17 +234,24 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
       return
     }
     if (likeLoading) return
+    const wasLiked = !!effectiveLikedUri
+    const previousLikedUri = effectiveLikedUri || undefined
     setLikeLoading(true)
+    if (wasLiked) {
+      setLikedUri(undefined)
+    } else {
+      setLikedUri('pending')
+    }
     try {
-      if (effectiveLikedUri) {
-        await agent.deleteLike(effectiveLikedUri)
+      if (wasLiked) {
+        await agent.deleteLike(previousLikedUri!)
         setLikedUri(undefined)
       } else {
         const res = await agent.like(post.uri, post.cid)
         setLikedUri(res.uri)
       }
     } catch {
-      // leave state unchanged
+      setLikedUri(previousLikedUri)
     } finally {
       setLikeLoading(false)
     }
@@ -600,15 +607,16 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
             }
             e.preventDefault()
             if (effectiveLikedUri) {
+              setLikedUri(undefined)
               agent.deleteLike(effectiveLikedUri).then(() => {
-                setLikedUri(undefined)
                 onLikedChange?.(post.uri, null)
-              }).catch(() => {})
+              }).catch(() => setLikedUri(effectiveLikedUri))
             } else {
+              setLikedUri('pending')
               agent.like(post.uri, post.cid).then((res) => {
                 setLikedUri(res.uri)
                 onLikedChange?.(post.uri, res.uri)
-              }).catch(() => {})
+              }).catch(() => setLikedUri(undefined))
             }
             setTimeout(() => { touchSessionRef.current = false }, 500)
           } else {
@@ -872,7 +880,7 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                 title={isLiked ? 'Remove like' : 'Like'}
                 aria-label={isLiked ? 'Remove like' : 'Like'}
               >
-                {likeLoading ? '…' : isLiked ? '♥' : '♡'}
+                {isLiked ? '♥' : '♡'}
               </button>
             </div>
             <div className={styles.cardActionRowRight}>

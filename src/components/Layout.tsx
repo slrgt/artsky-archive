@@ -465,17 +465,17 @@ export default function Layout({ title, children, showNav }: Props) {
     }
   }, [])
 
-  const homeLinkClick = useCallback((e: React.MouseEvent) => {
+  const homeBtnClick = useCallback(() => {
     if (homeLongPressTriggeredRef.current) {
-      e.preventDefault()
       homeLongPressTriggeredRef.current = false
       return
     }
     if (path === '/feed') {
-      e.preventDefault()
       seenPosts?.onHomeClick()
+    } else {
+      navigate('/feed')
     }
-  }, [path, seenPosts])
+  }, [path, seenPosts, navigate])
 
   useEffect(() => {
     document.title = title ? `${title} · ArtSky` : 'ArtSky'
@@ -829,20 +829,20 @@ export default function Layout({ title, children, showNav }: Props) {
   /* Mobile nav: Feed, Forum, New, Search, Accounts (right). Desktop: Feed, Artboards, New, Search, Forum, Accounts */
   const navTrayItems = (
     <>
-      <Link
-        to="/feed"
+      <button
+        type="button"
         className={path === '/feed' ? styles.navActive : ''}
         aria-current={path === '/feed' ? 'page' : undefined}
         onPointerDown={startHomeHold}
         onPointerUp={endHomeHold}
         onPointerLeave={endHomeHold}
         onPointerCancel={endHomeHold}
-        onClick={homeLinkClick}
+        onClick={homeBtnClick}
         title="Home (hold to show all seen posts)"
       >
         <span className={styles.navIcon}><HomeIcon active={path === '/feed'} /></span>
         <span className={styles.navLabel}>Home</span>
-      </Link>
+      </button>
       {isDesktop && (
         <button
           type="button"
@@ -887,20 +887,20 @@ export default function Layout({ title, children, showNav }: Props) {
       ) : (
         /* Mobile: Feed, Forum, New, Search, Artboards (Accounts is in header) */
         <>
-          <Link
-            to="/feed"
+          <button
+            type="button"
             className={path === '/feed' ? styles.navActive : ''}
             aria-current={path === '/feed' ? 'page' : undefined}
             onPointerDown={startHomeHold}
             onPointerUp={endHomeHold}
             onPointerLeave={endHomeHold}
             onPointerCancel={endHomeHold}
-            onClick={homeLinkClick}
+            onClick={homeBtnClick}
             title="Home (hold to show all seen posts)"
           >
-<span className={styles.navIcon}><HomeIcon active={path === '/feed'} /></span>
+            <span className={styles.navIcon}><HomeIcon active={path === '/feed'} /></span>
             <span className={styles.navLabel}>Home</span>
-          </Link>
+          </button>
           <button
             type="button"
             className={isForumModalOpen ? styles.navActive : ''}
@@ -1231,8 +1231,8 @@ export default function Layout({ title, children, showNav }: Props) {
         {showNav && (
           <>
             <div className={styles.headerLeft}>
-              <Link
-                to="/feed"
+              <button
+                type="button"
                 className={styles.logoLink}
                 aria-label="ArtSky – back to feed"
                 title={path === '/feed' ? 'Home (hold to show all seen posts)' : 'Back to feed'}
@@ -1240,14 +1240,14 @@ export default function Layout({ title, children, showNav }: Props) {
                 onPointerUp={endHomeHold}
                 onPointerLeave={endHomeHold}
                 onPointerCancel={endHomeHold}
-                onClick={homeLinkClick}
+                onClick={homeBtnClick}
               >
                 <img src={`${import.meta.env.BASE_URL || '/'}icon.svg`} alt="" className={styles.logoIcon} />
                 <span className={styles.logoText}>ArtSky</span>
                 {import.meta.env.VITE_APP_ENV === 'dev' && (
                   <span className={styles.logoDev}> dev</span>
                 )}
-              </Link>
+              </button>
             </div>
             <div className={styles.headerCenter}>
               {isDesktop ? (
