@@ -228,6 +228,10 @@ html[data-theme="dark"] .cardSeen {
 }
 
 @media (max-width: 767px) {
+  .card {
+    -webkit-user-select: none;
+    user-select: none;
+  }
   .cardActionRowCenter {
     gap: 0.35rem;
   }

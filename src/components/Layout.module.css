@@ -80,8 +80,6 @@
   background: var(--glass-bg);
   -webkit-backdrop-filter: blur(var(--glass-blur));
   backdrop-filter: blur(var(--glass-blur));
-  border-bottom: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-subtle);
   padding: 0.35rem 0.6rem;
   padding-left: max(0.6rem, env(safe-area-inset-left));
   padding-right: max(0.6rem, env(safe-area-inset-right));
@@ -93,14 +91,14 @@
 }
 
 @media (max-width: 767px) {
-  /* Mobile: header from top of screen (same color in safe area + bar), no rounded bottom */
+  /* Mobile: header from top of screen (same color in safe area + bar), no rounded bottom, no border/shadow lines */
   .header {
     top: 0;
     background: color-mix(in srgb, var(--glass-bg) 68%, transparent);
     -webkit-backdrop-filter: blur(28px) saturate(180%);
     backdrop-filter: blur(28px) saturate(180%);
     border-radius: 0;
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+    box-shadow: none;
     padding-top: max(0.35rem, env(safe-area-inset-top));
   }
   /* Fully off-screen above viewport so top area can stay transparent on iPhone */
@@ -1404,7 +1402,6 @@ button.logoLink {
   background: color-mix(in srgb, var(--glass-bg) 68%, transparent);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
   backdrop-filter: blur(28px) saturate(180%);
-  border: 1px solid var(--glass-border);
   border-radius: 9999px;
   z-index: 20;
   transition: transform 0.25s ease;
