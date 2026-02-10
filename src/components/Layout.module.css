@@ -93,18 +93,19 @@
 }
 
 @media (max-width: 767px) {
-  /* iOS 26–style liquid glass header on mobile: below top safe area so notch/dynamic island strip stays transparent */
+  /* Mobile: header from top of screen (same color in safe area + bar), no rounded bottom */
   .header {
-    top: env(safe-area-inset-top);
+    top: 0;
     background: color-mix(in srgb, var(--glass-bg) 68%, transparent);
     -webkit-backdrop-filter: blur(28px) saturate(180%);
     backdrop-filter: blur(28px) saturate(180%);
-    border-radius: 0 0 20px 20px;
+    border-radius: 0;
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
-    padding-top: 0.35rem;
+    padding-top: max(0.35rem, env(safe-area-inset-top));
   }
+  /* Fully off-screen above viewport so top area can stay transparent on iPhone */
   .headerHidden {
-    transform: translateY(calc(-100% - env(safe-area-inset-top)));
+    transform: translateY(calc(-100% - 100vh));
   }
   .headerRight {
     display: flex;
@@ -1439,6 +1440,8 @@ button.logoLink {
   font-weight: 500;
   font-size: 0.95rem;
   -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
   background: none;
   border: none;
   cursor: pointer;
