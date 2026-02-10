@@ -647,6 +647,12 @@
   padding: 0.35rem 0.5rem;
   border-radius: var(--glass-radius-sm);
 }
+button.logoLink {
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
 
 .logoLink:hover {
   color: var(--accent);
@@ -1393,15 +1399,17 @@
   align-items: center;
   justify-content: space-around;
   padding: 0.35rem 0.5rem;
-  /* Liquid glass: translucent, strong blur + vibrancy */
+  /* Liquid glass: translucent, strong blur + vibrancy; no shadow so area below stays transparent */
   background: color-mix(in srgb, var(--glass-bg) 68%, transparent);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
   backdrop-filter: blur(28px) saturate(180%);
   border: 1px solid var(--glass-border);
   border-radius: 9999px;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset;
   z-index: 20;
   transition: transform 0.25s ease;
+  /* Contain blur and paint so nothing bleeds into the safe area below */
+  isolation: isolate;
+  contain: layout style paint;
 }
 
 @media (min-width: 768px) {
@@ -1425,10 +1433,10 @@
   gap: 0.1rem;
   padding: 0.25rem 0.3rem;
   min-height: 22px;
-  color: var(--muted);
+  color: var(--text);
   text-decoration: none;
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   -webkit-tap-highlight-color: transparent;
   background: none;
   border: none;
