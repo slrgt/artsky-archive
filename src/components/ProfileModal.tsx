@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { ProfileContent } from '../pages/ProfilePage'
 import AppModal from './AppModal'
@@ -11,6 +12,7 @@ interface ProfileModalProps {
 
 export default function ProfileModal({ handle, onClose, onBack, canGoBack }: ProfileModalProps) {
   const { openProfileModal } = useProfileModal()
+  const [refreshFn, setRefreshFn] = useState<(() => void | Promise<void>) | null>(null)
 
   return (
     <AppModal
@@ -18,9 +20,15 @@ export default function ProfileModal({ handle, onClose, onBack, canGoBack }: Pro
       onClose={onClose}
       onBack={onBack}
       canGoBack={canGoBack}
-      compact
+      hideTopBar
+      onPullToRefresh={refreshFn ? () => refreshFn() : undefined}
     >
-      <ProfileContent handle={handle} openProfileModal={openProfileModal} inModal />
+      <ProfileContent
+        handle={handle}
+        openProfileModal={openProfileModal}
+        inModal
+        onRegisterRefresh={(fn) => setRefreshFn(() => fn)}
+      />
     </AppModal>
   )
 }

@@ -1,10 +1,21 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useSyncExternalStore } from 'react'
+import { createPortal } from 'react-dom'
 import type { FeedSource, FeedMixEntry } from '../types'
 import { getActorFeeds, getSuggestedFeeds } from '../lib/bsky'
 import { useSession } from '../context/SessionContext'
 import styles from './FeedSelector.module.css'
 
-const REMIX_EXPLANATION = 'Enable multiple feeds then use − and + to change how many posts from each feed youll see.'
+const REMIX_EXPLANATION = 'Use + or - to change how many posts you see from each feed.'
+const DESKTOP_BREAKPOINT = 768
+function subscribeDesktop(cb: () => void) {
+  if (typeof window === 'undefined') return () => {}
+  const mq = window.matchMedia(`(min-width: ${DESKTOP_BREAKPOINT}px)`)
+  mq.addEventListener('change', cb)
+  return () => mq.removeEventListener('change', cb)
+}
+function getDesktopSnapshot() {
+  return typeof window !== 'undefined' ? window.innerWidth >= DESKTOP_BREAKPOINT : false
+}
 
 function sameSource(a: FeedSource, b: FeedSource): boolean {
   return (a.uri ?? a.label) === (b.uri ?? b.label)
@@ -62,6 +73,7 @@ export default function FeedSelector({
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
 
   const searchQuery = customInput.trim().toLowerCase()
   const searchWords = searchQuery ? searchQuery.split(/\s+/).filter(Boolean) : []
@@ -230,11 +242,23 @@ export default function FeedSelector({
   const hasMix = mixEntries.length >= 2
   const isDropdown = variant === 'dropdown'
   const removableSources = sources.filter((s) => s.uri && removableSourceUris?.has(s.uri))
-  const canEditFeeds = isDropdown && (removableSources.length > 0 || (sources.length > 0 && onReorderSources)) && (onRemoveFeed || onReorderSources)
+  const canEditFeeds = (removableSources.length > 0 || (sources.length > 0 && onReorderSources)) && (onRemoveFeed || onReorderSources)
 
   useEffect(() => {
     if (editFeeds && sources.length === 0) setEditFeeds(false)
   }, [editFeeds, sources.length])
+
+  useEffect(() => {
+    if (!showHelp || isDropdown) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setShowHelp(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showHelp, isDropdown])
 
   const helpButton = (
     <div className={styles.helpWrap} ref={helpRef}>
@@ -242,19 +266,79 @@ export default function FeedSelector({
         type="button"
         className={styles.helpBtn}
         onClick={() => setShowHelp((v) => !v)}
-        aria-label="Explain remix feed"
+        aria-label="Explain remix feed and shortcuts"
         aria-expanded={showHelp}
         title="How mixing works"
       >
         ?
       </button>
-      {showHelp && (
+      {showHelp && isDropdown && (
         <div className={styles.helpPopover} role="tooltip">
           {REMIX_EXPLANATION}
         </div>
       )}
     </div>
   )
+
+  const helpModal =
+    showHelp && !isDropdown
+      ? createPortal(
+          <div
+            className={styles.helpModalOverlay}
+            onClick={() => setShowHelp(false)}
+            role="dialog"
+            aria-label="Feed mix and shortcuts"
+          >
+            <div className={styles.helpModalCard} onClick={(e) => e.stopPropagation()}>
+              <p className={styles.helpModalIntro}>{REMIX_EXPLANATION}</p>
+              {isDesktop && (
+                <>
+                  <h3 className={styles.helpModalSubtitle}>Keyboard shortcuts</h3>
+                  <dl className={styles.helpModalShortcuts}>
+                    <dt>W / ↑</dt>
+                    <dd>Move up</dd>
+                    <dt>A / ←</dt>
+                    <dd>Move left</dd>
+                    <dt>S / ↓</dt>
+                    <dd>Move down</dd>
+                    <dt>D / →</dt>
+                    <dd>Move right</dd>
+                    <dt>Q</dt>
+                    <dd>Quit / close window</dd>
+                    <dt>E</dt>
+                    <dd>Enter post</dd>
+                    <dt>R</dt>
+                    <dd>Reply to post</dd>
+                    <dt>T</dt>
+                    <dd>Toggle text view</dd>
+                    <dt>F</dt>
+                    <dd>Like / unlike</dd>
+                    <dt>C</dt>
+                    <dd>Collect post</dd>
+                    <dt>B</dt>
+                    <dd>Block author (feed)</dd>
+                    <dt>4</dt>
+                    <dd>Follow author</dd>
+                    <dt>Escape</dt>
+                    <dd>Escape all windows</dd>
+                    <dt>1 / 2 / 3</dt>
+                    <dd>1, 2, or 3 column view</dd>
+                  </dl>
+                </>
+              )}
+              <button
+                type="button"
+                className={styles.helpModalClose}
+                onClick={() => setShowHelp(false)}
+                aria-label="Close"
+              >
+                Close
+              </button>
+            </div>
+          </div>,
+          document.body
+        )
+      : null
 
   const pills = (
     <>
@@ -330,6 +414,7 @@ export default function FeedSelector({
             </button>
           )
           const showFeedMenu = (onShareFeed || (onRemoveFeed && s.uri && removableSourceUris?.has(s.uri)))
+          const isRemovable = !!(s.uri && removableSourceUris?.has(s.uri))
           const openFeedMenu = (clientX: number, clientY: number) => {
             if (!showFeedMenu) return
             setFeedContextMenu({ source: s, x: clientX, y: clientY })
@@ -364,6 +449,20 @@ export default function FeedSelector({
                 }
               }}
             >
+              {!isDropdown && editFeeds && isRemovable && onRemoveFeed && (
+                <button
+                  type="button"
+                  className={styles.feedPillRemoveBtn}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onRemoveFeed(s)
+                  }}
+                  aria-label={`Remove ${s.label} from pinned feeds`}
+                  title="Remove from pinned feeds"
+                >
+                  ×
+                </button>
+              )}
               {isDropdown ? (
                 <div className={styles.feedPillRow}>
                   {minusBtn}
@@ -614,9 +713,20 @@ export default function FeedSelector({
   return (
     <div className={styles.wrap}>
       {feedMenu}
+      {helpModal}
+      {/* Page: always show pills; Edit mode adds X on each removable pill and toggles button to Done */}
       <div className={styles.feedRow}>
         <div className={styles.tabs}>
           {pills}
+          {canEditFeeds ? (
+            <button
+              type="button"
+              className={styles.editFeedsBtnPage}
+              onClick={() => setEditFeeds((v) => !v)}
+            >
+              {editFeeds ? 'Done' : 'Edit'}
+            </button>
+          ) : null}
           {helpButton}
         </div>
       </div>

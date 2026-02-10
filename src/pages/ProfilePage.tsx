@@ -13,6 +13,7 @@ import BlockedAndMutedModal from '../components/BlockedAndMutedModal'
 import Layout from '../components/Layout'
 import { useViewMode, type ViewMode } from '../context/ViewModeContext'
 import { useModeration, type NsfwPreference } from '../context/ModerationContext'
+import { EyeOpenIcon, EyeHalfIcon, EyeClosedIcon } from '../components/Icons'
 import styles from './ProfilePage.module.css'
 import postBlockStyles from './PostDetailPage.module.css'
 
@@ -143,6 +144,12 @@ function ColumnIcon({ cols }: { cols: 1 | 2 | 3 }) {
   )
 }
 
+function NsfwEyeIcon({ mode }: { mode: NsfwPreference }) {
+  if (mode === 'sfw') return <EyeClosedIcon size={24} />
+  if (mode === 'blurred') return <EyeHalfIcon size={24} />
+  return <EyeOpenIcon size={24} />
+}
+
 type ProfileTab = 'posts' | 'reposts' | 'blog' | 'text' | 'feeds'
 type ProfilePostsFilter = 'all' | 'liked'
 
@@ -152,6 +159,7 @@ type ProfileState = {
   description?: string
   did: string
   viewer?: { following?: string }
+  verification?: { verifiedStatus?: string }
 }
 
 type GeneratorView = { uri: string; displayName: string; description?: string; avatar?: string; likeCount?: number }
@@ -160,11 +168,14 @@ export function ProfileContent({
   handle,
   openProfileModal,
   inModal = false,
+  onRegisterRefresh,
 }: {
   handle: string
   openProfileModal: (h: string) => void
   /** When true, we are the profile popup content so keyboard shortcuts always apply. When false, skip if another modal (e.g. post) is open. */
   inModal?: boolean
+  /** When in a modal, call with a function that refreshes this view (used for pull-to-refresh). */
+  onRegisterRefresh?: (refresh: () => void | Promise<void>) => void
 }) {
   const [tab, setTab] = useState<ProfileTab>('posts')
   const [profilePostsFilter, setProfilePostsFilter] = useState<ProfilePostsFilter>('all')
@@ -188,7 +199,7 @@ export function ProfileContent({
   /** One sentinel per column so we load more when the user nears the bottom of any column (avoids blank space in short columns). */
   const loadMoreSentinelRefs = useRef<(HTMLDivElement | null)[]>([])
   const loadingMoreRef = useRef(false)
-  const [tabsBarVisible, setTabsBarVisible] = useState(true)
+  const [tabsBarVisible] = useState(true)
   const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(0)
   const [keyboardAddOpen, setKeyboardAddOpen] = useState(false)
   const [actionsMenuOpenForIndex, setActionsMenuOpenForIndex] = useState<number | null>(null)
@@ -197,20 +208,15 @@ export function ProfileContent({
   const { openPostModal, isModalOpen } = useProfileModal()
   const editProfileCtx = useEditProfile()
   const topBarSlots = useModalTopBarSlot()
-  const centerSlot = topBarSlots?.centerSlot ?? null
-  const rightSlot = topBarSlots?.rightSlot ?? null
   const mobileBottomBarSlot = topBarSlots?.mobileBottomBarSlot ?? null
-  const isMobileModal = topBarSlots?.isMobile ?? false
   const openEditProfile = editProfileCtx?.openEditProfile ?? (() => {})
   const editSavedVersion = editProfileCtx?.editSavedVersion ?? 0
-  const lastScrollYRef = useRef(0)
   const cardRefsRef = useRef<(HTMLDivElement | null)[]>([])
   const keyboardFocusIndexRef = useRef(0)
   const profileGridItemsRef = useRef<TimelineItem[]>([])
   const scrollIntoViewFromKeyboardRef = useRef(false)
   const lastScrollIntoViewIndexRef = useRef(-1)
   const mouseMovedRef = useRef(false)
-  const SCROLL_THRESHOLD = 8
 
   useEffect(() => {
     if (!handle) return
@@ -224,6 +230,7 @@ export function ProfileContent({
           description: (data as { description?: string }).description,
           did: data.did,
           viewer: (data as { viewer?: { following?: string } }).viewer,
+          verification: (data as { verification?: { verifiedStatus?: string } }).verification,
         })
       })
       .catch(() => {})
@@ -323,16 +330,13 @@ export function ProfileContent({
   }, [tab, profile?.did, loadBlog])
 
   useEffect(() => {
-    const onScroll = () => {
-      const y = window.scrollY
-      if (y < 60) setTabsBarVisible(true)
-      else if (y > lastScrollYRef.current + SCROLL_THRESHOLD) setTabsBarVisible(false)
-      else if (y < lastScrollYRef.current - SCROLL_THRESHOLD) setTabsBarVisible(true)
-      lastScrollYRef.current = y
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
+    onRegisterRefresh?.(async () => {
+      await load()
+      await loadFeeds()
+      await loadBlog()
+      await loadLiked()
+    })
+  }, [onRegisterRefresh, load, loadFeeds, loadBlog, loadLiked])
 
   // Infinite scroll: load more when any column's sentinel is about to enter view (posts, reposts tabs). Per-column sentinels when cols >= 2 so short columns trigger load before blank space; 800px rootMargin to load before user sees empty space.
   loadingMoreRef.current = loadingMore
@@ -623,7 +627,9 @@ export function ProfileContent({
                 <h2 className={styles.displayName}>{profile.displayName}</h2>
               )}
               <div className={styles.handleRow}>
-                <p className={styles.handle}>@{handle}</p>
+                <p className={styles.handle}>
+                  @{handle}
+                </p>
                 {isOwnProfile && (
                   <>
                     <button
@@ -699,55 +705,7 @@ export function ProfileContent({
         {showBlockedMutedModal && (
           <BlockedAndMutedModal onClose={() => setShowBlockedMutedModal(false)} />
         )}
-        {inModal && centerSlot
-          ? createPortal(
-              <nav className={`${styles.tabs} ${styles.tabsInModal}`} aria-label="Profile sections">
-                {visibleTabs.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    className={`${styles.tab} ${tab === t ? styles.tabActive : ''}`}
-                    onClick={() => setTab(t)}
-                  >
-                    {t === 'posts' ? 'Posts' : t === 'reposts' ? 'Reposts' : t === 'blog' ? 'Threads' : t === 'text' ? 'Text' : 'Feeds'}
-                  </button>
-                ))}
-              </nav>,
-              centerSlot,
-            )
-          : null}
-        {inModal && rightSlot && !isMobileModal
-          ? createPortal(
-              <div className={styles.modalTopBarRightButtons}>
-                <button
-                  type="button"
-                  className={`${styles.toggleBtn} ${styles.toggleBtnIcon}`}
-                  onClick={() => {
-                    const i = VIEW_MODE_CYCLE.indexOf(viewMode)
-                    setViewMode(VIEW_MODE_CYCLE[(i + 1) % VIEW_MODE_CYCLE.length])
-                  }}
-                  title={`${viewMode} column(s). Click to cycle.`}
-                  aria-label={`${viewMode} columns`}
-                >
-                  <ColumnIcon cols={viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3} />
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.toggleBtn} ${nsfwPreference !== 'sfw' ? styles.toggleBtnActive : ''}`}
-                  onClick={() => {
-                    const i = NSFW_CYCLE.indexOf(nsfwPreference)
-                    setNsfwPreference(NSFW_CYCLE[(i + 1) % NSFW_CYCLE.length])
-                  }}
-                  title={`${nsfwPreference}. Click to cycle: SFW → Blurred → NSFW`}
-                  aria-label={`NSFW filter: ${nsfwPreference}`}
-                >
-                  {nsfwPreference === 'sfw' ? 'SFW' : nsfwPreference === 'blurred' ? 'Blurred' : 'NSFW'}
-                </button>
-              </div>,
-              rightSlot,
-            )
-          : null}
-        {inModal && isMobileModal && mobileBottomBarSlot
+        {inModal && mobileBottomBarSlot
           ? createPortal(
               <div className={styles.modalBottomBarButtons}>
                 <button
@@ -764,7 +722,7 @@ export function ProfileContent({
                 </button>
                 <button
                   type="button"
-                  className={`${styles.toggleBtn} ${styles.toggleBtnBottomBar} ${nsfwPreference !== 'sfw' ? styles.toggleBtnActive : ''}`}
+                  className={`${styles.toggleBtn} ${styles.toggleBtnBottomBar} ${styles.toggleBtnIcon} ${nsfwPreference !== 'sfw' ? styles.toggleBtnActive : ''}`}
                   onClick={() => {
                     const i = NSFW_CYCLE.indexOf(nsfwPreference)
                     setNsfwPreference(NSFW_CYCLE[(i + 1) % NSFW_CYCLE.length])
@@ -772,7 +730,7 @@ export function ProfileContent({
                   title={`${nsfwPreference}. Click to cycle: SFW → Blurred → NSFW`}
                   aria-label={`NSFW filter: ${nsfwPreference}`}
                 >
-                  {nsfwPreference === 'sfw' ? 'SFW' : nsfwPreference === 'blurred' ? 'Blurred' : 'NSFW'}
+                  <NsfwEyeIcon mode={nsfwPreference} />
                 </button>
               </div>,
               mobileBottomBarSlot,
@@ -791,6 +749,22 @@ export function ProfileContent({
                   {t === 'posts' ? 'Posts' : t === 'reposts' ? 'Reposts' : t === 'blog' ? 'Threads' : t === 'text' ? 'Text' : 'Feeds'}
                 </button>
               ))}
+            </nav>
+          </div>
+        )}
+        {inModal && (
+          <div className={styles.tabsRowInModal}>
+            <nav className={`${styles.tabs} ${styles.tabsInModal}`} aria-label="Profile sections">
+              {visibleTabs.map((t) => (
+              <button
+                key={t}
+                type="button"
+                className={`${styles.tab} ${tab === t ? styles.tabActive : ''}`}
+                onClick={() => setTab(t)}
+              >
+                {t === 'posts' ? 'Posts' : t === 'reposts' ? 'Reposts' : t === 'blog' ? 'Threads' : t === 'text' ? 'Text' : 'Feeds'}
+              </button>
+            ))}
             </nav>
           </div>
         )}
@@ -903,7 +877,18 @@ export function ProfileContent({
                   const avatar = p.author.avatar
                   return (
                     <li key={p.uri}>
-                      <Link to={`/post/${encodeURIComponent(p.uri)}`} className={styles.textPostLink}>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className={styles.textPostLink}
+                        onClick={() => openPostModal(p.uri)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            openPostModal(p.uri)
+                          }
+                        }}
+                      >
                         <article className={postBlockStyles.postBlock}>
                           <div className={postBlockStyles.postBlockContent}>
                             <div className={postBlockStyles.postHead}>
@@ -932,12 +917,12 @@ export function ProfileContent({
                             </div>
                             {text ? (
                               <p className={postBlockStyles.postText}>
-                                <PostText text={text} facets={(p.record as { facets?: unknown[] })?.facets} />
+                                <PostText text={text} facets={(p.record as { facets?: unknown[] })?.facets} stopPropagation />
                               </p>
                             ) : null}
                           </div>
                         </article>
-                      </Link>
+                      </div>
                     </li>
                   )
                 })}
@@ -983,7 +968,7 @@ export function ProfileContent({
         ) : (
           <>
             {cols >= 2 ? (
-              <div className={`${styles.gridColumns} ${styles[`gridView${viewMode}`]}`}>
+              <div className={`${styles.gridColumns} ${styles[`gridView${viewMode}`]}`} data-view-mode={viewMode}>
                 {distributeByHeight(mediaItems, cols).map((column, colIndex) => (
                   <div key={colIndex} className={styles.gridColumn}>
                     {column.map(({ item, originalIndex }) => (
@@ -1026,7 +1011,7 @@ export function ProfileContent({
                 ))}
               </div>
             ) : (
-              <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
+              <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`} data-view-mode={viewMode}>
                 {mediaItems.map((item, index) => (
                   <div
                     key={item.post.uri}

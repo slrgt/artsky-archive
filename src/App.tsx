@@ -63,60 +63,67 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
             background: 'var(--bg)',
             color: 'var(--text)',
             fontFamily: 'system-ui, sans-serif',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
           }}
         >
-          <h1 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>
-            {isSessionDeleted ? 'You were logged out' : 'Something went wrong'}
-          </h1>
-          <p style={{ margin: 0, fontSize: '0.95rem' }}>
-            {isSessionDeleted
-              ? 'Your session was ended (for example by signing out in another tab or device). Please sign in again.'
-              : this.state.error.message}
-          </p>
-          {isSessionDeleted && (
-            <p style={{ margin: '1rem 0 0', fontSize: '0.9rem' }}>
-              <a href="#/feed" style={{ color: 'var(--accent)' }}>
-                Back to feed
-              </a>
+          <div style={{ maxWidth: '28rem' }}>
+            <h1 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>
+              {isSessionDeleted ? 'You were logged out' : 'Something went wrong'}
+            </h1>
+            <p style={{ margin: 0, fontSize: '0.95rem' }}>
+              {isSessionDeleted
+                ? 'Your session was ended (for example by signing out in another tab or device). Please sign in again.'
+                : this.state.error.message}
             </p>
-          )}
-          {!isSessionDeleted && (
-            <>
-              <p style={{ margin: '1rem 0 0', fontSize: '0.9rem', color: 'var(--muted)' }}>
-                Try refreshing the page. Check the browser console for details.
-              </p>
-              <p style={{ margin: '0.75rem 0 0' }}>
-                <button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    fontSize: '0.95rem',
-                    cursor: 'pointer',
-                    background: 'var(--accent)',
-                    color: 'var(--bg)',
-                    border: 'none',
-                    borderRadius: 'var(--glass-radius-sm, 6px)',
-                    fontWeight: 500,
-                  }}
-                >
-                  Refresh
-                </button>
-              </p>
-              <p style={{ margin: '1.25rem 0 0', fontSize: '0.9rem' }}>
-                <a
-                  href={REPO_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: 'var(--muted)', textDecoration: 'none' }}
-                  title="View source"
-                >
-                  <GitLogo />
-                  <span>View source</span>
+            {isSessionDeleted && (
+              <p style={{ margin: '1rem 0 0', fontSize: '0.9rem' }}>
+                <a href="#/feed" style={{ color: 'var(--accent)' }}>
+                  Back to feed
                 </a>
               </p>
-            </>
-          )}
+            )}
+            {!isSessionDeleted && (
+              <>
+                <p style={{ margin: '1rem 0 0', fontSize: '0.9rem', color: 'var(--muted)' }}>
+                  Try refreshing the page. Check the browser console for details.
+                </p>
+                <p style={{ margin: '0.75rem 0 0' }}>
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.95rem',
+                      cursor: 'pointer',
+                      background: 'var(--accent)',
+                      color: 'var(--bg)',
+                      border: 'none',
+                      borderRadius: 'var(--glass-radius-sm, 6px)',
+                      fontWeight: 500,
+                    }}
+                  >
+                    Refresh
+                  </button>
+                </p>
+                <p style={{ margin: '1.25rem 0 0', fontSize: '0.9rem' }}>
+                  <a
+                    href={REPO_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: 'var(--muted)', textDecoration: 'none' }}
+                    title="View source"
+                  >
+                    <GitLogo />
+                    <span>View source</span>
+                  </a>
+                </p>
+              </>
+            )}
+          </div>
         </div>
       )
     }

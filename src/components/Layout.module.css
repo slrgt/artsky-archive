@@ -57,8 +57,9 @@
 }
 
 @media (max-width: 767px) {
+  /* Match header height: top padding + bar content (logo/buttons + padding) so feed buttons aren’t covered */
   .wrapWithHeader {
-    padding-top: calc(3.25rem + env(safe-area-inset-top));
+    padding-top: calc(max(0.5rem, env(safe-area-inset-top, 0px)) + 3.5rem);
   }
 }
 
@@ -92,7 +93,7 @@
 }
 
 @media (max-width: 767px) {
-  /* Mobile: header from top of screen (same color in safe area + bar), no rounded bottom, no border/shadow lines */
+  /* Mobile: header from top of screen (same color in safe area + bar), no rounded bottom, no border/shadow lines. */
   .header {
     top: 0;
     background: color-mix(in srgb, var(--glass-bg) 68%, transparent);
@@ -100,7 +101,7 @@
     backdrop-filter: blur(28px) saturate(180%);
     border-radius: 0;
     box-shadow: none;
-    padding-top: max(0.35rem, env(safe-area-inset-top));
+    padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
   }
   /* Fully off-screen above viewport so top area can stay transparent on iPhone */
   .headerHidden {
@@ -189,6 +190,10 @@
     max-width: 22px;
     max-height: 22px;
     flex-shrink: 0;
+  }
+  .headerBtn .cardModeIcon {
+    width: 22px;
+    height: 22px;
   }
   .headerBtn .headerAccountAvatar {
     width: 28px;
@@ -370,7 +375,7 @@
     font-weight: 500;
     color: var(--text);
     background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 100%, white 12%), color-mix(in srgb, var(--surface) 100%, black 6%));
-    border: 1px solid var(--glass-border);
+    border: none;
     border-radius: var(--glass-radius-sm);
     cursor: pointer;
     font: inherit;
@@ -380,7 +385,6 @@
   .headerCenterMobile .headerFeedsBtn:hover {
     color: var(--accent);
     background: linear-gradient(180deg, color-mix(in srgb, var(--accent-subtle) 100%, white 10%), color-mix(in srgb, var(--accent-subtle) 100%, black 4%));
-    border-color: var(--accent);
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.16), 0 1px 0 rgba(255, 255, 255, 0.1) inset;
   }
   .headerCenterMobile .headerFeedsBtnActive {
@@ -392,12 +396,13 @@
     font-size: 0.85rem;
     font-weight: 500;
     color: var(--accent);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--accent-muted) 100%, white 8%), color-mix(in srgb, var(--accent-muted) 100%, black 8%));
-    border: 1px solid var(--accent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent-muted) 100%, black 6%), color-mix(in srgb, var(--accent-muted) 100%, white 4%));
+    border: none;
     border-radius: var(--glass-radius-sm);
     cursor: pointer;
     font: inherit;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08) inset;
+    transform: translateY(1px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.12) inset;
   }
   .headerCenterMobile .headerFeedsBtn svg,
   .headerCenterMobile .headerFeedsBtnActive svg {
@@ -460,6 +465,10 @@
     min-height: 18px;
     max-width: 18px;
     max-height: 18px;
+  }
+  .headerBtn .cardModeIcon {
+    width: 18px;
+    height: 18px;
   }
   .headerAccountNavBtn {
     padding: 0.2rem 0.35rem;
@@ -691,6 +700,34 @@ button.logoLink {
   font-size: 1.15rem;
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+/* Card mode icons (SVG as mask) – inherit button color: white in dark mode, dark in light mode. Files in public/icons/. */
+.cardModeIcon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background-color: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+
+/* NSFW eye icons (open / half / closed) – loaded from public/icons/eye-*.svg. Replace those files to update. */
+.nsfwEyeIcon {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  background-color: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
 }
 
 /* Dev-only label: out of flow so layout is identical to production; can be overlapped */
@@ -1585,7 +1622,6 @@ button.logoLink {
   background: var(--glass-bg-strong);
   -webkit-backdrop-filter: blur(var(--glass-blur-strong));
   backdrop-filter: blur(var(--glass-blur-strong));
-  border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius);
   box-shadow: var(--shadow-dropdown);
   pointer-events: auto;

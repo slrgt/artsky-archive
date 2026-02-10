@@ -111,6 +111,15 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
   const media = getPostMediaInfoForDisplay(post)
   const hasMedia = !!media
   const text = (post.record as { text?: string })?.text ?? ''
+  const embed = post.embed as { $type?: string; uri?: string; title?: string; description?: string; thumb?: string } | undefined
+  const externalLink = (() => {
+    if (embed?.$type !== 'app.bsky.embed.external#view' || !embed.uri) return null
+    let displayTitle = embed.title?.trim() ?? ''
+    if (!displayTitle) {
+      try { displayTitle = new URL(embed.uri).hostname } catch { displayTitle = embed.uri }
+    }
+    return { uri: embed.uri, title: displayTitle, description: embed.description ?? '', thumb: embed.thumb }
+  })()
   const handle = post.author.handle ?? post.author.did
   const repostedByHandle = reason?.by ? (reason.by.handle ?? reason.by.did) : null
   const isPinned = reason?.$type === REASON_PIN
@@ -651,17 +660,36 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
           {!hasMedia ? (
             <div className={styles.textOnlyPreview}>
               {text ? (
-                <div className={styles.textOnlyPreviewText}>
+                <div className={styles.textOnlyPreviewText} onClick={(e) => { e.stopPropagation(); handleCardClick(e); }}>
                   <PostText
                     text={text}
                     facets={(post.record as { facets?: unknown[] })?.facets}
                     maxLength={160}
                     stopPropagation
+                    interactive={false}
                   />
                 </div>
-              ) : (
+              ) : null}
+              {externalLink ? (
+                <a
+                  href={externalLink.uri}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.textOnlyPreviewLink}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {externalLink.thumb ? (
+                    <img src={externalLink.thumb} alt="" className={styles.textOnlyPreviewLinkThumb} loading="lazy" />
+                  ) : null}
+                  <span className={styles.textOnlyPreviewLinkTitle}>{externalLink.title}</span>
+                  {externalLink.description ? (
+                    <span className={styles.textOnlyPreviewLinkDesc}>{externalLink.description}</span>
+                  ) : null}
+                </a>
+              ) : null}
+              {!text && !externalLink ? (
                 <span className={styles.textOnlyPreviewEmpty}>Text post</span>
-              )}
+              ) : null}
             </div>
           ) : isVideo ? (
             <div className={styles.mediaVideoWrap}>
@@ -868,7 +896,11 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                     title={`Follow @${handle}`}
                   >
                     <img src={post.author.avatar} alt="" loading="lazy" />
-                    <span className={styles.cardActionRowAvatarPlus} aria-hidden>+</span>
+                    <span className={styles.cardActionRowAvatarPlus} aria-hidden>
+                      <svg viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 2v4M2 4h4" />
+                      </svg>
+                    </span>
                   </button>
                 )
               )}
@@ -928,15 +960,22 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
                   </ProfileLink>
                 </span>
                 {repostedByHandle && (
-                  <ProfileLink
-                    handle={repostedByHandle}
+                  <span
                     className={styles.repostIconLink}
-                    onClick={(e) => e.stopPropagation()}
+                    role="button"
+                    tabIndex={0}
                     title={`Reposted by @${repostedByHandle}`}
                     aria-label={`Reposted by @${repostedByHandle}`}
+                    onClick={(e) => { e.stopPropagation(); handleCardClick(e); }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        openPost()
+                      }
+                    }}
                   >
                     <RepostIcon />
-                  </ProfileLink>
+                  </span>
                 )}
               </span>
               <span className={styles.handleRowMeta}>
@@ -955,8 +994,8 @@ export default function PostCard({ item, isSelected, cardRef: cardRefProp, addBu
           </div>
           )}
           {!minimalist && hasMedia && text ? (
-            <p className={styles.text}>
-              <PostText text={text} facets={(post.record as { facets?: unknown[] })?.facets} maxLength={80} stopPropagation />
+            <p className={styles.text} onClick={(e) => { e.stopPropagation(); handleCardClick(e); }}>
+              <PostText text={text} facets={(post.record as { facets?: unknown[] })?.facets} maxLength={80} stopPropagation interactive={false} />
             </p>
           ) : null}
         </div>

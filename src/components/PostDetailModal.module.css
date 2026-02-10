@@ -41,7 +41,6 @@
   display: flex;
   flex-direction: column;
   background: var(--surface);
-  border: 1px solid var(--border);
   border-radius: var(--glass-radius);
   box-shadow: var(--shadow-card);
   overflow: hidden;
@@ -58,11 +57,6 @@
   transition: transform 0.2s ease-out;
 }
 
-/* Post detail: no right border so it doesn't double up with comment borders */
-.paneNoRightBorder.pane {
-  border-right: none;
-}
-
 /* Expanded: full-bleed to overlay edges (overlay has safe-area padding) */
 .paneExpanded.pane {
   max-width: none;
@@ -70,7 +64,6 @@
   height: 100%;
   max-height: 100%;
   border-radius: 0;
-  border: none;
   box-shadow: none;
 }
 
@@ -87,6 +80,7 @@
   min-height: 0;
   width: 100%;
   min-width: 0;
+  pointer-events: auto;
 }
 
 /* Reserve space for bottom action bar (X, back, expand) on all viewports */
@@ -107,7 +101,6 @@
   padding: 0.5rem 0.75rem;
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   background: var(--surface);
-  border-top: 1px solid var(--border);
   z-index: 2;
   flex-shrink: 0;
   transition: transform 0.2s ease-out;
@@ -130,7 +123,6 @@
   gap: 0.5rem;
   padding: 0.35rem 0.5rem;
   background: var(--surface);
-  border-bottom: 1px solid var(--border);
   pointer-events: auto;
   z-index: 1;
   flex-shrink: 0;
@@ -163,12 +155,24 @@
   padding-top: 0;
 }
 
-/* X, back, expand are in bottom bar – collapse left so only center slot shows in top bar */
+/* X, back, expand are in bottom bar – equal flex spacers so center slot is centered and never covered by right */
 .modalTopBarActionsBelow .modalTopBarLeft {
-  width: 0;
+  width: auto;
   min-width: 0;
+  flex: 1;
   overflow: hidden;
   padding: 0;
+  pointer-events: none;
+}
+.modalTopBarActionsBelow .modalTopBarSlot {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.modalTopBarActionsBelow .modalTopBarRight {
+  width: auto;
+  min-width: 0;
+  flex: 1;
+  justify-content: flex-end;
 }
 
 /* Left: X + Back so we can match its width on the right for true center */
@@ -254,6 +258,13 @@
   color: var(--text);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  line-height: 0;
+}
+.expandBtn svg {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
 }
 .expandBtn:hover {
   background: var(--glass-bg);

@@ -4,10 +4,22 @@
   padding-bottom: calc(2.75rem + env(safe-area-inset-bottom));
 }
 
+/* Same background as homepage feed so cards sit on --bg; no outer padding so header is edge-to-edge */
 .wrapInModal {
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
+  background: var(--bg);
+  min-height: 100%;
+  padding: 0;
+}
+
+/* In profile popup: no border/shadow on header; round top only; no bottom margin so surface runs into tabs row */
+.wrapInModal .profileHeader {
+  border: none;
+  box-shadow: none;
+  border-radius: 0.75rem 0.75rem 0 0;
+  margin-bottom: 0;
 }
 
 .profileHeader {
@@ -157,6 +169,9 @@
   margin: 0;
   font-size: 0.9rem;
   color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .description {
@@ -175,19 +190,23 @@
   top: 3.5rem;
   z-index: 5;
   margin-bottom: 1rem;
+  margin-left: -0.5rem;
+  margin-right: -0.5rem;
+  padding: 0 0.5rem 0.25rem;
+  padding-top: 0.75rem;
   background: var(--bg);
-  padding-bottom: 0.25rem;
   transition: transform 0.25s ease;
   display: flex;
   flex-direction: column;
-  width: 100%;
+  align-items: center;
+  width: calc(100% + 1rem);
+  box-sizing: border-box;
 }
 
 /* In profile popup: pin tabs to top of scroll (just below the X/back bar) */
 .wrapInModal .tabsSticky {
   top: 0;
   background: var(--surface);
-  border-bottom: 1px solid var(--border);
   margin-bottom: 0.5rem;
   padding: 0.25rem 0 0.5rem;
 }
@@ -206,10 +225,9 @@
     top: auto;
     bottom: 0;
     border-bottom: none;
-    border-top: 1px solid var(--border);
     margin-bottom: 0;
     margin-top: 0.5rem;
-    padding: 0.5rem 0 0.25rem;
+    padding: 0.5rem 0.5rem 0.25rem;
   }
   .wrapInModal .profileContent {
     padding-bottom: 0.5rem;
@@ -220,7 +238,7 @@
   .wrapInModal .tabsBarHidden {
     transform: translateY(100%);
   }
-  /* Horizontal scrollable filter tabs on mobile (no scrollbar); centered when they fit */
+  /* Horizontal scrollable filter tabs on mobile (no scrollbar); always full width so few tabs stay centered */
   .tabs {
     flex-wrap: nowrap;
     justify-content: center;
@@ -229,8 +247,7 @@
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    width: auto;
-    min-width: 100%;
+    width: 100%;
   }
   .tabs::-webkit-scrollbar {
     display: none;
@@ -295,10 +312,24 @@
   gap: 0.25rem;
   flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
   width: 100%;
+  min-width: 0;
 }
 
-/* Profile popup: filter row in one line, scroll horizontally if needed; centered */
+/* Profile popup: tabs row between profile description and posts; same surface as header so color runs through */
+.tabsRowInModal {
+  margin-top: 0;
+  margin-bottom: 0;
+  margin-left: -0.5rem;
+  margin-right: -0.5rem;
+  padding: 0.75rem 0.5rem 0;
+  width: calc(100% + 1rem);
+  box-sizing: border-box;
+  background: var(--surface);
+}
+
+/* Profile popup: filter row in one line, scroll horizontally if needed; full width so few tabs stay centered */
 .tabsInModal {
   flex-wrap: nowrap;
   justify-content: center;
@@ -309,6 +340,7 @@
   -ms-overflow-style: none;
   min-width: 0;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .tabsInModal::-webkit-scrollbar {
@@ -346,8 +378,10 @@
   display: flex;
   gap: 0.25rem;
   justify-content: center;
+  align-items: center;
   margin-top: 0.35rem;
   flex-shrink: 0;
+  width: 100%;
 }
 
 .postsFilterBtn {
@@ -415,7 +449,7 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .textPostLink {
@@ -432,6 +466,15 @@
 .textPostLink:hover *,
 .textPostLink * {
   text-decoration: none;
+}
+
+/* Text tab: no borders or box-shadow on post blocks; tighter spacing (gap on list only) */
+.textList .textPostLink article {
+  border: none !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  outline: none;
+  margin-bottom: 0 !important;
 }
 
 .textPostHandleLink:hover {

@@ -1,20 +1,22 @@
-/* Liquid glass card – no shadow/glow, outline only */
+/* Liquid glass card – no shadow/glow, outline only. Promoted to own layer so scale doesn't jitter action row. */
 .card {
   position: relative;
   border-radius: var(--glass-radius);
   overflow: visible;
-  overflow-x: clip;
   min-width: 0;
   background: var(--glass-bg);
   -webkit-backdrop-filter: blur(var(--glass-blur));
   backdrop-filter: blur(var(--glass-blur));
   box-shadow: none;
   -webkit-tap-highlight-color: transparent;
+  isolation: isolate;
   /* Reserve space above when scrollIntoView runs so fixed header doesn't cover the card */
   scroll-margin-top: 5rem;
   container-type: inline-size;
   container-name: postcard;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  will-change: transform;
+  transform-origin: center center;
 }
 
 .cardLink {
@@ -50,6 +52,14 @@
 }
 html[data-theme="dark"] .cardSelected {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+/* Single column: no drop shadow when selected so sides don’t glow at screen edge */
+[data-view-mode="1"] .cardSelected {
+  box-shadow: none;
+}
+html[data-theme="dark"] [data-view-mode="1"] .cardSelected {
+  box-shadow: none;
 }
 
 /* Pink ring when post is liked */
@@ -147,6 +157,12 @@ html[data-theme="dark"] .cardSeen {
 html[data-theme="dark"] .card:hover {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
 }
+[data-view-mode="1"] .card:hover {
+  box-shadow: none;
+}
+html[data-theme="dark"] [data-view-mode="1"] .card:hover {
+  box-shadow: none;
+}
 
 /* When navigating with keyboard (W/S/A/D), only the selected card lifts – not the card under the mouse */
 [data-feed-cards][data-keyboard-nav] .card:hover:not(.cardSelected) {
@@ -212,18 +228,27 @@ html[data-theme="dark"] .card:hover {
   outline: none !important;
   box-shadow: none !important;
 }
-/* Keyboard focus: card lifts toward user (scale + drop shadow) */
+/* Keyboard focus: no outline; lift card when focus is not on a media cell (see below) */
 .card:focus-within {
   outline: none !important;
   z-index: 1;
+}
+/* Lift card (scale + shadow) only when focus is not on a media grid cell – otherwise card scale + cell scale makes the top image’s corners extend past the card’s rounded clip */
+.card:focus-within:not(:has(.mediaGridCellFocused)) {
   transform: scale(1.05);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
 }
-.card:focus-within::after {
+.card:focus-within:not(:has(.mediaGridCellFocused))::after {
   box-shadow: none;
 }
-html[data-theme="dark"] .card:focus-within {
+html[data-theme="dark"] .card:focus-within:not(:has(.mediaGridCellFocused)) {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+[data-view-mode="1"] .card:focus-within:not(:has(.mediaGridCellFocused)) {
+  box-shadow: none;
+}
+html[data-theme="dark"] [data-view-mode="1"] .card:focus-within:not(:has(.mediaGridCellFocused)) {
+  box-shadow: none;
 }
 
 .addWrap {
@@ -302,10 +327,12 @@ html[data-theme="dark"] .card:focus-within {
   overflow: visible;
   line-height: 0;
   position: relative;
+  width: 1.35rem;
+  height: 1.35rem;
 }
 .cardActionRowAvatar img {
-  width: 2rem;
-  height: 2rem;
+  width: 1.35rem;
+  height: 1.35rem;
   object-fit: cover;
   display: block;
   border-radius: 50%;
@@ -325,29 +352,47 @@ html[data-theme="dark"] .card:focus-within {
   opacity: 0.7;
   cursor: default;
 }
+/* Add (+) badge at bottom-right of avatar: dark circle, light border, plus icon */
 .cardActionRowAvatarPlus {
   position: absolute;
-  left: 50%;
+  right: -2px;
   bottom: -2px;
-  transform: translateX(-50%);
-  width: 0.75rem;
-  height: 0.75rem;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: var(--accent);
-  color: var(--text-on-accent);
-  font-size: 0.65rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
+  background: var(--text);
+  border: 2px solid var(--surface);
+  color: var(--surface);
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
+  padding: 0;
+  transition: transform 0.15s ease;
+  /* Whole-pixel size + layer to avoid sub-pixel blur */
+  transform: translateZ(0);
 }
-/* Preview cards (2/3-col feed): action row already has avatar, hide duplicate next to username */
-[data-feed-cards][data-view-mode="2"] .handleRow .authorAvatar,
-[data-feed-cards][data-view-mode="2"] .handleRow .authorAvatarPlaceholder,
-[data-feed-cards][data-view-mode="3"] .handleRow .authorAvatar,
-[data-feed-cards][data-view-mode="3"] .handleRow .authorAvatarPlaceholder {
+.cardActionRowAvatarPlus svg {
+  width: 8px;
+  height: 8px;
+  stroke: currentColor;
+  shape-rendering: geometricPrecision;
+}
+.cardActionRowAvatarPlus svg path {
+  vector-effect: non-scaling-stroke;
+}
+.cardActionRowAvatarFollow:hover:not(:disabled) .cardActionRowAvatarPlus {
+  transform: translateZ(0) scale(1.08);
+}
+.cardActionRowAvatarFollow:active:not(:disabled) .cardActionRowAvatarPlus {
+  transform: translateZ(0) scale(0.95);
+}
+/* All column views: show avatar in action row only, hide duplicate next to username */
+[data-view-mode="1"] .handleRow .authorAvatar,
+[data-view-mode="1"] .handleRow .authorAvatarPlaceholder,
+[data-view-mode="2"] .handleRow .authorAvatar,
+[data-view-mode="2"] .handleRow .authorAvatarPlaceholder,
+[data-view-mode="3"] .handleRow .authorAvatar,
+[data-view-mode="3"] .handleRow .authorAvatarPlaceholder {
   display: none;
 }
 
@@ -372,23 +417,23 @@ html[data-theme="dark"] .card:focus-within {
   .handleRowMeta {
     justify-content: center;
   }
-  /* Preview cards on mobile: profile picture in action row 15% bigger */
+  /* Preview cards on mobile: action row avatar slightly larger for touch */
   .cardActionRowAvatar img {
-    width: 2.3rem;
-    height: 2.3rem;
+    width: 1.5rem;
+    height: 1.5rem;
   }
   .cardActionRowAvatar {
-    width: 2.3rem;
-    height: 2.3rem;
+    width: 1.5rem;
+    height: 1.5rem;
   }
-  /* 3-column view on mobile: slightly larger than before (1rem → 1.15rem, 15% up) */
-  [data-feed-cards][data-view-mode="3"] .cardActionRowAvatar img {
-    width: 1.15rem;
-    height: 1.15rem;
+  /* 3-column view on mobile: compact avatar */
+  [data-view-mode="3"] .cardActionRowAvatar img {
+    width: 1.1rem;
+    height: 1.1rem;
   }
-  [data-feed-cards][data-view-mode="3"] .cardActionRowAvatar {
-    width: 1.15rem;
-    height: 1.15rem;
+  [data-view-mode="3"] .cardActionRowAvatar {
+    width: 1.1rem;
+    height: 1.1rem;
   }
   /* No purple focus/selected ring on mobile – touch only; keep liked (pink) and collected (blue) rings */
   .cardSelected::after,
@@ -781,8 +826,6 @@ html[data-theme="dark"] .card:focus-within {
   text-align: center;
   padding: 0.6rem 0.75rem;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-bottom: none;
   /* Only round top so bottom meets meta row flush (no empty corner gap) */
   border-radius: var(--glass-radius-sm) var(--glass-radius-sm) 0 0;
   color: var(--text);
@@ -804,6 +847,52 @@ html[data-theme="dark"] .card:focus-within {
 .textOnlyPreviewEmpty {
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.textOnlyPreviewLink {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  max-width: 100%;
+  text-align: center;
+  color: inherit;
+  text-decoration: none;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  background: var(--bg);
+}
+
+.textOnlyPreviewLink:hover {
+  text-decoration: underline;
+}
+
+.textOnlyPreviewLinkThumb {
+  width: 100%;
+  max-height: 6rem;
+  object-fit: cover;
+  border-radius: 0.2rem;
+}
+
+.textOnlyPreviewLinkTitle {
+  font-weight: 600;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.textOnlyPreviewLinkDesc {
+  font-size: 0.8rem;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-align: center;
 }
 
 .mediaArrow {
@@ -971,7 +1060,8 @@ html[data-theme="dark"] .card:focus-within {
   justify-content: center;
   gap: 0.35rem;
   width: 100%;
-  flex-wrap: wrap;
+  min-width: 0; /* allow row to shrink so handleRowMain can truncate */
+  flex-wrap: nowrap; /* keep username + repost on one line; username truncates */
 }
 
 .metaBadgeRow {
@@ -984,9 +1074,11 @@ html[data-theme="dark"] .card:focus-within {
 .handleRowMain {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.35rem;
   min-width: 0;
-  overflow: hidden;
+  flex: 1 1 0; /* take remaining space so username can truncate; repost icon stays */
+  overflow: visible; /* allow verified badge to show; .handleLink truncates the username */
 }
 
 .handleRowMeta {
@@ -1060,6 +1152,7 @@ html[data-theme="dark"] .card:focus-within {
   color: var(--muted);
   text-decoration: none;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .repostIconLink:hover {
@@ -1091,11 +1184,13 @@ html[data-theme="dark"] .card:focus-within {
 }
 
 .handleLinkWrap {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden; /* clip username; verified badge has flex-shrink: 0 so it’s never clipped */
+  font-size: 0.8rem;
 }
 
 .handleLinkWrapLiked {
@@ -1112,6 +1207,7 @@ html[data-theme="dark"] .card:focus-within {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .timestamp {

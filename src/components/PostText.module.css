@@ -3,13 +3,29 @@
 .mention {
   color: var(--accent);
   text-decoration: none;
-  word-break: break-all;
+}
+
+/* Links: don’t break; only truncate visually when longer than ~70 characters */
+.link {
+  max-width: 70ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: bottom;
 }
 
 .link:hover,
 .hashtag:hover,
 .mention:hover {
   text-decoration: underline;
+}
+
+/* Preview cards: no underline on hover (not clickable) */
+.preview .link:hover,
+.preview .hashtag:hover,
+.preview .mention:hover {
+  text-decoration: none;
 }
 
 .hashtag,

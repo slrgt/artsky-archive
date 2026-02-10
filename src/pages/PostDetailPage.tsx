@@ -339,7 +339,7 @@ function PostBlock({
       {allMedia.length > 0 && <MediaGallery items={allMedia} onFocusItem={(i) => onCommentMediaFocus?.(post.uri, i)} />}
       {text && (
         <p className={styles.postText}>
-          <PostText text={text} facets={(post.record as { facets?: unknown[] })?.facets} />
+          <PostText text={text} facets={(post.record as { facets?: unknown[] })?.facets} interactive />
         </p>
       )}
       {(onReply || onLike || onDownvote) && (
@@ -525,9 +525,11 @@ export interface PostDetailContentProps {
   onClose?: () => void
   /** Called when thread loads with the root post author handle (e.g. for swipe-left-to-open-profile). */
   onAuthorHandle?: (handle: string) => void
+  /** When in a modal, call with a function that refreshes the thread (used for pull-to-refresh). */
+  onRegisterRefresh?: (refresh: () => void | Promise<void>) => void
 }
 
-export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocusedCommentUri, onClose, onAuthorHandle }: PostDetailContentProps) {
+export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocusedCommentUri, onClose, onAuthorHandle, onRegisterRefresh }: PostDetailContentProps) {
   const navigate = useNavigate()
   const { openProfileModal } = useProfileModal()
   const decodedUri = uriProp
@@ -783,6 +785,10 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    onRegisterRefresh?.(() => load())
+  }, [onRegisterRefresh, load])
 
   useEffect(() => {
     if (!thread || !isThreadViewPost(thread) || !initialOpenReply) return
@@ -1278,6 +1284,114 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                   />
                 </div>
               )}
+              <div
+                ref={descriptionSectionRef}
+                className={styles.rootPostDescription}
+                tabIndex={-1}
+                onFocus={() => !onClose && setKeyboardFocusIndex(rootMediaForNav.length)}
+                onMouseEnter={() => !onClose && setKeyboardFocusIndex(rootMediaForNav.length)}
+              >
+                <div className={styles.postHead}>
+                  {thread.post.author.avatar && (
+                    <img src={thread.post.author.avatar} alt="" className={styles.avatar} loading="lazy" />
+                  )}
+                  <div className={styles.authorRow}>
+                    <ProfileLink
+                      handle={thread.post.author.handle ?? thread.post.author.did}
+                      className={styles.handleLink}
+                    >
+                      @{thread.post.author.handle ?? thread.post.author.did}
+                    </ProfileLink>
+                    {!isOwnPost && (
+                      alreadyFollowing ? (
+                        <button
+                          type="button"
+                          className={`${styles.followBtn} ${styles.followBtnFollowing}`}
+                          onClick={handleUnfollowAuthor}
+                          disabled={followLoading}
+                          title="Unfollow"
+                        >
+                          <span className={styles.followLabelDefault}>Following</span>
+                          <span className={styles.followLabelHover}>Unfollow</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className={styles.followBtn}
+                          onClick={handleFollowAuthor}
+                          disabled={followLoading}
+                        >
+                          {followLoading ? 'Following…' : 'Follow'}
+                        </button>
+                      )
+                    )}
+                    {(thread.post.record as { createdAt?: string })?.createdAt && (
+                      <span
+                        className={styles.postTimestamp}
+                        title={formatExactDateTime((thread.post.record as { createdAt: string }).createdAt)}
+                      >
+                        {formatRelativeTime((thread.post.record as { createdAt: string }).createdAt)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {(thread.post.record as { text?: string })?.text && (
+                  <p className={styles.postText}>
+                    <PostText text={(thread.post.record as { text?: string }).text!} facets={(thread.post.record as { facets?: unknown[] })?.facets} interactive />
+                  </p>
+                )}
+                {(() => {
+                  const quoted = getQuotedPostView(thread.post)
+                  if (!quoted) return null
+                  const quotedHandle = quoted.author?.handle ?? quoted.author?.did ?? ''
+                  const quotedText = (quoted.record as { text?: string })?.text ?? ''
+                  const quotedMedia = getPostAllMedia(quoted)
+                  const quotedFirstMedia = quotedMedia[0]
+                  return (
+                    <div className={styles.quotedPostWrap}>
+                      <p className={styles.quotedPostLabel}>Quoting</p>
+                      <button
+                        type="button"
+                        className={styles.quotedPostCard}
+                        onClick={() => {
+                          navigate(`/post/${encodeURIComponent(quoted.uri)}`)
+                          onClose?.()
+                        }}
+                      >
+                        <div className={styles.quotedPostHead}>
+                          {quoted.author?.avatar ? (
+                            <img src={quoted.author.avatar} alt="" className={styles.quotedPostAvatar} loading="lazy" />
+                          ) : (
+                            <span className={styles.quotedPostAvatarPlaceholder} aria-hidden>{quotedHandle.slice(0, 1).toUpperCase()}</span>
+                          )}
+                          <ProfileLink handle={quotedHandle} className={styles.quotedPostHandle} onClick={(e) => e.stopPropagation()}>
+                            @{quotedHandle}
+                          </ProfileLink>
+                          {(quoted.record as { createdAt?: string })?.createdAt && (
+                            <span className={styles.quotedPostTime} title={formatExactDateTime((quoted.record as { createdAt: string }).createdAt)}>
+                              {formatRelativeTime((quoted.record as { createdAt: string }).createdAt)}
+                            </span>
+                          )}
+                        </div>
+                        {quotedFirstMedia && (
+                          <div className={styles.quotedPostMedia}>
+                            {quotedFirstMedia.type === 'image' ? (
+                              <img src={quotedFirstMedia.url} alt="" loading="lazy" className={styles.quotedPostThumb} />
+                            ) : quotedFirstMedia.videoPlaylist ? (
+                              <div className={styles.quotedPostVideoThumb} style={{ backgroundImage: quotedFirstMedia.url ? `url(${quotedFirstMedia.url})` : undefined }} />
+                            ) : null}
+                          </div>
+                        )}
+                        {quotedText ? (
+                          <p className={styles.quotedPostText}>
+                            <PostText text={quotedText} facets={(quoted.record as { facets?: unknown[] })?.facets} maxLength={200} stopPropagation />
+                          </p>
+                        ) : null}
+                      </button>
+                    </div>
+                  )
+                })()}
+              </div>
             <section className={styles.actions} aria-label="Post actions">
               <div className={styles.actionRow}>
                 {rootMedia.length > 0 && (
@@ -1424,114 +1538,6 @@ export function PostDetailContent({ uri: uriProp, initialOpenReply, initialFocus
                 </p>
               )}
             </section>
-              <div
-                ref={descriptionSectionRef}
-                className={styles.rootPostDescription}
-                tabIndex={-1}
-                onFocus={() => !onClose && setKeyboardFocusIndex(rootMediaForNav.length)}
-                onMouseEnter={() => !onClose && setKeyboardFocusIndex(rootMediaForNav.length)}
-              >
-                <div className={styles.postHead}>
-                  {thread.post.author.avatar && (
-                    <img src={thread.post.author.avatar} alt="" className={styles.avatar} loading="lazy" />
-                  )}
-                  <div className={styles.authorRow}>
-                    <ProfileLink
-                      handle={thread.post.author.handle ?? thread.post.author.did}
-                      className={styles.handleLink}
-                    >
-                      @{thread.post.author.handle ?? thread.post.author.did}
-                    </ProfileLink>
-                    {!isOwnPost && (
-                      alreadyFollowing ? (
-                        <button
-                          type="button"
-                          className={`${styles.followBtn} ${styles.followBtnFollowing}`}
-                          onClick={handleUnfollowAuthor}
-                          disabled={followLoading}
-                          title="Unfollow"
-                        >
-                          <span className={styles.followLabelDefault}>Following</span>
-                          <span className={styles.followLabelHover}>Unfollow</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className={styles.followBtn}
-                          onClick={handleFollowAuthor}
-                          disabled={followLoading}
-                        >
-                          {followLoading ? 'Following…' : 'Follow'}
-                        </button>
-                      )
-                    )}
-                    {(thread.post.record as { createdAt?: string })?.createdAt && (
-                      <span
-                        className={styles.postTimestamp}
-                        title={formatExactDateTime((thread.post.record as { createdAt: string }).createdAt)}
-                      >
-                        {formatRelativeTime((thread.post.record as { createdAt: string }).createdAt)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {(thread.post.record as { text?: string })?.text && (
-                  <p className={styles.postText}>
-                    <PostText text={(thread.post.record as { text?: string }).text!} facets={(thread.post.record as { facets?: unknown[] })?.facets} />
-                  </p>
-                )}
-                {(() => {
-                  const quoted = getQuotedPostView(thread.post)
-                  if (!quoted) return null
-                  const quotedHandle = quoted.author?.handle ?? quoted.author?.did ?? ''
-                  const quotedText = (quoted.record as { text?: string })?.text ?? ''
-                  const quotedMedia = getPostAllMedia(quoted)
-                  const quotedFirstMedia = quotedMedia[0]
-                  return (
-                    <div className={styles.quotedPostWrap}>
-                      <p className={styles.quotedPostLabel}>Quoting</p>
-                      <button
-                        type="button"
-                        className={styles.quotedPostCard}
-                        onClick={() => {
-                          navigate(`/post/${encodeURIComponent(quoted.uri)}`)
-                          onClose?.()
-                        }}
-                      >
-                        <div className={styles.quotedPostHead}>
-                          {quoted.author?.avatar ? (
-                            <img src={quoted.author.avatar} alt="" className={styles.quotedPostAvatar} loading="lazy" />
-                          ) : (
-                            <span className={styles.quotedPostAvatarPlaceholder} aria-hidden>{quotedHandle.slice(0, 1).toUpperCase()}</span>
-                          )}
-                          <ProfileLink handle={quotedHandle} className={styles.quotedPostHandle} onClick={(e) => e.stopPropagation()}>
-                            @{quotedHandle}
-                          </ProfileLink>
-                          {(quoted.record as { createdAt?: string })?.createdAt && (
-                            <span className={styles.quotedPostTime} title={formatExactDateTime((quoted.record as { createdAt: string }).createdAt)}>
-                              {formatRelativeTime((quoted.record as { createdAt: string }).createdAt)}
-                            </span>
-                          )}
-                        </div>
-                        {quotedFirstMedia && (
-                          <div className={styles.quotedPostMedia}>
-                            {quotedFirstMedia.type === 'image' ? (
-                              <img src={quotedFirstMedia.url} alt="" loading="lazy" className={styles.quotedPostThumb} />
-                            ) : quotedFirstMedia.videoPlaylist ? (
-                              <div className={styles.quotedPostVideoThumb} style={{ backgroundImage: quotedFirstMedia.url ? `url(${quotedFirstMedia.url})` : undefined }} />
-                            ) : null}
-                          </div>
-                        )}
-                        {quotedText ? (
-                          <p className={styles.quotedPostText}>
-                            <PostText text={quotedText} facets={(quoted.record as { facets?: unknown[] })?.facets} maxLength={200} stopPropagation />
-                          </p>
-                        ) : null}
-                      </button>
-                    </div>
-                  )
-                })()}
-              </div>
             </article>
             {'replies' in thread && Array.isArray(thread.replies) && thread.replies.length > 0 && (
               <div

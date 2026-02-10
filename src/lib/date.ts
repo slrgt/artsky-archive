@@ -41,3 +41,19 @@ export function formatExactDateTime(isoDate: string): string {
     timeStyle: 'short',
   })
 }
+
+/** Like formatExactDateTime but with full month name (e.g. "January 15, 2024, 3:42 PM"). */
+export function formatExactDateTimeLongMonth(isoDate: string): string {
+  const d = new Date(isoDate)
+  const datePart = d.toLocaleDateString(undefined, {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  })
+  const timePart = d.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+  return `${datePart}, ${timePart}`
+}

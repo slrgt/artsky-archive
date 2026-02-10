@@ -15,8 +15,10 @@ import { publicAgent, createPost, getNotifications, getSavedFeedsFromPreferences
 import type { FeedSource } from '../types'
 import { GUEST_FEED_SOURCES, GUEST_MIX_ENTRIES } from '../config/feedSources'
 import { useFeedMix } from '../context/FeedMixContext'
+import { FeedSwipeProvider } from '../context/FeedSwipeContext'
 import SearchBar from './SearchBar'
 import FeedSelector from './FeedSelector'
+import { CardDefaultIcon, CardMinimalistIcon, CardArtOnlyIcon, EyeOpenIcon, EyeHalfIcon, EyeClosedIcon } from './Icons'
 import styles from './Layout.module.css'
 
 const PRESET_FEED_SOURCES: FeedSource[] = [
@@ -156,63 +158,18 @@ function BellIcon() {
   )
 }
 
-/** Eye icon for NSFW preference: closed = SFW, half = Blurred, open = NSFW */
+/** Eye icon for NSFW preference: closed = SFW, half = Blurred, open = NSFW. Inline SVG matching public/icons/eye-*.svg */
 function NsfwEyeIcon({ mode }: { mode: 'open' | 'half' | 'closed' }) {
-  const eyePath = 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d={eyePath} />
-      {mode === 'open' && (
-        <>
-          <circle cx="12" cy="12" r="3" />
-          <line x1="6" y1="5" x2="5" y2="3" />
-          <line x1="12" y1="4" x2="12" y2="2" />
-          <line x1="18" y1="5" x2="19" y2="3" />
-        </>
-      )}
-      {mode === 'half' && (
-        <>
-          <path d="M4 12 Q12 16 20 12" />
-          <line x1="6" y1="13" x2="5" y2="15" />
-          <line x1="12" y1="14.5" x2="12" y2="17" />
-          <line x1="18" y1="13" x2="19" y2="15" />
-        </>
-      )}
-      {mode === 'closed' && (
-        <>
-          <path d="M5 19 Q12 21 19 19" />
-          <line x1="7" y1="19" x2="6" y2="22" />
-          <line x1="12" y1="19" x2="12" y2="23" />
-          <line x1="17" y1="19" x2="18" y2="22" />
-        </>
-      )}
-    </svg>
-  )
+  if (mode === 'open') return <EyeOpenIcon size={24} />
+  if (mode === 'half') return <EyeHalfIcon size={24} />
+  return <EyeClosedIcon size={24} />
 }
 
-/** Preview card mode icons: full card (show all), compact (minimalist), image only (art only) */
+/** Preview card mode icons: full card (show all), compact (minimalist), image only (art only). Inline SVG matching public/icons/card-*.svg */
 function CardModeIcon({ mode }: { mode: 'default' | 'minimalist' | 'artOnly' }) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      {mode === 'default' && (
-        <>
-          <rect x="4" y="3" width="16" height="18" rx="2" />
-          <rect x="6" y="5" width="12" height="8" rx="1" />
-          <line x1="6" y1="16" x2="10" y2="16" />
-          <line x1="6" y1="19" x2="14" y2="19" />
-        </>
-      )}
-      {mode === 'minimalist' && (
-        <>
-          <rect x="4" y="3" width="16" height="18" rx="2" />
-          <rect x="6" y="5" width="12" height="8" rx="1" />
-        </>
-      )}
-      {mode === 'artOnly' && (
-        <rect x="4" y="3" width="16" height="18" rx="2" />
-      )}
-    </svg>
-  )
+  if (mode === 'default') return <CardDefaultIcon size={20} />
+  if (mode === 'minimalist') return <CardMinimalistIcon size={20} />
+  return <CardArtOnlyIcon size={20} />
 }
 
 const NSFW_CYCLE = ['sfw', 'blurred', 'nsfw'] as const
@@ -408,7 +365,7 @@ export default function Layout({ title, children, showNav }: Props) {
   const homeHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const seenPosts = useSeenPosts()
   const HOME_HOLD_MS = 500
-  const { entries: mixEntries, setEntryPercent, toggleSource, addEntry } = useFeedMix()
+  const { entries: mixEntries, setEntryPercent, toggleSource, addEntry, setSingleFeed } = useFeedMix()
   const presetUris = new Set((PRESET_FEED_SOURCES.map((s) => s.uri).filter(Boolean) as string[]))
   const visiblePresets = PRESET_FEED_SOURCES.filter((s) => !s.uri || !hiddenPresetUris.has(s.uri))
   const savedDeduped = savedFeedSources.filter((s) => !s.uri || !presetUris.has(s.uri))
@@ -549,7 +506,7 @@ export default function Layout({ title, children, showNav }: Props) {
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [notificationsOpen])
 
-  const loadSavedFeeds = useCallback(async () => {
+  const loadSavedFeeds = useCallback(async (appendIfMissing?: FeedSource) => {
     if (!session) {
       setSavedFeedSources([])
       return
@@ -570,12 +527,44 @@ export default function Layout({ title, children, showNav }: Props) {
         for (const s of prev) {
           if (s.uri && !serverUris.has(s.uri) && !merged.some((m) => m.uri === s.uri)) merged.push(s)
         }
+        if (appendIfMissing?.uri && !merged.some((m) => m.uri === appendIfMissing.uri)) {
+          merged.push(appendIfMissing)
+        }
         return merged
       })
     } catch {
       setSavedFeedSources([])
     }
   }, [session])
+
+  /** When user selects a feed from the header search bar: add to saved list, enable it, then go to feed so the pill appears. */
+  const handleSelectFeedFromSearch = useCallback(
+    async (source: FeedSource) => {
+      if (!source.uri) {
+        navigate('/feed', { state: { feedSource: source } })
+        return
+      }
+      if (!session) {
+        navigate('/feed', { state: { feedSource: source } })
+        return
+      }
+      setFeedAddError(null)
+      try {
+        const uri = await resolveFeedUri(source.uri)
+        await addSavedFeed(uri)
+        const label = source.label ?? (await getFeedDisplayName(uri))
+        const normalized: FeedSource = { kind: 'custom', label, uri }
+        setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, normalized]))
+        handleFeedsToggleSource(normalized)
+        await loadSavedFeeds(normalized)
+        navigate('/feed', { state: { feedSource: normalized } })
+      } catch (err) {
+        setFeedAddError(err instanceof Error ? err.message : 'Could not add feed. Try again.')
+        navigate('/feed', { state: { feedSource: source } })
+      }
+    },
+    [session, navigate, handleFeedsToggleSource, loadSavedFeeds]
+  )
 
   const handleRemoveFeed = useCallback(
     async (source: FeedSource) => {
@@ -1224,6 +1213,7 @@ export default function Layout({ title, children, showNav }: Props) {
 
   return (
     <div className={`${styles.wrap} ${showNav ? styles.wrapWithHeader : ''}`}>
+      <FeedSwipeProvider feedSources={session ? allFeedSources : GUEST_FEED_SOURCES} setSingleFeed={setSingleFeed}>
       <a href="#main-content" className={styles.skipLink}>
         Skip to main content
       </a>
@@ -1289,8 +1279,7 @@ export default function Layout({ title, children, showNav }: Props) {
                                 const source: FeedSource = { kind: 'custom', label, uri }
                                 setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, source]))
                                 handleFeedsToggleSource(source)
-                                await loadSavedFeeds()
-                                setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, source]))
+                                await loadSavedFeeds(source)
                               } catch (err) {
                                 setFeedAddError(err instanceof Error ? err.message : 'Could not add feed. Try again.')
                               }
@@ -1306,7 +1295,7 @@ export default function Layout({ title, children, showNav }: Props) {
                     </div>
                   </div>
                   <div className={styles.headerSearchBarWrap}>
-                    <SearchBar inputRef={searchInputRef} compact={isDesktop} />
+                    <SearchBar inputRef={searchInputRef} compact={isDesktop} onSelectFeed={handleSelectFeedFromSearch} />
                   </div>
                   <div className={styles.headerSearchSide}>
                     <button
@@ -1358,8 +1347,7 @@ export default function Layout({ title, children, showNav }: Props) {
                               const source: FeedSource = { kind: 'custom', label, uri }
                               setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, source]))
                               handleFeedsToggleSource(source)
-                              await loadSavedFeeds()
-                              setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, source]))
+                              await loadSavedFeeds(source)
                             } catch (err) {
                               setFeedAddError(err instanceof Error ? err.message : 'Could not add feed. Try again.')
                             }
@@ -1531,8 +1519,7 @@ export default function Layout({ title, children, showNav }: Props) {
                 const source: FeedSource = { kind: 'custom', label, uri }
                 setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, source]))
                 handleFeedsToggleSource(source)
-                await loadSavedFeeds()
-                setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, source]))
+                await loadSavedFeeds(source)
               } catch (err) {
                 setFeedAddError(err instanceof Error ? err.message : 'Could not add feed. Try again.')
               }
@@ -1568,7 +1555,7 @@ export default function Layout({ title, children, showNav }: Props) {
                 style={!isDesktop ? undefined : { bottom: searchOverlayBottom }}
               >
                 <div className={styles.searchOverlayCard}>
-                  <SearchBar inputRef={searchInputRef} onClose={closeMobileSearch} suggestionsAbove={isDesktop} />
+                  <SearchBar inputRef={searchInputRef} onClose={closeMobileSearch} suggestionsAbove={isDesktop} onSelectFeed={handleSelectFeedFromSearch} />
                 </div>
               </div>
             </>
@@ -1776,6 +1763,7 @@ export default function Layout({ title, children, showNav }: Props) {
           )}
         </>
       )}
+      </FeedSwipeProvider>
     </div>
   )
 }

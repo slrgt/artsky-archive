@@ -15,6 +15,7 @@ interface PostDetailModalProps {
 export default function PostDetailModal({ uri, openReply, focusUri, onClose, onBack, canGoBack }: PostDetailModalProps) {
   const { openProfileModal } = useProfileModal()
   const [authorHandle, setAuthorHandle] = useState<string | null>(null)
+  const [refreshFn, setRefreshFn] = useState<(() => void | Promise<void>) | null>(null)
 
   useEffect(() => {
     setAuthorHandle(null)
@@ -35,6 +36,7 @@ export default function PostDetailModal({ uri, openReply, focusUri, onClose, onB
       canGoBack={canGoBack}
       transparentTopBar
       onSwipeLeft={authorHandle ? handleSwipeLeft : undefined}
+      onPullToRefresh={refreshFn ? () => refreshFn() : undefined}
     >
       <PostDetailContent
         uri={uri}
@@ -42,6 +44,7 @@ export default function PostDetailModal({ uri, openReply, focusUri, onClose, onB
         initialFocusedCommentUri={focusUri}
         onClose={onClose}
         onAuthorHandle={setAuthorHandle}
+        onRegisterRefresh={(fn) => setRefreshFn(() => fn)}
       />
     </AppModal>
   )

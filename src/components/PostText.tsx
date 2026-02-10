@@ -31,16 +31,22 @@ export interface PostTextProps {
   stopPropagation?: boolean
   /** Show link as domain name only (e.g. "example.com"). Default "url" shows full URL. */
   linkDisplay?: 'url' | 'domain'
+  /** When false, links/hashtags/mentions render as plain text (no click). Use for previews where user must open post to interact. */
+  interactive?: boolean
 }
 
 function renderSegment(
   seg: { type: 'text' | 'url' | 'bareUrl' | 'email' | 'hashtag' | 'mention'; value: string; href?: string; tag?: string; did?: string },
   i: number,
   linkDisplay: 'url' | 'domain',
-  onClick: ((e: React.MouseEvent) => void) | undefined
+  onClick: ((e: React.MouseEvent) => void) | undefined,
+  interactive: boolean
 ) {
   if (seg.type === 'text') {
     return <span key={i}>{seg.value}</span>
+  }
+  if (!interactive) {
+    return <span key={i} className={seg.type === 'hashtag' ? styles.hashtag : seg.type === 'mention' ? styles.mention : styles.link}>{seg.value}</span>
   }
   if (seg.type === 'email') {
     const raw = seg.value.replace(/[.,;:)!?]+$/, '')
@@ -85,7 +91,7 @@ function renderSegment(
   )
 }
 
-export default function PostText({ text, facets, className, maxLength, stopPropagation, linkDisplay = 'url' }: PostTextProps) {
+export default function PostText({ text, facets, className, maxLength, stopPropagation, linkDisplay = 'url', interactive = true }: PostTextProps) {
   const onClick = stopPropagation ? (e: React.MouseEvent) => e.stopPropagation() : undefined
 
   if (facets && Array.isArray(facets) && facets.length > 0) {
@@ -129,8 +135,8 @@ export default function PostText({ text, facets, className, maxLength, stopPropa
       }
       if (segs.length > 0) {
         return (
-          <span className={className ?? undefined}>
-            {segs.map((seg, i) => renderSegment(seg, i, linkDisplay, onClick))}
+          <span className={[className, !interactive && styles.preview].filter(Boolean).join(' ') || undefined}>
+            {segs.map((seg, i) => renderSegment(seg, i, linkDisplay, onClick, interactive))}
           </span>
         )
       }
@@ -195,8 +201,8 @@ export default function PostText({ text, facets, className, maxLength, stopPropa
   }
 
   return (
-    <span className={className ?? undefined}>
-      {displaySegments.map((seg, i) => renderSegment(seg, i, linkDisplay, onClick))}
+    <span className={[className, !interactive && styles.preview].filter(Boolean).join(' ') || undefined}>
+      {displaySegments.map((seg, i) => renderSegment(seg, i, linkDisplay, onClick, interactive))}
     </span>
   )
 }

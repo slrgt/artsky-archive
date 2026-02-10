@@ -21,6 +21,7 @@ export default function ProfileLink({ handle, className, title, 'aria-label': ar
       aria-label={ariaLabel}
       onClick={(e) => {
         e.preventDefault()
+        e.stopPropagation()
         openProfileModal(handle)
         onClick?.(e)
       }}

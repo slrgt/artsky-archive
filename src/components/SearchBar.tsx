@@ -122,25 +122,33 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  const profileFromUrl = trimmed ? extractProfileHandleFromSearchQuery(trimmed) : null
+
   const options: Array<
+    | { type: 'profileFromUrl'; handle: string }
     | { type: 'actor'; handle: string; did: string; avatar?: string; displayName?: string }
     | { type: 'tag'; tag: string }
     | { type: 'feed'; view: AppBskyFeedDefs.GeneratorView }
   > = []
+  if (profileFromUrl && filter !== 'feeds') options.push({ type: 'profileFromUrl', handle: profileFromUrl })
   if (hashtagOption) options.push(hashtagOption)
   if (filter !== 'feeds') actors.forEach((a) => options.push({ type: 'actor', handle: a.handle, did: a.did, avatar: a.avatar, displayName: a.displayName }))
   if ((filter === 'feeds' || filter === 'all') && (!trimmed && suggestedFeeds.length)) suggestedFeeds.forEach((f) => options.push({ type: 'feed', view: f }))
 
   useEffect(() => {
     setActiveIndex(-1)
-  }, [query, actors.length, suggestedFeeds.length, hashtagOption])
+  }, [query, actors.length, suggestedFeeds.length, hashtagOption, profileFromUrl])
 
   function handleSelect(index: number) {
     const opt = options[index]
     if (!opt) return
     setOpen(false)
     setQuery('')
-    if (opt.type === 'tag') {
+    if (opt.type === 'profileFromUrl') {
+      openProfileModal(opt.handle)
+      inputRef.current?.blur()
+      onClose?.()
+    } else if (opt.type === 'tag') {
       openTagModal(opt.tag)
       inputRef.current?.blur()
       onClose?.()
@@ -285,6 +293,19 @@ export default function SearchBar({ onSelectFeed, inputRef: externalInputRef, co
             <div className={styles.item}>Searching…</div>
           )}
           {options.map((opt, i) => {
+            if (opt.type === 'profileFromUrl') {
+              return (
+                <button
+                  key={`profile-${opt.handle}`}
+                  type="button"
+                  role="option"
+                  className={`${styles.item} ${i === activeIndex ? styles.itemActive : ''}`}
+                  onClick={() => handleSelect(i)}
+                >
+                  <span className={styles.itemLabel}>Open profile @{opt.handle}</span>
+                </button>
+              )
+            }
             if (opt.type === 'tag') {
               return (
                 <button

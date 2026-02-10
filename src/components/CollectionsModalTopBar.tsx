@@ -3,64 +3,21 @@ import { useViewMode, VIEW_LABELS } from '../context/ViewModeContext'
 import { useArtOnly } from '../context/ArtOnlyContext'
 import { useModeration } from '../context/ModerationContext'
 import { useModalTopBarSlot } from '../context/ModalTopBarSlotContext'
+import { CardDefaultIcon, CardMinimalistIcon, CardArtOnlyIcon, EyeOpenIcon, EyeHalfIcon, EyeClosedIcon } from './Icons'
 import styles from './Layout.module.css'
 
-/** Eye icon: closed = SFW, half = Blurred, open = NSFW */
+/** Eye icon: closed = SFW, half = Blurred, open = NSFW. Inline SVG matching public/icons/eye-*.svg */
 function NsfwEyeIcon({ mode }: { mode: 'open' | 'half' | 'closed' }) {
-  const eyePath = 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d={eyePath} />
-      {mode === 'open' && (
-        <>
-          <circle cx="12" cy="12" r="3" />
-          <line x1="6" y1="5" x2="5" y2="3" />
-          <line x1="12" y1="4" x2="12" y2="2" />
-          <line x1="18" y1="5" x2="19" y2="3" />
-        </>
-      )}
-      {mode === 'half' && (
-        <>
-          <path d="M4 12 Q12 16 20 12" />
-          <line x1="6" y1="13" x2="5" y2="15" />
-          <line x1="12" y1="14.5" x2="12" y2="17" />
-          <line x1="18" y1="13" x2="19" y2="15" />
-        </>
-      )}
-      {mode === 'closed' && (
-        <>
-          <path d="M5 19 Q12 21 19 19" />
-          <line x1="7" y1="19" x2="6" y2="22" />
-          <line x1="12" y1="19" x2="12" y2="23" />
-          <line x1="17" y1="19" x2="18" y2="22" />
-        </>
-      )}
-    </svg>
-  )
+  if (mode === 'open') return <EyeOpenIcon size={24} />
+  if (mode === 'half') return <EyeHalfIcon size={24} />
+  return <EyeClosedIcon size={24} />
 }
 
+/** Card mode icons. Inline SVG matching public/icons/card-*.svg */
 function CardModeIcon({ mode }: { mode: 'default' | 'minimalist' | 'artOnly' }) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      {mode === 'default' && (
-        <>
-          <rect x="4" y="3" width="16" height="18" rx="2" />
-          <rect x="6" y="5" width="12" height="8" rx="1" />
-          <line x1="6" y1="16" x2="10" y2="16" />
-          <line x1="6" y1="19" x2="14" y2="19" />
-        </>
-      )}
-      {mode === 'minimalist' && (
-        <>
-          <rect x="4" y="3" width="16" height="18" rx="2" />
-          <rect x="6" y="5" width="12" height="8" rx="1" />
-        </>
-      )}
-      {mode === 'artOnly' && (
-        <rect x="4" y="3" width="16" height="18" rx="2" />
-      )}
-    </svg>
-  )
+  if (mode === 'default') return <CardDefaultIcon size={20} />
+  if (mode === 'minimalist') return <CardMinimalistIcon size={20} />
+  return <CardArtOnlyIcon size={20} />
 }
 
 const NSFW_CYCLE = ['sfw', 'blurred', 'nsfw'] as const

@@ -16,7 +16,7 @@ function toTimelineItem(post: AppBskyFeedDefs.PostView): TimelineItem {
   return { post }
 }
 
-export function TagContent({ tag, inModal = false }: { tag: string; inModal?: boolean }) {
+export function TagContent({ tag, inModal = false, onRegisterRefresh }: { tag: string; inModal?: boolean; onRegisterRefresh?: (refresh: () => void | Promise<void>) => void }) {
   const navigate = useNavigate()
   const { session } = useSession()
   const { viewMode } = useViewMode()
@@ -60,6 +60,10 @@ export function TagContent({ tag, inModal = false }: { tag: string; inModal?: bo
       load()
     }
   }, [tag, load])
+
+  useEffect(() => {
+    onRegisterRefresh?.(() => load())
+  }, [onRegisterRefresh, load])
 
   const { nsfwPreference, unblurredUris, setUnblurred } = useModeration()
   const mediaItems = items

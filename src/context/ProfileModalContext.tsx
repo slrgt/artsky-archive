@@ -104,44 +104,84 @@ export function ProfileModalProvider({ children }: { children: ReactNode }) {
   const location = useLocation()
   const navigate = useNavigate()
 
-  /** Open any modal: only update the URL; one effect syncs URL → stack (works for click and paste/share). focusUri = scroll to this reply in the thread. */
-  const openPostModal = useCallback((uri: string, openReply?: boolean, focusUri?: string) => {
-    navigate({ pathname: location.pathname, search: `?${modalItemToSearch({ type: 'post', uri, openReply, focusUri })}` })
-  }, [location.pathname, navigate])
-
-  const openProfileModal = useCallback((handle: string) => {
-    navigate({ pathname: location.pathname, search: `?${modalItemToSearch({ type: 'profile', handle })}` })
-  }, [location.pathname, navigate])
-
-  const openTagModal = useCallback((tag: string) => {
-    navigate({ pathname: location.pathname, search: `?${modalItemToSearch({ type: 'tag', tag })}` })
-  }, [location.pathname, navigate])
-
-  const openSearchModal = useCallback((query: string) => {
-    navigate({ pathname: location.pathname, search: `?${modalItemToSearch({ type: 'search', query })}` })
-  }, [location.pathname, navigate])
-
-  const openForumModal = useCallback(() => {
-    navigate({ pathname: location.pathname, search: `?${modalItemToSearch({ type: 'forum' })}` })
-  }, [location.pathname, navigate])
-
-  const openForumPostModal = useCallback((documentUri: string) => {
-    navigate({ pathname: location.pathname, search: `?${modalItemToSearch({ type: 'forumPost', documentUri })}` })
-  }, [location.pathname, navigate])
-
-  const openArtboardsModal = useCallback(() => {
-    navigate({ pathname: location.pathname, search: `?${modalItemToSearch({ type: 'artboards' })}` })
-  }, [location.pathname, navigate])
-
-  const openArtboardModal = useCallback((id: string) => {
-    navigate({ pathname: location.pathname, search: `?${modalItemToSearch({ type: 'artboard', id })}` })
-  }, [location.pathname, navigate])
-
   /** Set URL to reflect the new top of stack (or clear if empty). Used after close. */
   const syncUrlToStack = useCallback((nextStack: ModalItem[]) => {
     const search = nextStack.length > 0 ? `?${modalItemToSearch(nextStack[nextStack.length - 1])}` : ''
     navigate({ pathname: location.pathname, search }, { replace: true })
   }, [location.pathname, navigate])
+
+  /** Open modal: push onto stack first (so profile → post works), then sync URL so effect won't duplicate. */
+  const openPostModal = useCallback((uri: string, openReply?: boolean, focusUri?: string) => {
+    const item: ModalItem = { type: 'post', uri, openReply, focusUri }
+    setModalStack((prev) => {
+      const next = [...prev, item]
+      syncUrlToStack(next)
+      return next
+    })
+  }, [syncUrlToStack])
+
+  const openProfileModal = useCallback((handle: string) => {
+    const item: ModalItem = { type: 'profile', handle }
+    setModalStack((prev) => {
+      const next = [...prev, item]
+      syncUrlToStack(next)
+      return next
+    })
+  }, [syncUrlToStack])
+
+  const openTagModal = useCallback((tag: string) => {
+    const item: ModalItem = { type: 'tag', tag }
+    setModalStack((prev) => {
+      const next = [...prev, item]
+      syncUrlToStack(next)
+      return next
+    })
+  }, [syncUrlToStack])
+
+  const openSearchModal = useCallback((query: string) => {
+    const item: ModalItem = { type: 'search', query }
+    setModalStack((prev) => {
+      const next = [...prev, item]
+      syncUrlToStack(next)
+      return next
+    })
+  }, [syncUrlToStack])
+
+  const openForumModal = useCallback(() => {
+    const item: ModalItem = { type: 'forum' }
+    setModalStack((prev) => {
+      const next = [...prev, item]
+      syncUrlToStack(next)
+      return next
+    })
+  }, [syncUrlToStack])
+
+  const openForumPostModal = useCallback((documentUri: string) => {
+    const item: ModalItem = { type: 'forumPost', documentUri }
+    setModalStack((prev) => {
+      const next = [...prev, item]
+      syncUrlToStack(next)
+      return next
+    })
+  }, [syncUrlToStack])
+
+  const openArtboardsModal = useCallback(() => {
+    const item: ModalItem = { type: 'artboards' }
+    setModalStack((prev) => {
+      const next = [...prev, item]
+      syncUrlToStack(next)
+      return next
+    })
+  }, [syncUrlToStack])
+
+  const openArtboardModal = useCallback((id: string) => {
+    const item: ModalItem = { type: 'artboard', id }
+    setModalStack((prev) => {
+      const next = [...prev, item]
+      syncUrlToStack(next)
+      return next
+    })
+  }, [syncUrlToStack])
 
   const closeModal = useCallback(() => {
     setModalStack((prev) => {

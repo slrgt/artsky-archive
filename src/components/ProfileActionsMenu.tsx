@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
-import { blockAccount, unblockAccount, agent } from '../lib/bsky'
-import { getSession } from '../lib/bsky'
+import { blockAccount, unblockAccount, agent, publicAgent, getSession } from '../lib/bsky'
+import { formatExactDateTimeLongMonth } from '../lib/date'
 import styles from './ProfileActionsMenu.module.css'
 
 interface ProfileActionsMenuProps {
@@ -22,6 +22,7 @@ export default function ProfileActionsMenu({
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [blockStep, setBlockStep] = useState<'idle' | 'confirm'>('idle')
   const [authorBlockingUri, setAuthorBlockingUri] = useState<string | null>(null)
+  const [profileMeta, setProfileMeta] = useState<{ createdAt?: string; indexedAt?: string } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -30,17 +31,29 @@ export default function ProfileActionsMenu({
   }, [open])
 
   useEffect(() => {
-    if (!open || isOwnProfile || !session?.did) return
+    if (!open) return
+    const client = getSession() ? agent : publicAgent
     let cancelled = false
-    agent.getProfile({ actor: profileDid }).then((res) => {
+    client.getProfile({ actor: profileDid }).then((res) => {
       if (cancelled) return
-      const data = res.data as { viewer?: { blocking?: string } }
+      const data = res.data as {
+        viewer?: { blocking?: string }
+        createdAt?: string
+        indexedAt?: string
+      }
       setAuthorBlockingUri(data.viewer?.blocking ?? null)
+      setProfileMeta({
+        createdAt: data.createdAt ?? undefined,
+        indexedAt: data.indexedAt ?? undefined,
+      })
     }).catch(() => {
-      if (!cancelled) setAuthorBlockingUri(null)
+      if (!cancelled) {
+        setAuthorBlockingUri(null)
+        setProfileMeta(null)
+      }
     })
     return () => { cancelled = true }
-  }, [open, session?.did, isOwnProfile, profileDid])
+  }, [open, profileDid])
 
   useEffect(() => {
     if (!open) return
@@ -203,6 +216,22 @@ export default function ProfileActionsMenu({
               >
                 Copy profile link
               </button>
+              {profileMeta && (profileMeta.createdAt || profileMeta.indexedAt) && (
+                <div className={styles.profileMeta} role="status">
+                  {profileMeta.createdAt && (
+                    <p className={styles.profileMetaLine} title={formatExactDateTimeLongMonth(profileMeta.createdAt)}>
+                      Account created: {formatExactDateTimeLongMonth(profileMeta.createdAt)}
+                    </p>
+                  )}
+                  {profileMeta.indexedAt &&
+                    (!profileMeta.createdAt ||
+                      new Date(profileMeta.indexedAt).getTime() - new Date(profileMeta.createdAt).getTime() > 60_000) && (
+                    <p className={styles.profileMetaLine} title={formatExactDateTimeLongMonth(profileMeta.indexedAt)}>
+                      Profile last updated: {formatExactDateTimeLongMonth(profileMeta.indexedAt)}
+                    </p>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>

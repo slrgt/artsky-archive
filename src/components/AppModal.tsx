@@ -4,6 +4,7 @@ import { ModalTopBarSlotContext } from '../context/ModalTopBarSlotContext'
 import { useModalExpand } from '../context/ModalExpandContext'
 import { useScrollLock } from '../context/ScrollLockContext'
 import { useSwipeToClose } from '../hooks/useSwipeToClose'
+import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import styles from './PostDetailModal.module.css'
 
 const MOBILE_BREAKPOINT = 768
@@ -28,10 +29,14 @@ interface AppModalProps {
   focusCloseOnOpen?: boolean
   /** When true, top bar has transparent background so content shows through; X button keeps its background. */
   transparentTopBar?: boolean
+  /** When true, do not render the top bar (e.g. profile popup uses only the bottom bar). */
+  hideTopBar?: boolean
   /** When true, pane uses same size as compose/notifications (420px, 85vh). Default false. */
   compact?: boolean
   /** Optional: called when user completes a swipe left on mobile (e.g. open post author profile). */
   onSwipeLeft?: () => void
+  /** Optional: when provided, pull-to-refresh at top of modal scroll triggers this (e.g. refresh post, profile). */
+  onPullToRefresh?: () => void | Promise<void>
 }
 
 export default function AppModal({
@@ -42,11 +47,19 @@ export default function AppModal({
   canGoBack,
   focusCloseOnOpen = false,
   transparentTopBar = false,
+  hideTopBar = false,
   compact = false,
   onSwipeLeft,
+  onPullToRefresh,
 }: AppModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const pullRefresh = usePullToRefresh({
+    scrollRef,
+    touchTargetRef: scrollRef,
+    onRefresh: onPullToRefresh ?? (() => {}),
+    enabled: !!onPullToRefresh,
+  })
   const closeBtnRef = useRef<HTMLButtonElement>(null)
   const [topBarSlotEl, setTopBarSlotEl] = useState<HTMLDivElement | null>(null)
   const [topBarRightSlotEl, setTopBarRightSlotEl] = useState<HTMLDivElement | null>(null)
@@ -160,15 +173,27 @@ export default function AppModal({
           onTouchStart={swipe.onTouchStart}
           onTouchMove={swipe.onTouchMove}
           onTouchEnd={swipe.onTouchEnd}
+          onClick={(e) => e.stopPropagation()}
         >
-          <div className={`${styles.modalTopBar} ${transparentTopBar ? styles.modalTopBarTransparent : ''} ${styles.modalTopBarActionsBelow}`}>
-            <div className={styles.modalTopBarLeft} aria-hidden="true">
-              {/* X, back, expand are in the bottom bar on all viewports */}
+          {!hideTopBar && (
+            <div className={`${styles.modalTopBar} ${transparentTopBar ? styles.modalTopBarTransparent : ''} ${styles.modalTopBarActionsBelow}`}>
+              <div className={styles.modalTopBarLeft} aria-hidden="true">
+                {/* X, back, expand are in the bottom bar on all viewports */}
+              </div>
+              <div ref={setTopBarSlotEl} className={styles.modalTopBarSlot} />
+              <div ref={setTopBarRightSlotEl} className={styles.modalTopBarRight} />
             </div>
-            <div ref={setTopBarSlotEl} className={styles.modalTopBarSlot} />
-            <div ref={setTopBarRightSlotEl} className={styles.modalTopBarRight} />
+          )}
+          <div
+            ref={scrollRef}
+            data-modal-scroll
+            className={`${styles.scroll} ${transparentTopBar ? styles.scrollWithTransparentBar : ''} ${styles.scrollWithBottomBar}`}
+            onTouchStart={pullRefresh.onTouchStart}
+            onTouchMove={pullRefresh.onTouchMove}
+            onTouchEnd={pullRefresh.onTouchEnd}
+          >
+            {children}
           </div>
-          <div ref={scrollRef} data-modal-scroll className={`${styles.scroll} ${transparentTopBar ? styles.scrollWithTransparentBar : ''} ${styles.scrollWithBottomBar}`}>{children}</div>
           <div className={`${styles.modalBottomBar} ${isMobile && bottomBarHidden ? styles.modalBottomBarHidden : ''}`}>
               <button
                 ref={focusCloseOnOpen ? closeBtnRef : undefined}

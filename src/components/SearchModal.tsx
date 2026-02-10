@@ -104,7 +104,7 @@ function indexRightByRow(
   return currentIndex
 }
 
-function SearchContent({ query }: { query: string }) {
+function SearchContent({ query, onRegisterRefresh }: { query: string; onRegisterRefresh?: (refresh: () => void | Promise<void>) => void }) {
   const { session } = useSession()
   const { viewMode } = useViewMode()
   const { openPostModal } = useProfileModal()
@@ -150,6 +150,10 @@ function SearchContent({ query }: { query: string }) {
       load()
     }
   }, [query, load])
+
+  useEffect(() => {
+    onRegisterRefresh?.(() => load())
+  }, [onRegisterRefresh, load])
 
   loadingMoreRef.current = loadingMore
   useEffect(() => {
@@ -324,12 +328,15 @@ interface SearchModalProps {
 }
 
 export default function SearchModal({ query, onClose, onBack, canGoBack }: SearchModalProps) {
+  const [refreshFn, setRefreshFn] = useState<(() => void | Promise<void>) | null>(null)
+
   return (
     <AppModal
       ariaLabel={`Search: ${query}`}
       onClose={onClose}
       onBack={onBack}
       canGoBack={canGoBack}
+      onPullToRefresh={refreshFn ? () => refreshFn() : undefined}
     >
       <MediaModalTopBar
         centerContent={
@@ -338,7 +345,7 @@ export default function SearchModal({ query, onClose, onBack, canGoBack }: Searc
           </span>
         }
       />
-      <SearchContent query={query} />
+      <SearchContent query={query} onRegisterRefresh={(fn) => setRefreshFn(() => fn)} />
     </AppModal>
   )
 }

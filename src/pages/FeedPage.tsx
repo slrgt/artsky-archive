@@ -19,10 +19,12 @@ import { useLoginModal } from '../context/LoginModalContext'
 import { useSession } from '../context/SessionContext'
 import { useMediaOnly } from '../context/MediaOnlyContext'
 import { useFeedMix } from '../context/FeedMixContext'
+import { useFeedSwipe } from '../context/FeedSwipeContext'
 import { blockAccount } from '../lib/bsky'
 import { useViewMode } from '../context/ViewModeContext'
 import { useModeration } from '../context/ModerationContext'
 import { useSeenPosts } from '../context/SeenPostsContext'
+import { usePullToRefresh } from '../hooks/usePullToRefresh'
 import styles from './FeedPage.module.css'
 
 const SEEN_POSTS_KEY = 'artsky-seen-posts'
@@ -225,6 +227,8 @@ export default function FeedPage() {
   const mouseMovedRef = useRef(false)
   /** True after W/S/A/D nav so we suppress hover outline on non-selected cards (focus is not moved to the card) */
   const [keyboardNavActive, setKeyboardNavActive] = useState(false)
+  /** When true, focus was set by mouse hover – don’t lift one image in multi-image cards; only keyboard A/D should */
+  const [focusSetByMouse, setFocusSetByMouse] = useState(false)
   const [blockConfirm, setBlockConfirm] = useState<{ did: string; handle: string; avatar?: string } | null>(null)
   const blockCancelRef = useRef<HTMLButtonElement>(null)
   const blockConfirmRef = useRef<HTMLButtonElement>(null)
@@ -316,6 +320,14 @@ export default function FeedPage() {
     entries: mixEntries,
     totalPercent: mixTotalPercent,
   } = useFeedMix()
+  const feedSwipe = useFeedSwipe()
+
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null)
+  const swipeGestureRef = useRef<'unknown' | 'swipe' | 'pull'>('unknown')
+
+  function sameFeedSource(a: FeedSource, b: FeedSource): boolean {
+    return (a.uri ?? a.label) === (b.uri ?? b.label)
+  }
 
   const load = useCallback(async (nextCursor?: string) => {
     const cols = Math.min(3, Math.max(1, viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3))
@@ -529,6 +541,7 @@ export default function FeedPage() {
       const i = keyboardFocusIndexRef.current
       if (items.length === 0 || focusTargets.length === 0) return
 
+      setFocusSetByMouse(false)
       const focusTarget = focusTargets[i]
       const currentCardIndex = focusTarget?.cardIndex ?? 0
 
@@ -715,10 +728,88 @@ export default function FeedPage() {
     if (blockConfirm) blockCancelRef.current?.focus()
   }, [blockConfirm])
 
+  const pullRefreshTargetRef = useRef<HTMLDivElement>(null)
+  const pullRefresh = usePullToRefresh({
+    scrollRef: { current: null },
+    touchTargetRef: pullRefreshTargetRef,
+    onRefresh: () => load(),
+    enabled: true,
+  })
+
+  const swipeEnabled =
+    !!feedSwipe && mixEntries.length === 1 && feedSwipe.feedSources.length > 1
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      pullRefresh.onTouchStart(e)
+      if (swipeEnabled && e.touches.length === 1) {
+        swipeStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        swipeGestureRef.current = 'unknown'
+      }
+    },
+    [swipeEnabled, pullRefresh]
+  )
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (swipeEnabled && swipeStartRef.current && e.touches.length === 1) {
+        if (swipeGestureRef.current === 'unknown') {
+          const dx = e.touches[0].clientX - swipeStartRef.current.x
+          const dy = e.touches[0].clientY - swipeStartRef.current.y
+          if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
+            swipeGestureRef.current = Math.abs(dx) > 2 * Math.abs(dy) ? 'swipe' : 'pull'
+          }
+        }
+        if (swipeGestureRef.current === 'pull' || swipeGestureRef.current === 'unknown') {
+          pullRefresh.onTouchMove(e)
+        }
+      } else {
+        pullRefresh.onTouchMove(e)
+      }
+    },
+    [swipeEnabled, pullRefresh]
+  )
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (swipeEnabled && feedSwipe && swipeStartRef.current && e.changedTouches.length === 1) {
+        const dx = e.changedTouches[0].clientX - swipeStartRef.current.x
+        const dy = e.changedTouches[0].clientY - swipeStartRef.current.y
+        if (
+          swipeGestureRef.current === 'swipe' &&
+          Math.abs(dx) > 80 &&
+          Math.abs(dx) > 2 * Math.abs(dy)
+        ) {
+          const sources = feedSwipe.feedSources
+          const cur = mixEntries[0].source
+          const idx = sources.findIndex((s) => sameFeedSource(s, cur))
+          if (idx >= 0) {
+            const nextIdx = dx < 0 ? (idx + 1) % sources.length : (idx - 1 + sources.length) % sources.length
+            feedSwipe.setSingleFeed(sources[nextIdx])
+          }
+        }
+        swipeStartRef.current = null
+        swipeGestureRef.current = 'unknown'
+      }
+      pullRefresh.onTouchEnd(e)
+    },
+    [swipeEnabled, feedSwipe, mixEntries, pullRefresh]
+  )
+
   return (
     <Layout title="Feed" showNav>
       <>
-      <div className={styles.wrap}>
+      <div
+        ref={pullRefreshTargetRef}
+        className={styles.wrap}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div
+          key={mixEntries.length === 1 ? (mixEntries[0].source.uri ?? mixEntries[0].source.label) : 'mixed'}
+          className={styles.feedContentTransition}
+        >
         {error && <p className={styles.error}>{error}</p>}
         {loading ? (
           <div className={styles.loading}>Loading…</div>
@@ -749,6 +840,7 @@ export default function FeedPage() {
                         if (mouseMovedRef.current) {
                           mouseMovedRef.current = false
                           setKeyboardNavActive(false)
+                          setFocusSetByMouse(true)
                           setKeyboardFocusIndex(firstFocusIndexForCard[originalIndex] ?? 0)
                         }
                       }}
@@ -756,7 +848,11 @@ export default function FeedPage() {
                       <PostCard
                         item={item}
                         isSelected={focusTargets[keyboardFocusIndex]?.cardIndex === originalIndex}
-                        focusedMediaIndex={focusTargets[keyboardFocusIndex]?.cardIndex === originalIndex ? focusTargets[keyboardFocusIndex]?.mediaIndex : undefined}
+                        focusedMediaIndex={
+                          focusTargets[keyboardFocusIndex]?.cardIndex === originalIndex && !(focusSetByMouse && getPostAllMediaForDisplay(item.post).length > 1)
+                            ? focusTargets[keyboardFocusIndex]?.mediaIndex
+                            : undefined
+                        }
                         onMediaRef={(mediaIndex, el) => {
                           if (!mediaRefsRef.current[originalIndex]) mediaRefsRef.current[originalIndex] = {}
                           mediaRefsRef.current[originalIndex][mediaIndex] = el
@@ -805,6 +901,7 @@ export default function FeedPage() {
             )}
           </>
         )}
+        </div>
         {!session && (
           <div className={styles.feedLoginHint}>
             <div className={styles.feedLoginHintBtnRow}>
