@@ -334,7 +334,7 @@ export default function Layout({ title, children, showNav }: Props) {
   )
   const { viewMode, setViewMode, cycleViewMode } = useViewMode()
   const { cardViewMode, cycleCardView } = useArtOnly()
-  const { nsfwPreference, setNsfwPreference, cycleNsfwPreference, nsfwAnnouncement } = useModeration()
+  const { nsfwPreference, cycleNsfwPreference, nsfwAnnouncement } = useModeration()
   const { mediaOnly, toggleMediaOnly } = useMediaOnly()
   const path = loc.pathname
   const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, () => false)
