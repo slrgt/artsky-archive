@@ -689,6 +689,21 @@ export default function Layout({ title, children, showNav }: Props) {
       .then(setUnreadNotificationCount)
       .catch(() => setUnreadNotificationCount(0))
   }, [session])
+
+  /* Sync unread count when tab/window becomes visible (e.g. user read notifications in Bluesky app or another tab) */
+  useEffect(() => {
+    if (!session || typeof document === 'undefined') return
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        getUnreadNotificationCount()
+          .then(setUnreadNotificationCount)
+          .catch(() => {})
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [session])
+
   const prevNotificationsOpenRef = useRef(false)
   useEffect(() => {
     if (prevNotificationsOpenRef.current && !notificationsOpen && session) {
