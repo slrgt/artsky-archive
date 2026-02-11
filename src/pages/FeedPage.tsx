@@ -191,37 +191,7 @@ function distributeEntriesByHeight(
   return columns
 }
 
-/** Legacy: distribute plain items (used only if we skip carousel). */
-function distributeByHeight(
-  items: TimelineItem[],
-  numCols: number
-): Array<Array<{ item: TimelineItem; originalIndex: number }>> {
-  const cols = Math.min(3, Math.max(1, Math.floor(numCols)))
-  if (cols < 1) return []
-  const columns: Array<Array<{ item: TimelineItem; originalIndex: number }>> = Array.from(
-    { length: cols },
-    () => []
-  )
-  const columnHeights: number[] = Array(cols).fill(0)
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i]
-    const h = estimateItemHeight(item)
-    const lengths = columns.map((col) => col.length)
-    const minCount = lengths.length === 0 ? 0 : Math.min(...lengths)
-    let best = -1
-    for (let c = 0; c < cols; c++) {
-      if (columns[c].length > minCount + 1) continue
-      if (best === -1 || columnHeights[c] < columnHeights[best]) best = c
-      else if (columnHeights[c] === columnHeights[best] && columns[c].length < columns[best].length) best = c
-    }
-    if (best === -1) best = 0
-    columns[best].push({ item, originalIndex: i })
-    columnHeights[best] += h
-  }
-  return columns
-}
-
-/** Given columns from distributeByHeight or distributeEntriesByHeight, return the index of the card directly above or below. */
+/** Given columns from distributeEntriesByHeight, return the index of the card directly above or below. */
 function indexAbove(
   columns: Array<Array<{ originalIndex: number }>>,
   currentIndex: number
@@ -796,7 +766,6 @@ export default function FeedPage() {
       }
       if (e.ctrlKey || e.metaKey) return
 
-      const items = mediaItemsRef.current // displayItems
       const i = keyboardFocusIndexRef.current
       if (displayEntries.length === 0 || focusTargets.length === 0) return
 
@@ -930,8 +899,8 @@ export default function FeedPage() {
       }
       if (key === '4') {
         const author = focusedItem?.post?.author as { did: string; viewer?: { following?: string } } | undefined
-        if (author && session?.did && session.did !== author.did) {
-          const postUri = focusedItem.post.uri
+        const postUri = focusedItem?.post?.uri
+        if (author && session?.did && session.did !== author.did && postUri) {
           const followingUri = author.viewer?.following
           if (followingUri) {
             agent.deleteFollow(followingUri).then(() => {
