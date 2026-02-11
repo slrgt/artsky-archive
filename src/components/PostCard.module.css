@@ -289,6 +289,26 @@ html[data-theme="dark"] [data-view-mode="1"] .card:focus-within:not(:has(.mediaG
   .cardActionRowCenter {
     gap: 0.35rem;
   }
+  /* No scale on tap/focus on mobile – preview cards and focus stay same size */
+  .cardSelected,
+  .card:hover,
+  .card:focus-within:not(:has(.mediaGridCellFocused)) {
+    transform: none;
+  }
+  .card:focus-within:not(:has(.mediaGridCellFocused)) {
+    box-shadow: none;
+  }
+  .mediaGridCellFocused {
+    transform: none;
+  }
+  .cardLikeRepostBtn:focus-visible,
+  .addToBoardBtn:focus-visible {
+    transform: none;
+  }
+  .cardActionRowAvatarFollow:hover:not(:disabled) .cardActionRowAvatarPlus,
+  .cardActionRowAvatarFollow:active:not(:disabled) .cardActionRowAvatarPlus {
+    transform: translateZ(0);
+  }
 }
 
 .cardActionRowLeft {
@@ -352,23 +372,22 @@ html[data-theme="dark"] [data-view-mode="1"] .card:focus-within:not(:has(.mediaG
   opacity: 0.7;
   cursor: default;
 }
-/* Add (+) badge at bottom-right of avatar: dark circle, light border, plus icon */
+/* Add (+) badge at bottom-right of avatar: purple gradient, white plus */
 .cardActionRowAvatarPlus {
   position: absolute;
-  right: -2px;
-  bottom: -2px;
+  right: -4px;
+  bottom: -4px;
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: var(--text);
-  border: 2px solid var(--surface);
-  color: var(--surface);
+  background: var(--accent-gradient);
+  border: none;
+  color: var(--text-on-accent);
   display: grid;
   place-items: center;
   flex-shrink: 0;
   padding: 0;
   transition: transform 0.15s ease;
-  /* Whole-pixel size + layer to avoid sub-pixel blur */
   transform: translateZ(0);
 }
 .cardActionRowAvatarPlus svg {

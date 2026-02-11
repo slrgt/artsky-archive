@@ -473,8 +473,30 @@ export default function FeedPage() {
     saveSeenUris(seenUris)
   }, [seenUris])
 
-  // Mark posts as seen when scrolled past (card top above viewport)
+  // Mark posts as seen when scrolled past (card top above viewport).
+  // Use both IntersectionObserver and a scroll listener: the observer can miss callbacks during fast scroll (especially Safari iOS).
   useEffect(() => {
+    const markScrolledPastAsSeen = () => {
+      let changed = false
+      let next = seenUrisRef.current
+      for (let i = 0; i < displayItems.length; i++) {
+        const el = cardRefsRef.current[i]
+        if (!el) continue
+        const rect = el.getBoundingClientRect()
+        if (rect.top < 0) {
+          const uri = el.getAttribute('data-post-uri')
+          if (uri && !next.has(uri)) {
+            next = new Set(next).add(uri)
+            changed = true
+          }
+        }
+      }
+      if (changed) {
+        seenUrisRef.current = next
+        setSeenUris(next)
+      }
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -494,7 +516,21 @@ export default function FeedPage() {
       const el = cardRefsRef.current[i]
       if (el) observer.observe(el)
     }
-    return () => observer.disconnect()
+
+    let scrollRaf: number = 0
+    const onScroll = () => {
+      scrollRaf = requestAnimationFrame(() => {
+        scrollRaf = requestAnimationFrame(markScrolledPastAsSeen)
+      })
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    markScrolledPastAsSeen()
+
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (scrollRaf) cancelAnimationFrame(scrollRaf)
+      observer.disconnect()
+    }
   }, [displayItems.length])
 
   useEffect(() => {
@@ -732,7 +768,13 @@ export default function FeedPage() {
   const pullRefresh = usePullToRefresh({
     scrollRef: { current: null },
     touchTargetRef: pullRefreshTargetRef,
-    onRefresh: () => load(),
+    onRefresh: async () => {
+      await load()
+      requestAnimationFrame(() => {
+        setSeenUrisAtReset(new Set(seenUrisRef.current))
+        window.scrollTo(0, 0)
+      })
+    },
     enabled: true,
   })
 
@@ -806,6 +848,22 @@ export default function FeedPage() {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
+        <div
+          className={styles.pullRefreshHeader}
+          aria-hidden={pullRefresh.pullDistance === 0 && !pullRefresh.isRefreshing}
+          aria-live="polite"
+          aria-label={pullRefresh.isRefreshing ? 'Refreshing' : undefined}
+        >
+          {(pullRefresh.pullDistance > 0 || pullRefresh.isRefreshing) && (
+            <div className={styles.pullRefreshSpinner} />
+          )}
+        </div>
+        <div
+          className={styles.pullRefreshContent}
+          style={{
+            transform: `translateY(${pullRefresh.pullDistance}px)`,
+          }}
+        >
         <div
           key={mixEntries.length === 1 ? (mixEntries[0].source.uri ?? mixEntries[0].source.label) : 'mixed'}
           className={styles.feedContentTransition}
@@ -918,6 +976,7 @@ export default function FeedPage() {
             </p>
           </div>
         )}
+        </div>
       </div>
       {blockConfirm && (
         <div

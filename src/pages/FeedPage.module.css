@@ -12,11 +12,48 @@
 }
 
 .wrap {
+  position: relative;
   padding: 0.25rem 0.5rem;
   padding-left: max(0.75rem, env(safe-area-inset-left));
   padding-right: max(0.75rem, env(safe-area-inset-right));
   padding-bottom: 2.5rem;
   padding-bottom: calc(2.5rem + env(safe-area-inset-bottom));
+}
+
+/* iPhone-style pull-to-refresh: zone revealed when content is pulled down */
+.pullRefreshHeader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.pullRefreshSpinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: pullRefreshSpin 0.8s linear infinite;
+}
+
+@keyframes pullRefreshSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pullRefreshContent {
+  position: relative;
+  z-index: 1;
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /* Extra side padding so edge cards don’t touch viewport – avoids white blur from backdrop-filter at edge */

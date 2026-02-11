@@ -352,10 +352,9 @@ export default function Layout({ title, children, showNav }: Props) {
   const [composeError, setComposeError] = useState<string | null>(null)
   const composeFileInputRef = useRef<HTMLInputElement>(null)
   const composeFormRef = useRef<HTMLFormElement>(null)
-  const [navVisible, setNavVisible] = useState(true)
+  const navVisible = true
   const [aboutOpen, setAboutOpen] = useState(false)
   const [searchOverlayBottom, setSearchOverlayBottom] = useState(0)
-  const lastScrollY = useRef(0)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const accountBtnRef = useRef<HTMLButtonElement>(null)
   const accountMenuRef = useRef<HTMLDivElement>(null)
@@ -642,24 +641,6 @@ export default function Layout({ title, children, showNav }: Props) {
     scrollLock.lockScroll()
     return () => scrollLock.unlockScroll()
   }, [anyPopupOpen, scrollLock])
-
-  const scrollThreshold = 8
-  useEffect(() => {
-    if (!showNav) return
-    const onScroll = () => {
-      const y = window.scrollY
-      if (y < 60) {
-        setNavVisible(true)
-      } else if (y > lastScrollY.current + scrollThreshold) {
-        setNavVisible(false)
-      } else if (y < lastScrollY.current - scrollThreshold) {
-        setNavVisible(true)
-      }
-      lastScrollY.current = y
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [showNav])
 
   function focusSearch() {
     if (isDesktop) {

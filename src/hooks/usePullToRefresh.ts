@@ -3,6 +3,8 @@ import { useRef, useState, useCallback, useEffect } from 'react'
 const PULL_THRESHOLD_PX = 58
 const PULL_COMMIT_PX = 8
 const PULL_CAP_PX = 90
+/** Offset (px) to hold content at while refreshing (iPhone-style). */
+export const PULL_REFRESH_HOLD_PX = 56
 
 export interface UsePullToRefreshOptions {
   /** Scroll container ref. When null, use window/document for scroll position. */
@@ -52,10 +54,12 @@ export function usePullToRefresh({
 
   const runRefresh = useCallback(async () => {
     setIsRefreshing(true)
+    setPullDistance(PULL_REFRESH_HOLD_PX)
     try {
       await Promise.resolve(onRefreshRef.current())
     } finally {
       setIsRefreshing(false)
+      setPullDistance(0)
     }
   }, [])
 
@@ -105,10 +109,11 @@ export function usePullToRefresh({
         const distance = pullDistanceRef.current
         if (distance >= PULL_THRESHOLD_PX && !isRefreshing) {
           runRefresh()
+        } else {
+          pullDistanceRef.current = 0
+          setPullDistance(0)
         }
         pullingRef.current = false
-        pullDistanceRef.current = 0
-        setPullDistance(0)
       }
     },
     [enabled, isRefreshing, runRefresh]

@@ -103,6 +103,12 @@
     box-shadow: none;
     padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
   }
+  /* PWA/standalone: ensure navbar is below status bar when safe-area-inset-top is missing or small */
+  @media (display-mode: standalone) {
+    .header {
+      padding-top: max(0.5rem, env(safe-area-inset-top, 44px));
+    }
+  }
   /* Fully off-screen above viewport so top area can stay transparent on iPhone */
   .headerHidden {
     transform: translateY(calc(-100% - 100vh));

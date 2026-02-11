@@ -2,36 +2,28 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="theme-color" content="#0f0f1a" />
     <script>
       (function(){
         var t = localStorage.getItem('artsky-theme');
         var resolved = t === 'light' || t === 'dark' ? t : (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
         document.documentElement.setAttribute('data-theme', resolved);
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', resolved === 'light' ? '#ebeae6' : '#0f0f1a');
       })();
     </script>
     <style>
       html[data-theme="light"] #root p { color: #525254; }
       html[data-theme="dark"] #root p, #root p { color: #8888a0; }
-      /* Body background only on desktop so mobile safe areas can stay transparent */
-      @media (min-width: 768px) {
-        html[data-theme="light"] body { background: #ebeae6; color: #141414; }
-        html[data-theme="dark"] body, body { background: #0f0f1a; color: #e8e8f0; }
-      }
-      @media (max-width: 767px) {
-        html, html[data-theme="light"], html[data-theme="dark"] { background: transparent !important; background-color: transparent !important; }
-        html[data-theme="dark"] { color-scheme: dark; }
-        html[data-theme="light"] { color-scheme: light; }
-        html[data-theme="light"] body, html[data-theme="dark"] body, body { background: transparent !important; background-color: transparent !important; }
-        html[data-theme="light"] body { color: #141414; }
-        html[data-theme="dark"] body, body { color: #e8e8f0; }
-      }
+      /* Theme background and color-scheme so Safari top/status bar and bottom safe area match theme */
+      html[data-theme="light"] { color-scheme: light; }
+      html[data-theme="dark"] { color-scheme: dark; }
+      html[data-theme="light"] body { background: #ebeae6; color: #141414; }
+      html[data-theme="dark"] body, body { background: #0f0f1a; color: #e8e8f0; }
     </style>
     <link rel="icon" type="image/svg+xml" href="./icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5, user-scalable=yes" />
     <!-- Desktop: theme color for browser chrome. Mobile: match theme so top/status bar isn’t white (Safari often ignores transparent) -->
-    <meta name="theme-color" content="#0f0f1a" media="(min-width: 768px) and (prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#ebeae6" media="(min-width: 768px) and (prefers-color-scheme: light)" />
-    <meta name="theme-color" content="transparent" media="(max-width: 767px)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="ArtSky" />

@@ -32,6 +32,18 @@ function getResolved(mode: ThemeMode): 'light' | 'dark' {
   return 'dark'
 }
 
+const THEME_COLOR_LIGHT = '#ebeae6'
+const THEME_COLOR_DARK = '#0f0f1a'
+
+function setThemeColorMeta(resolved: 'light' | 'dark') {
+  try {
+    const meta = document.querySelector('meta[name="theme-color"]')
+    if (meta) meta.setAttribute('content', resolved === 'light' ? THEME_COLOR_LIGHT : THEME_COLOR_DARK)
+  } catch {
+    /* ignore */
+  }
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<ThemeMode>(getStored)
   const [resolved, setResolved] = useState<'light' | 'dark'>(() => getResolved(theme))
@@ -45,14 +57,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const next = getResolved(theme)
     setResolved(next)
     document.documentElement.setAttribute('data-theme', next)
+    setThemeColorMeta(next)
   }, [theme])
 
   useEffect(() => {
     if (theme !== 'system') return
     const mq = window.matchMedia('(prefers-color-scheme: light)')
     const onChange = () => {
-      setResolved(getResolved('system'))
-      document.documentElement.setAttribute('data-theme', getResolved('system'))
+      const next = getResolved('system')
+      setResolved(next)
+      document.documentElement.setAttribute('data-theme', next)
+      setThemeColorMeta(next)
     }
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
@@ -68,6 +83,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const next = getResolved(mode)
     setResolved(next)
     document.documentElement.setAttribute('data-theme', next)
+    setThemeColorMeta(next)
   }, [])
 
   const value: ThemeContextValue = { theme, setTheme, resolved }
