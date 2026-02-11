@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, startTransition, useSyncExternalStore } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, startTransition, useSyncExternalStore } from 'react'
 import { useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import {
   agent,
@@ -14,7 +14,7 @@ import {
 import type { FeedSource } from '../types'
 import PostCard from '../components/PostCard'
 import RepostCarouselCard from '../components/RepostCarouselCard'
-import Layout from '../components/Layout'
+import Layout, { FeedPullRefreshContext } from '../components/Layout'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useLoginModal } from '../context/LoginModalContext'
 import { useSession } from '../context/SessionContext'
@@ -966,9 +966,11 @@ export default function FeedPage() {
   }, [blockConfirm])
 
   const pullRefreshTargetRef = useRef<HTMLDivElement>(null)
+  const feedPullRefresh = useContext(FeedPullRefreshContext)
+  const pullRefreshTouchTargetRef = feedPullRefresh?.wrapperRef ?? pullRefreshTargetRef
   const pullRefresh = usePullToRefresh({
     scrollRef: { current: null },
-    touchTargetRef: pullRefreshTargetRef,
+    touchTargetRef: pullRefreshTouchTargetRef,
     onRefresh: async () => {
       await load()
       requestAnimationFrame(() => {
@@ -1039,15 +1041,27 @@ export default function FeedPage() {
     [swipeEnabled, feedSwipe, mixEntries, pullRefresh]
   )
 
+  useEffect(() => {
+    const setHandlers = feedPullRefresh?.setHandlers
+    if (setHandlers) {
+      setHandlers({ onTouchStart: handleTouchStart, onTouchMove: handleTouchMove, onTouchEnd: handleTouchEnd })
+      return () => {
+        setHandlers(null)
+      }
+    }
+  }, [feedPullRefresh?.setHandlers, handleTouchStart, handleTouchMove, handleTouchEnd])
+
+  const useWrapperForPull = !!feedPullRefresh?.wrapperRef
+
   return (
     <Layout title="Feed" showNav>
       <>
       <div
         ref={pullRefreshTargetRef}
         className={styles.wrap}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onTouchStart={useWrapperForPull ? undefined : handleTouchStart}
+        onTouchMove={useWrapperForPull ? undefined : handleTouchMove}
+        onTouchEnd={useWrapperForPull ? undefined : handleTouchEnd}
       >
         <div
           className={styles.pullRefreshHeader}

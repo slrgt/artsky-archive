@@ -181,27 +181,25 @@ body {
   min-height: -webkit-fill-available;
 }
 
-/* iOS Safari: transparent above top navbar and below bottom navbar (safe-area strips); background only in content area */
+/* Mobile: theme background on html so safe-area strips (notch, home indicator) match theme and don't show through behind cards */
 @media (max-width: 767px) {
   html {
-    background: transparent !important;
+    background: var(--bg);
   }
   html[data-theme="light"] body,
   html[data-theme="dark"] body,
   body {
-    background: transparent !important;
-    background-color: transparent !important;
+    background: var(--bg);
   }
   #root,
   html[data-theme="light"] #root {
     position: relative;
-    background: transparent !important;
-    background-color: transparent !important;
+    background: transparent;
     min-height: 100vh;
     min-height: 100dvh;
     min-height: -webkit-fill-available;
   }
-  /* Theme background covers full viewport so area under bottom nav matches theme */
+  /* Theme background layer so content area and scroll match theme */
   #root::before {
     content: '';
     position: fixed;

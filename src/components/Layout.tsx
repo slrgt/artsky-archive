@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
+import React, { useState, useRef, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
 import { flushSync } from 'react-dom'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../context/SessionContext'
@@ -83,6 +83,18 @@ interface Props {
   children: React.ReactNode
   showNav?: boolean
 }
+
+/** Handlers for pull-to-refresh on the feed page; when set, Layout attaches them to the feed wrapper so the top strip is included. */
+export interface FeedPullRefreshHandlers {
+  onTouchStart: (e: React.TouchEvent) => void
+  onTouchMove: (e: React.TouchEvent) => void
+  onTouchEnd: (e: React.TouchEvent) => void
+}
+
+export const FeedPullRefreshContext = React.createContext<{
+  wrapperRef: React.RefObject<HTMLDivElement | null> | null
+  setHandlers: ((handlers: FeedPullRefreshHandlers | null) => void) | null
+}>({ wrapperRef: null, setHandlers: null })
 
 function HomeIcon({ active }: { active?: boolean }) {
   const viewBox = '0 0 24 24'
@@ -352,6 +364,8 @@ export default function Layout({ title, children, showNav }: Props) {
   const [, setAccountSheetOpen] = useState(false)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const feedPullRefreshWrapperRef = useRef<HTMLDivElement>(null)
+  const [feedPullRefreshHandlers, setFeedPullRefreshHandlers] = useState<FeedPullRefreshHandlers | null>(null)
   const [notificationFilter, setNotificationFilter] = useState<'all' | 'reply' | 'follow'>('all')
   const [feedsDropdownOpen, setFeedsDropdownOpen] = useState(false)
   const [feedsClosingAngle, setFeedsClosingAngle] = useState<number | null>(null)
@@ -1448,8 +1462,17 @@ export default function Layout({ title, children, showNav }: Props) {
     </>
   )
 
+  const feedPullRefreshContextValue = useMemo(
+    () => ({
+      wrapperRef: showNav && path === '/feed' ? feedPullRefreshWrapperRef : null,
+      setHandlers: showNav && path === '/feed' ? setFeedPullRefreshHandlers : null,
+    }),
+    [showNav, path]
+  )
+
   return (
     <div className={`${styles.wrap} ${showNav && isDesktop ? styles.wrapWithHeader : ''} ${showNav && !isDesktop ? styles.wrapMobileTop : ''}`}>
+      <FeedPullRefreshContext.Provider value={feedPullRefreshContextValue}>
       <FeedSwipeProvider feedSources={session ? allFeedSources : GUEST_FEED_SOURCES} setSingleFeed={setSingleFeed}>
       <a href="#main-content" className={styles.skipLink}>
         Skip to main content
@@ -1917,38 +1940,47 @@ export default function Layout({ title, children, showNav }: Props) {
         </div>
       )}
       <main id="main-content" className={styles.main} aria-label="Main content">
-        {showNav && path === '/feed' && (
-          <FeedSelector
-            variant="page"
-            sources={session ? allFeedSources : GUEST_FEED_SOURCES}
-            fallbackSource={session ? fallbackFeedSource : GUEST_FEED_SOURCES[0]}
-            mixEntries={session ? mixEntries : GUEST_MIX_ENTRIES}
-            onToggle={handleFeedsToggleSource}
-            setEntryPercent={setEntryPercent}
-            onAddCustom={async (input) => {
-              if (!session) return
-              setFeedAddError(null)
-              try {
-                const isFeedSource = typeof input === 'object' && input !== null && 'uri' in input
-                const uri = isFeedSource ? await resolveFeedUri((input as FeedSource).uri!) : await resolveFeedUri(input as string)
-                await addSavedFeed(uri)
-                const label = isFeedSource ? (input as FeedSource).label ?? await getFeedDisplayName(uri) : await getFeedDisplayName(uri)
-                const source: FeedSource = { kind: 'custom', label, uri }
-                setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, source]))
-                handleFeedsToggleSource(source)
-                await loadSavedFeeds(source)
-              } catch (err) {
-                setFeedAddError(err instanceof Error ? err.message : 'Could not add feed. Try again.')
-              }
-            }}
-            onToggleWhenGuest={session ? undefined : openLoginModal}
-            removableSourceUris={session ? removableSourceUris : undefined}
-            onRemoveFeed={session ? handleRemoveFeed : undefined}
-            onShareFeed={session ? handleShareFeed : undefined}
-            onReorderSources={session ? handleReorderFeeds : undefined}
-          />
+        {showNav && path === '/feed' ? (
+          <div
+            ref={feedPullRefreshWrapperRef}
+            onTouchStart={feedPullRefreshHandlers?.onTouchStart}
+            onTouchMove={feedPullRefreshHandlers?.onTouchMove}
+            onTouchEnd={feedPullRefreshHandlers?.onTouchEnd}
+          >
+            <FeedSelector
+              variant="page"
+              sources={session ? allFeedSources : GUEST_FEED_SOURCES}
+              fallbackSource={session ? fallbackFeedSource : GUEST_FEED_SOURCES[0]}
+              mixEntries={session ? mixEntries : GUEST_MIX_ENTRIES}
+              onToggle={handleFeedsToggleSource}
+              setEntryPercent={setEntryPercent}
+              onAddCustom={async (input) => {
+                if (!session) return
+                setFeedAddError(null)
+                try {
+                  const isFeedSource = typeof input === 'object' && input !== null && 'uri' in input
+                  const uri = isFeedSource ? await resolveFeedUri((input as FeedSource).uri!) : await resolveFeedUri(input as string)
+                  await addSavedFeed(uri)
+                  const label = isFeedSource ? (input as FeedSource).label ?? await getFeedDisplayName(uri) : await getFeedDisplayName(uri)
+                  const source: FeedSource = { kind: 'custom', label, uri }
+                  setSavedFeedSources((prev) => (prev.some((s) => s.uri === uri) ? prev : [...prev, source]))
+                  handleFeedsToggleSource(source)
+                  await loadSavedFeeds(source)
+                } catch (err) {
+                  setFeedAddError(err instanceof Error ? err.message : 'Could not add feed. Try again.')
+                }
+              }}
+              onToggleWhenGuest={session ? undefined : openLoginModal}
+              removableSourceUris={session ? removableSourceUris : undefined}
+              onRemoveFeed={session ? handleRemoveFeed : undefined}
+              onShareFeed={session ? handleShareFeed : undefined}
+              onReorderSources={session ? handleReorderFeeds : undefined}
+            />
+            {children}
+          </div>
+        ) : (
+          children
         )}
-        {children}
       </main>
       {showNav && (
         <>
@@ -2236,6 +2268,7 @@ export default function Layout({ title, children, showNav }: Props) {
         </>
       )}
       </FeedSwipeProvider>
+      </FeedPullRefreshContext.Provider>
     </div>
   )
 }

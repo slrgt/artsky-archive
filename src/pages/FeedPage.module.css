@@ -20,18 +20,18 @@
   padding-bottom: calc(2.5rem + env(safe-area-inset-bottom));
 }
 
-/* iPhone-style pull-to-refresh: zone revealed when content is pulled down */
+/* iPhone-style pull-to-refresh: zone revealed when content is pulled down. Fixed at top of viewport so it’s always at the top of the screen. */
 .pullRefreshHeader {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 56px;
+  height: calc(56px + env(safe-area-inset-top, 0px));
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--bg);
-  z-index: 0;
+  z-index: 100;
   pointer-events: none;
 }
 
