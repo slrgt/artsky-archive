@@ -372,6 +372,10 @@ export default function Layout({ title, children, showNav }: Props) {
   const accountMenuRef = useRef<HTMLDivElement>(null)
   const notificationsMenuRef = useRef<HTMLDivElement>(null)
   const notificationsBtnRef = useRef<HTMLButtonElement>(null)
+  const lastSeenAtSyncedRef = useRef<string>('')
+  const maxSeenInViewRef = useRef<string>('')
+  const markSeenDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const markSeenObserverCleanupRef = useRef<(() => void) | null>(null)
   const homeLongPressTriggeredRef = useRef(false)
   const homeHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const seenLongPressTriggeredRef = useRef(false)
@@ -670,17 +674,68 @@ export default function Layout({ title, children, showNav }: Props) {
       .then(({ notifications: list }) => {
         setNotifications(list)
         setUnreadNotificationCount(list.filter((n) => !n.isRead).length)
-        /* Mark all as seen so the unread dot goes away; use latest notification time so server marks them read */
-        const latestIndexedAt = list.length > 0
-          ? list.reduce((max, n) => (n.indexedAt > max ? n.indexedAt : max), list[0].indexedAt)
-          : new Date().toISOString()
-        updateSeenNotifications(latestIndexedAt)
-          .then(() => setUnreadNotificationCount(0))
-          .catch(() => {})
       })
       .catch(() => setNotifications([]))
       .finally(() => setNotificationsLoading(false))
   }, [notificationsOpen, session])
+
+  /* Mark notifications as seen when they scroll into view */
+  useEffect(() => {
+    if (!notificationsOpen || !session || notifications.length === 0) return
+    maxSeenInViewRef.current = lastSeenAtSyncedRef.current
+    markSeenObserverCleanupRef.current = null
+    const timeoutId = setTimeout(() => {
+      const lists = document.querySelectorAll<HTMLUListElement>('[data-notifications-list]')
+      if (lists.length === 0) return
+      const markSeenIfNeeded = () => {
+        const maxSeenIndexedAt = maxSeenInViewRef.current
+        if (maxSeenIndexedAt === '' || maxSeenIndexedAt === lastSeenAtSyncedRef.current) return
+        lastSeenAtSyncedRef.current = maxSeenIndexedAt
+        updateSeenNotifications(maxSeenIndexedAt)
+          .then(() => {
+            setNotifications((prev) =>
+              prev.map((n) => (n.indexedAt <= maxSeenIndexedAt ? { ...n, isRead: true } : n))
+            )
+            const newlyRead = notifications.filter((n) => n.indexedAt <= maxSeenIndexedAt && !n.isRead).length
+            setUnreadNotificationCount((prev) => Math.max(0, prev - newlyRead))
+          })
+          .catch(() => {})
+      }
+      const scheduleMarkSeen = () => {
+        if (markSeenDebounceRef.current) clearTimeout(markSeenDebounceRef.current)
+        markSeenDebounceRef.current = setTimeout(markSeenIfNeeded, 400)
+      }
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            if (!e.isIntersecting) continue
+            const at = e.target.getAttribute('data-indexed-at')
+            if (at && (maxSeenInViewRef.current === '' || at > maxSeenInViewRef.current)) {
+              maxSeenInViewRef.current = at
+            }
+          }
+          scheduleMarkSeen()
+        },
+        { root: null, rootMargin: '0px', threshold: 0.25 }
+      )
+      const observed: Element[] = []
+      lists.forEach((ul) => {
+        ul.querySelectorAll('[data-indexed-at]').forEach((el) => {
+          observer.observe(el)
+          observed.push(el)
+        })
+      })
+      markSeenObserverCleanupRef.current = () => {
+        if (markSeenDebounceRef.current) clearTimeout(markSeenDebounceRef.current)
+        observed.forEach((el) => observer.unobserve(el))
+      }
+    }, 0)
+    return () => {
+      clearTimeout(timeoutId)
+      markSeenObserverCleanupRef.current?.()
+      markSeenObserverCleanupRef.current = null
+    }
+  }, [notificationsOpen, session, notifications])
 
   /* Fetch unread count when session exists (so bell dot shows) and when notifications panel closes */
   useEffect(() => {
@@ -1001,7 +1056,7 @@ export default function Layout({ title, children, showNav }: Props) {
             {notificationFilter === 'all' ? 'No notifications yet.' : 'No matching notifications.'}
           </p>
         ) : (
-          <ul className={styles.notificationsList}>
+          <ul className={styles.notificationsList} data-notifications-list>
             {filtered.map((n) => {
               const handle = n.author.handle ?? n.author.did
               const isFollow = n.reason === 'follow'
@@ -1017,7 +1072,7 @@ export default function Layout({ title, children, showNav }: Props) {
                 n.reason
               const useModalOnClick = !isDesktop && (isFollow || isReplyOrLike || n.reason === 'repost' || n.reason === 'mention' || n.reason === 'quote')
               return (
-                <li key={n.uri}>
+                <li key={n.uri} data-indexed-at={n.indexedAt}>
                   <Link
                     to={href}
                     className={styles.notificationItem}
@@ -1535,31 +1590,42 @@ export default function Layout({ title, children, showNav }: Props) {
                   </div>
                 </>
               )}
-              {/* Mobile: account button in header – same dropdown as desktop */}
+              {/* Mobile: Log in (when logged out) + account button – same positions as desktop */}
               {!isDesktop && (
-                <div className={styles.headerAccountMenuWrap}>
-                  <button
-                    ref={accountBtnRef}
-                    type="button"
-                    className={styles.headerAccountNavBtn}
-                    onClick={() => setAccountMenuOpen((o) => !o)}
-                    aria-label="Accounts and settings"
-                    aria-expanded={accountMenuOpen}
-                  >
-                    <span className={styles.navIcon}>
-                      {currentAccountAvatar ? (
-                        <img src={currentAccountAvatar} alt="" className={styles.headerAccountAvatar} loading="lazy" />
-                      ) : (
-                        <AccountIcon />
-                      )}
-                    </span>
-                  </button>
-                  {accountMenuOpen && (
-                    <div ref={accountMenuRef} className={styles.accountMenu} role="menu" aria-label="Accounts and settings">
-                      {accountPanelContent}
-                    </div>
+                <>
+                  {!session && (
+                    <button
+                      type="button"
+                      className={styles.headerAuthLink}
+                      onClick={() => openLoginModal()}
+                    >
+                      Log in
+                    </button>
                   )}
-                </div>
+                  <div className={styles.headerAccountMenuWrap}>
+                    <button
+                      ref={accountBtnRef}
+                      type="button"
+                      className={styles.headerAccountNavBtn}
+                      onClick={() => setAccountMenuOpen((o) => !o)}
+                      aria-label="Accounts and settings"
+                      aria-expanded={accountMenuOpen}
+                    >
+                      <span className={styles.navIcon}>
+                        {currentAccountAvatar ? (
+                          <img src={currentAccountAvatar} alt="" className={styles.headerAccountAvatar} loading="lazy" />
+                        ) : (
+                          <AccountIcon />
+                        )}
+                      </span>
+                    </button>
+                    {accountMenuOpen && (
+                      <div ref={accountMenuRef} className={styles.accountMenu} role="menu" aria-label="Accounts and settings">
+                        {accountPanelContent}
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           </>
