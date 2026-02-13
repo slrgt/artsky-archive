@@ -41,6 +41,9 @@ type ProfileModalContextValue = {
   isModalOpen: boolean
   /** True if more than one modal is open (show back button). */
   canGoBack: boolean
+  /** True when user has scrolled down in a modal (hide nav/back/gear). */
+  modalScrollHidden: boolean
+  setModalScrollHidden: (v: boolean) => void
 }
 
 const ProfileModalContext = createContext<ProfileModalContextValue | null>(null)
@@ -108,7 +111,12 @@ function modalItemsMatch(a: ModalItem, b: ModalItem): boolean {
 
 export function ProfileModalProvider({ children }: { children: ReactNode }) {
   const [modalStack, setModalStack] = useState<ModalItem[]>([])
+  const [modalScrollHidden, setModalScrollHidden] = useState(false)
   const location = useLocation()
+
+  useEffect(() => {
+    if (modalStack.length === 0) setModalScrollHidden(false)
+  }, [modalStack.length])
   const navigate = useNavigate()
 
   /** Set URL to reflect the new top of stack (or clear if empty). Used after close. */
@@ -246,6 +254,8 @@ export function ProfileModalProvider({ children }: { children: ReactNode }) {
     closeAllModals,
     isModalOpen,
     canGoBack,
+    modalScrollHidden,
+    setModalScrollHidden,
   }
 
   return (

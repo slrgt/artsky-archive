@@ -17,7 +17,6 @@ export default function ArtboardModal({ id, onClose, onBack, canGoBack }: Artboa
       onClose={onClose}
       onBack={onBack}
       canGoBack={canGoBack}
-      focusCloseOnOpen
       onPullToRefresh={refreshFn ? () => refreshFn() : undefined}
     >
       <ArtboardDetailContent id={id} inModal onRegisterRefresh={(fn) => setRefreshFn(() => fn)} />

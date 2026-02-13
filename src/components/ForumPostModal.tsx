@@ -23,7 +23,6 @@ export default function ForumPostModal({ documentUri, onClose, onBack, canGoBack
       onClose={onClose}
       onBack={onBack}
       canGoBack={canGoBack}
-      focusCloseOnOpen
       onPullToRefresh={refreshFn ? () => refreshFn() : undefined}
     >
       {isArtSky ? (

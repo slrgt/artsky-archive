@@ -1117,7 +1117,7 @@ export default function FeedPage() {
         onTouchEnd={useWrapperForPull ? undefined : handleTouchEnd}
       >
         <div
-          className={styles.pullRefreshHeader}
+          className={`${styles.pullRefreshHeader} ${(pullRefresh.pullDistance > 0 || pullRefresh.isRefreshing) ? styles.pullRefreshHeaderActive : ''}`}
           aria-hidden={pullRefresh.pullDistance === 0 && !pullRefresh.isRefreshing}
           aria-live="polite"
           aria-label={pullRefresh.isRefreshing ? 'Refreshing' : undefined}

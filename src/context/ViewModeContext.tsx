@@ -20,8 +20,8 @@ export const VIEW_LABELS: Record<ViewMode, string> = {
 type ViewModeContextValue = {
   viewMode: ViewMode
   setViewMode: (mode: ViewMode) => void
-  /** Cycle 1 → 2 → 3 → 1 (uses current state, safe for header toggle). Shows toast. */
-  cycleViewMode: (anchor?: HTMLElement) => void
+  /** Cycle 1 → 2 → 3 → 1 (uses current state, safe for header toggle). Shows toast unless options.showToast is false. */
+  cycleViewMode: (anchor?: HTMLElement, options?: { showToast?: boolean }) => void
   viewOptions: ViewMode[]
 }
 
@@ -75,7 +75,7 @@ export function ViewModeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const cycleViewMode = useCallback((_anchor?: HTMLElement) => {
+  const cycleViewMode = useCallback((_anchor?: HTMLElement, options?: { showToast?: boolean }) => {
     setViewModeState((prev) => {
       const i = VIEW_OPTIONS.indexOf(prev)
       const next: ViewMode = VIEW_OPTIONS[i >= 0 ? (i + 1) % VIEW_OPTIONS.length : 0]
@@ -84,7 +84,7 @@ export function ViewModeProvider({ children }: { children: React.ReactNode }) {
       } catch {
         // ignore
       }
-      toast?.showToast(VIEW_LABELS[next])
+      if (options?.showToast !== false) toast?.showToast(VIEW_LABELS[next])
       return next
     })
   }, [toast])

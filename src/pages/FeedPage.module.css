@@ -30,9 +30,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg);
-  z-index: 100;
+  z-index: 5;
   pointer-events: none;
+}
+.pullRefreshHeaderActive {
+  background: var(--bg);
 }
 
 .pullRefreshSpinner {
@@ -545,6 +547,12 @@
 /* 1-col: constrain card media height when using column layout */
 .gridColumns.gridView1 {
   --feed-card-media-max-height: min(calc(100vh - 10rem), 85vh);
+}
+
+@media (min-width: 768px) {
+  .gridColumns.gridView1 .gridColumn {
+    gap: 0.75rem;
+  }
 }
 
 @media (max-width: 767px) {

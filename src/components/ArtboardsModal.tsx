@@ -18,7 +18,6 @@ export default function ArtboardsModal({ onClose, onBack, canGoBack }: Artboards
       onClose={onClose}
       onBack={onBack}
       canGoBack={canGoBack}
-      focusCloseOnOpen
       onPullToRefresh={refreshFn ? () => refreshFn() : undefined}
     >
       <div className={styles.modalBetaAlert} role="status">BETA</div>

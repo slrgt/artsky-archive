@@ -348,9 +348,62 @@
   }
 }
 
-/* Desktop: left = logo, center = search, right = nav + view + eyeball + account */
+/* Desktop: left = gear + logo, center = search, right = nav + account */
 .headerLeft {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.headerGearWrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.headerGearBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.headerGearExpandable {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  padding: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--glass-radius-sm);
+  box-shadow: var(--shadow-dropdown);
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  max-height: 0;
+  overflow: hidden;
+  transition: opacity var(--transition-fast);
+}
+
+.headerGearExpandable.feedFloatButtonsExpandableOpen {
+  opacity: 1;
+  pointer-events: auto;
+  max-height: 360px;
+  overflow: visible;
 }
 
 .headerCenter {
@@ -1004,6 +1057,103 @@ button.logoLink {
     right: auto;
     transform: translateX(-50%);
   }
+}
+
+/* Mobile: gear button top-left, slides right when modal open to make space for back button */
+.gearFloatWrap {
+  position: fixed;
+  top: max(var(--space-md), env(safe-area-inset-top, 59px));
+  left: max(1rem, env(safe-area-inset-left));
+  z-index: 1101;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  pointer-events: auto;
+  transition: transform var(--transition-fast);
+}
+
+.gearFloatWrap > .feedFloatBtn {
+  transition: transform var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
+.gearFloatWrap .feedFloatBtn svg,
+.gearFloatWrap .nsfwFloatBtn svg,
+.gearFloatWrap .feedFloatThemeIcon svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.gearFloatWrapModalOpen {
+  transform: translateX(2.5rem);
+}
+
+/* Hide gear when scrolling down in modal (same as nav) */
+.gearFloatWrap.gearFloatWrapScrollHidden {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
+}
+
+.gearFloatExpandable {
+  flex-direction: column;
+  align-items: center;
+}
+
+.gearFloatExpandable .nsfwFloatBtn,
+.gearFloatExpandable .feedFloatBtn {
+  transform: none;
+}
+
+/* Gear expandable: pill buttons – same shape as Feeds button (override circular feedFloatBtn/nsfwFloatBtn) */
+.gearFloatExpandable .nsfwFloatBtn.gearExpandableBtn,
+.gearFloatExpandable .feedFloatBtn.gearExpandableBtn {
+  width: auto;
+  min-width: 8rem;
+  height: auto;
+  min-height: 2.5rem;
+  padding: 8px 14px 8px 18px;
+  border-radius: 100px;
+  gap: var(--space-sm);
+  flex-direction: row;
+  justify-content: left;
+  font-size: var(--font-sm);
+  font-weight: 500;
+}
+
+.gearExpandableLabel {
+  font-size: inherit;
+  font-weight: inherit;
+  white-space: nowrap;
+}
+
+/* Fixed-size media icon – same width as other gear icons to keep button width consistent */
+.mediaModeIconWrap {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 1.125rem;
+  min-width: 1.125rem;
+  max-width: 1.125rem;
+  height: 1.125rem;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.mediaModeIconWrap svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+}
+
+.gearFloatExpandable .nsfwFloatBtn:hover,
+.gearFloatExpandable .feedFloatBtn:hover {
+  transform: scale(1.05);
+}
+
+.gearFloatExpandable .nsfwFloatBtn:active,
+.gearFloatExpandable .feedFloatBtn:active {
+  transform: scale(0.97);
 }
 
 /* Mobile: floating login button (purplesky-style, top right) when logged out */
@@ -1704,32 +1854,38 @@ button.logoLink {
   filter: brightness(0.97);
 }
 
-/* iOS 26–style liquid glass tab bar: floating pill, transparent gap below; hidden on desktop */
+/* Purplesky-style floating pill tab bar: centered, liquid glass */
 .nav {
   display: flex;
   align-items: center;
-  justify-content: space-around;
-  padding: 0.5rem 0.6rem;
-  /* Liquid glass: translucent, strong blur + vibrancy; no shadow so area below stays transparent */
-  background: color-mix(in srgb, var(--glass-bg) 68%, transparent);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  backdrop-filter: blur(28px) saturate(180%);
-  border-radius: 9999px;
-  transition: transform 0.25s ease, opacity 0.25s ease;
-  /* Contain blur and paint so nothing bleeds into the safe area below */
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 8px;
+  min-height: var(--nav-height);
+  /* Liquid glass: translucent, strong blur */
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-card);
+  border-radius: 28px;
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
   isolation: isolate;
-  contain: layout style paint;
 }
 
-/* Wrapper so the floating seen-posts button can sit above the nav on mobile */
+/* Wrapper so the floating seen-posts button can sit above the nav on mobile. Above modals (z-index 1000–1001) so nav stays visible. Purplesky-style: center the nav pill. */
 .navOuter {
   position: fixed;
   bottom: max(0.75rem, env(safe-area-inset-bottom));
   left: max(1rem, env(safe-area-inset-left));
   right: max(1rem, env(safe-area-inset-right));
-  z-index: 20;
+  z-index: 1100;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity var(--transition-fast);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  overflow: visible;
 }
 
 .navOuter > .nav {
@@ -1773,6 +1929,113 @@ button.logoLink {
   transform: translate(-50%, 0) scale(0.97);
 }
 
+/* Feed floating buttons on the right: NSFW, theme, card view, media toggle – stacked vertically */
+.feedFloatButtonsRight {
+  position: absolute;
+  bottom: 100%;
+  right: 10%;
+  transform: translate(-50%, 0);
+  margin-bottom: calc(var(--space-md) + var(--space-lg));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: auto;
+}
+
+/* Expandable view-options row – fade in/out only (no vertical slide) */
+.feedFloatButtonsExpandable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0;
+  pointer-events: none;
+  max-height: 0;
+  overflow: hidden;
+  transition: opacity var(--transition-fast);
+}
+
+.feedFloatButtonsExpandableOpen {
+  opacity: 1;
+  pointer-events: auto;
+  max-height: 320px;
+  overflow: visible;
+  transition: opacity var(--transition-fast);
+}
+
+.feedFloatButtonsExpandable .nsfwFloatBtn,
+.feedFloatButtonsExpandable .feedFloatBtn {
+  flex-shrink: 0;
+  /* Only transition transform; skip box-shadow to avoid color pop at end of appear */
+  transition: transform var(--transition-fast);
+}
+
+.feedFloatButtonsRight .nsfwFloatBtn,
+.feedFloatButtonsRight .feedFloatBtn {
+  transform: translate(-50%, 0) translateZ(0);
+  flex-shrink: 0;
+}
+
+.feedFloatButtonsRight .nsfwFloatBtn:hover,
+.feedFloatButtonsRight .feedFloatBtn:hover {
+  transform: translate(-50%, 0) translateZ(0) scale(1.05);
+}
+
+.feedFloatButtonsRight .nsfwFloatBtn:active,
+.feedFloatButtonsRight .feedFloatBtn:active {
+  transform: translate(-50%, 0) translateZ(0) scale(0.97);
+}
+
+.nsfwFloatBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.feedFloatBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.feedFloatThemeIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: scale(1.3);
+}
+
+.feedFloatGearActive {
+  color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.feedFloatButtonsRight > .feedFloatBtn.feedFloatGearActive,
+.feedFloatButtonsRight > .feedFloatBtn {
+  transition: transform var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
 @media (min-width: 768px) {
   .nav {
     display: none;
@@ -1785,82 +2048,80 @@ button.logoLink {
 }
 
 .navHomeWrap {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
+  gap: 2px;
 }
 
 .navHomeWrap > button:last-child {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.1rem;
-  padding: 0.35rem 0.4rem;
-  min-height: 28px;
-  color: var(--text);
-  font-weight: 500;
-  font-size: 0.95rem;
+  gap: 2px;
+  padding: 6px 14px;
+  min-height: var(--touch-min);
+  min-width: var(--touch-min);
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.02em;
   -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none;
   user-select: none;
   background: none;
   border: none;
+  border-radius: 20px;
   cursor: pointer;
   font-family: inherit;
+  transition: all var(--transition-fast);
 }
 
 .navHomeWrap > button:last-child:hover {
+  background: var(--glass-hover);
   color: var(--text);
 }
 
 .navHomeWrap > button:last-child.navActive {
   color: var(--accent);
-}
-
-.navHomeWrap > button:last-child:active {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  border-radius: 0.5rem;
-}
-
-.navHomeWrap > button:last-child.navActive:active {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-}
-
-.navProfileBtn:active {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  border-radius: 0.5rem;
+  background: var(--accent-subtle);
 }
 
 .navProfileBtn {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.1rem;
-  padding: 0.35rem 0.4rem;
-  min-height: 28px;
-  color: var(--text);
-  font-weight: 500;
-  font-size: 0.95rem;
+  gap: 2px;
+  padding: 6px 14px;
+  min-height: var(--touch-min);
+  min-width: var(--touch-min);
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.02em;
   -webkit-tap-highlight-color: transparent;
   background: none;
   border: none;
+  border-radius: 20px;
   cursor: pointer;
   font-family: inherit;
+  transition: all var(--transition-fast);
 }
 
 .navProfileBtn:hover {
+  background: var(--glass-hover);
   color: var(--text);
 }
 
+.navProfileBtn[aria-expanded="true"] {
+  color: var(--accent);
+  background: var(--accent-subtle);
+}
+
 .navProfileWrap {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1937,51 +2198,43 @@ button.logoLink {
 .nav a,
 .nav button,
 .navBtn {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.1rem;
-  padding: 0.35rem 0.4rem;
-  min-height: 28px;
-  color: var(--text);
+  gap: 2px;
+  padding: 6px 14px;
+  min-height: var(--touch-min);
+  min-width: var(--touch-min);
+  color: var(--muted);
   text-decoration: none;
-  font-weight: 500;
-  font-size: 0.95rem;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.02em;
   -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none;
   user-select: none;
   background: none;
   border: none;
+  border-radius: 20px;
   cursor: pointer;
   font-family: inherit;
+  transition: all var(--transition-fast);
 }
 
 .nav a:hover,
 .nav button:hover,
 .navBtn:hover {
+  background: var(--glass-hover);
   color: var(--text);
   text-decoration: none;
 }
 
-.nav a:active,
-.nav button:active,
-.navBtn:active {
-  color: var(--text);
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  border-radius: 0.5rem;
-}
-
 .nav a.navActive,
-.nav button.navActive {
+.nav button.navActive,
+.navBtn.navActive {
   color: var(--accent);
-}
-
-.nav a.navActive:active,
-.nav button.navActive:active {
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  background: var(--accent-subtle);
 }
 
 .nav .navIcon {
@@ -2012,21 +2265,24 @@ button.logoLink {
 
 .navLabel {
   white-space: nowrap;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
-/* Mobile search overlay: centered in the middle of the screen */
+/* Mobile search overlay: above modals (z-index 1000–1100) so search is usable when a popup is open */
 .searchOverlayBackdrop {
   position: fixed;
   inset: 0;
   background: var(--overlay-bg);
-  z-index: 22;
+  z-index: 1200;
   animation: fadeIn 0.2s ease;
 }
 
 .searchOverlayCenter {
   position: fixed;
   inset: 0;
-  z-index: 23;
+  z-index: 1201;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2081,11 +2337,11 @@ button.logoLink {
   animation: popIn 0.2s ease;
 }
 
-/* About modal – site info and keyboard shortcuts */
+/* About modal – site info and keyboard shortcuts (above searchOverlayBackdrop at 1200) */
 .aboutOverlay {
   position: fixed;
   inset: 0;
-  z-index: 23;
+  z-index: 1201;
   display: flex;
   align-items: center;
   justify-content: center;

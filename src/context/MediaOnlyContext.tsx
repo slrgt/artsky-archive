@@ -7,7 +7,7 @@ type MediaOnlyContextValue = {
   /** When true, feed shows only posts with images/videos. When false, show all posts. */
   mediaOnly: boolean
   setMediaOnly: (value: boolean) => void
-  toggleMediaOnly: () => void
+  toggleMediaOnly: (options?: { showToast?: boolean }) => void
 }
 
 const MediaOnlyContext = createContext<MediaOnlyContextValue | null>(null)
@@ -38,10 +38,10 @@ export function MediaOnlyProvider({ children }: { children: ReactNode }) {
     setMediaOnlyState(value)
   }, [])
 
-  const toggleMediaOnly = useCallback(() => {
+  const toggleMediaOnly = useCallback((options?: { showToast?: boolean }) => {
     setMediaOnlyState((v) => {
       const next = !v
-      toast?.showToast(next ? 'Media only' : 'Media and text')
+      if (options?.showToast !== false) toast?.showToast(next ? 'Media only' : 'Media and text')
       return next
     })
   }, [toast])

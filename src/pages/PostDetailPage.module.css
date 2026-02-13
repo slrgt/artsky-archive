@@ -1,6 +1,21 @@
 .wrap {
+  position: relative;
   padding: 1rem;
   padding-bottom: 5rem;
+}
+
+.wrapLoading {
+  min-height: 50vh;
+}
+
+.loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  pointer-events: none;
 }
 
 /* In modal: no border/outline around post block or media; no extra gap above media */
@@ -57,11 +72,6 @@
   .rootPostDescription .postHead .authorRow {
     justify-content: center;
   }
-}
-
-.loading {
-  color: var(--muted);
-  padding: 2rem 0;
 }
 
 .error {
@@ -866,33 +876,6 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem 1rem;
-}
-
-.saveBtn {
-  padding: 0.4rem 0.75rem;
-  font-size: 0.9rem;
-  background: transparent;
-  color: var(--muted);
-  border: 1px solid var(--border);
-  border-radius: 0.4rem;
-  cursor: pointer;
-}
-
-.saveBtn:hover:not(:disabled) {
-  color: var(--text);
-  border-color: var(--text);
-}
-
-.saveBtn:disabled {
-  opacity: 0.7;
-  cursor: default;
-}
-
-/* Save button only on mobile; desktop users use browser right-click Save image/video as */
-@media (min-width: 768px) {
-  .saveBtn {
-    display: none;
-  }
 }
 
 .likeRepostBtn {

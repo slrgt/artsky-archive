@@ -348,6 +348,7 @@ html[data-theme="light"] main {
 
 /* Hide floating elements + bottom nav while scrolling down (feed page) */
 .feeds-float-wrap,
+.view-mode-float-wrap,
 .hide-seen-fab,
 .login-float-wrap,
 .notification-float-wrap,
@@ -356,6 +357,7 @@ html[data-theme="light"] main {
   transition: opacity 0.2s ease;
 }
 body.feed-scrolling .feeds-float-wrap,
+body.feed-scrolling .view-mode-float-wrap,
 body.feed-scrolling .hide-seen-fab,
 body.feed-scrolling .login-float-wrap,
 body.feed-scrolling .notification-float-wrap,

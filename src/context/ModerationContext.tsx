@@ -11,8 +11,8 @@ export const NSFW_LABELS: Record<NsfwPreference, string> = { sfw: 'SFW', blurred
 type ModerationContextValue = {
   nsfwPreference: NsfwPreference
   setNsfwPreference: (p: NsfwPreference, anchor?: HTMLElement, options?: { showToast?: boolean }) => void
-  /** Cycle: SFW → Blurred → NSFW → SFW. Shows toast. */
-  cycleNsfwPreference: (anchor?: HTMLElement) => void
+  /** Cycle: SFW → Blurred → NSFW → SFW. Shows toast unless options.showToast is false. */
+  cycleNsfwPreference: (anchor?: HTMLElement, options?: { showToast?: boolean }) => void
   /** URIs of posts the user has chosen to unblur (blurred mode). Cleared on page refresh. */
   unblurredUris: Set<string>
   setUnblurred: (uri: string, revealed: boolean) => void
@@ -48,11 +48,11 @@ export function ModerationProvider({ children }: { children: React.ReactNode }) 
     if (options?.showToast !== false) toast?.showToast(NSFW_LABELS[p])
   }, [toast])
 
-  const cycleNsfwPreference = useCallback((_anchor?: HTMLElement) => {
+  const cycleNsfwPreference = useCallback((_anchor?: HTMLElement, options?: { showToast?: boolean }) => {
     setNsfwPreferenceState((prev) => {
       const i = NSFW_CYCLE.indexOf(prev)
       const next = NSFW_CYCLE[(i + 1) % NSFW_CYCLE.length]
-      toast?.showToast(NSFW_LABELS[next])
+      if (options?.showToast !== false) toast?.showToast(NSFW_LABELS[next])
       return next
     })
   }, [toast])

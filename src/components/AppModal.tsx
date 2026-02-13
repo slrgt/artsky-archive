@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { ModalTopBarSlotContext } from '../context/ModalTopBarSlotContext'
 import { useModalExpand } from '../context/ModalExpandContext'
+import { useProfileModal } from '../context/ProfileModalContext'
 import { useScrollLock } from '../context/ScrollLockContext'
 import { useSwipeToClose } from '../hooks/useSwipeToClose'
 import { usePullToRefresh, PULL_REFRESH_HOLD_PX } from '../hooks/usePullToRefresh'
@@ -25,9 +26,7 @@ interface AppModalProps {
   onClose: () => void
   onBack: () => void
   canGoBack: boolean
-  /** When true, focus the close button when the modal opens (e.g. profile/tag). Default false. */
-  focusCloseOnOpen?: boolean
-  /** When true, top bar has transparent background so content shows through; X button keeps its background. */
+  /** When true, top bar has transparent background so content shows through. */
   transparentTopBar?: boolean
   /** When true, do not render the top bar (e.g. profile popup uses only the bottom bar). */
   hideTopBar?: boolean
@@ -45,7 +44,6 @@ export default function AppModal({
   onClose,
   onBack,
   canGoBack,
-  focusCloseOnOpen = false,
   transparentTopBar = false,
   hideTopBar = false,
   compact = false,
@@ -54,18 +52,18 @@ export default function AppModal({
 }: AppModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const { modalScrollHidden, setModalScrollHidden } = useProfileModal()
+  const lastScrollYRef = useRef(0)
+  const scrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pullRefresh = usePullToRefresh({
     scrollRef,
     touchTargetRef: scrollRef,
     onRefresh: onPullToRefresh ?? (() => {}),
     enabled: !!onPullToRefresh,
   })
-  const closeBtnRef = useRef<HTMLButtonElement>(null)
   const [topBarSlotEl, setTopBarSlotEl] = useState<HTMLDivElement | null>(null)
   const [topBarRightSlotEl, setTopBarRightSlotEl] = useState<HTMLDivElement | null>(null)
-  const [mobileBottomBarSlotEl, setMobileBottomBarSlotEl] = useState<HTMLDivElement | null>(null)
   const { expanded, setExpanded } = useModalExpand()
-  const [bottomBarHidden, setBottomBarHidden] = useState(false)
   const scrollLock = useScrollLock()
   const isMobile = useSyncExternalStore(subscribeMobile, getMobileSnapshot, () => false)
   const handleSwipeRight = () => (canGoBack ? onBack() : onClose())
@@ -102,30 +100,36 @@ export default function AppModal({
     return () => window.removeEventListener('wheel', onWheel, { capture: true })
   }, [])
 
-  useEffect(() => {
-    if (focusCloseOnOpen) closeBtnRef.current?.focus()
-  }, [focusCloseOnOpen])
-
-  /* Mobile: hide bottom action bar when user scrolls down; show again when they scroll up or are near top */
-  const lastScrollTopRef = useRef(0)
+  /* Modal scroll: hide back/nav/gear when scrolling down (same behavior as homepage) */
   useEffect(() => {
     const el = scrollRef.current
     if (!el || !isMobile) return
-    lastScrollTopRef.current = el.scrollTop
-    const onScroll = () => {
-      const top = el.scrollTop
-      if (top <= 50) {
-        setBottomBarHidden(false)
-      } else if (top > lastScrollTopRef.current) {
-        setBottomBarHidden(true)
-      } else {
-        setBottomBarHidden(false)
-      }
-      lastScrollTopRef.current = top
+    lastScrollYRef.current = el.scrollTop
+    const SCROLL_THRESHOLD = 8
+    const SCROLL_END_MS = 350
+    function onScroll() {
+      const y = el.scrollTop
+      const delta = y - lastScrollYRef.current
+      if (delta > SCROLL_THRESHOLD) setModalScrollHidden(true)
+      else if (delta < -SCROLL_THRESHOLD) setModalScrollHidden(false)
+      lastScrollYRef.current = y
+      if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current)
+      scrollEndTimerRef.current = setTimeout(() => {
+        scrollEndTimerRef.current = null
+        setModalScrollHidden(false)
+      }, SCROLL_END_MS)
     }
     el.addEventListener('scroll', onScroll, { passive: true })
-    return () => el.removeEventListener('scroll', onScroll)
-  }, [isMobile])
+    return () => {
+      el.removeEventListener('scroll', onScroll)
+      if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current)
+    }
+  }, [isMobile, setModalScrollHidden])
+
+  /* Mobile: open in expanded mode by default */
+  useEffect(() => {
+    if (isMobile) setExpanded(true)
+  }, [isMobile, setExpanded])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -158,7 +162,7 @@ export default function AppModal({
   }
 
   const modal = (
-    <ModalTopBarSlotContext.Provider value={{ centerSlot: topBarSlotEl, rightSlot: topBarRightSlotEl, mobileBottomBarSlot: mobileBottomBarSlotEl, isMobile }}>
+    <ModalTopBarSlotContext.Provider value={{ centerSlot: topBarSlotEl, rightSlot: topBarRightSlotEl, isMobile }}>
       <div
         ref={overlayRef}
         className={`${styles.overlay}${transparentTopBar ? ` ${styles.overlayFlushTop}` : ''}${expanded ? ` ${styles.overlayExpanded}` : ''}`}
@@ -167,6 +171,17 @@ export default function AppModal({
         aria-modal="true"
         aria-label={ariaLabel}
       >
+        <button
+          type="button"
+          className={`${styles.modalFloatingBack}${modalScrollHidden ? ` ${styles.modalFloatingBackScrollHidden}` : ''}`}
+          onClick={canGoBack ? onBack : onClose}
+          aria-label={canGoBack ? 'Back' : 'Close'}
+          title={canGoBack ? 'Back' : 'Close'}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+          </button>
         <div
           className={`${styles.pane}${swipe.isReturning ? ` ${styles.paneSwipeReturning}` : ''}${transparentTopBar ? ` ${styles.paneNoRightBorder}` : ''}${compact ? ` ${styles.paneCompact}` : ''}${expanded ? ` ${styles.paneExpanded}` : ''}`}
           style={swipe.style}
@@ -187,7 +202,7 @@ export default function AppModal({
           <div
             ref={scrollRef}
             data-modal-scroll
-            className={`${styles.scroll} ${transparentTopBar ? styles.scrollWithTransparentBar : ''} ${styles.scrollWithBottomBar}`}
+            className={`${styles.scroll} ${transparentTopBar ? styles.scrollWithTransparentBar : ''} ${styles.scrollWithFloatingBack}`}
             onTouchStart={pullRefresh.onTouchStart}
             onTouchMove={pullRefresh.onTouchMove}
             onTouchEnd={pullRefresh.onTouchEnd}
@@ -212,45 +227,6 @@ export default function AppModal({
               {children}
             </div>
           </div>
-          <div className={`${styles.modalBottomBar} ${isMobile && bottomBarHidden ? styles.modalBottomBarHidden : ''}`}>
-              <button
-                ref={focusCloseOnOpen ? closeBtnRef : undefined}
-                type="button"
-                className={styles.closeBtn}
-                onClick={onClose}
-                aria-label="Close"
-              >
-                ×
-              </button>
-              {canGoBack ? (
-                <button
-                  type="button"
-                  className={styles.backBtn}
-                  onClick={onBack}
-                  aria-label="Back to previous"
-                >
-                  ←
-                </button>
-              ) : null}
-              <div ref={setMobileBottomBarSlotEl} className={styles.modalBottomBarSlot} />
-              <button
-                type="button"
-                className={styles.expandBtn}
-                onClick={() => setExpanded(!expanded)}
-                aria-label={expanded ? 'Restore popup size' : 'Expand to edges'}
-                title={expanded ? 'Restore' : 'Expand to edges'}
-              >
-                {expanded ? (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-                  </svg>
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-                  </svg>
-                )}
-              </button>
-            </div>
         </div>
       </div>
     </ModalTopBarSlotContext.Provider>

@@ -18,9 +18,51 @@
   overflow: hidden;
 }
 
-/* Post detail etc.: small top gap so pane is not touching the top of the screen */
+/* Post detail etc.: space above pane + room for floating back button (purplesky-style) */
 .overlayFlushTop.overlay {
-  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-top: max(3.5rem, calc(env(safe-area-inset-top) + 2.5rem));
+}
+
+/* Floating back button in top-left corner (matches gear/float-btn style) */
+.modalFloatingBack {
+  position: absolute;
+  top: max(var(--space-md), env(safe-area-inset-top));
+  left: max(var(--space-md), env(safe-area-inset-left));
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  box-shadow: var(--shadow-card);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.modalFloatingBack svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+.modalFloatingBack:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-dropdown);
+}
+.modalFloatingBack:active {
+  transform: scale(0.97);
+}
+
+/* Hide back button when scrolling down in modal (same as nav) */
+.modalFloatingBackScrollHidden {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
 }
 
 /* Expanded: no padding so pane goes truly edge-to-edge (no empty space at top) */
@@ -83,9 +125,9 @@
   pointer-events: auto;
 }
 
-/* Reserve space for bottom action bar (X, back, expand) on all viewports */
-.scrollWithBottomBar.scroll {
-  padding-bottom: calc(3.25rem + env(safe-area-inset-bottom));
+/* Top padding so content (images, text) isn't covered by the floating back button */
+.scrollWithFloatingBack.scroll {
+  padding-top: calc(2rem + max(var(--space-md), env(safe-area-inset-top, 0px)) + var(--space-sm));
 }
 
 /* Pull-to-refresh in modals (same behavior as mobile homepage) */
@@ -131,31 +173,7 @@
   flex-shrink: 0;
 }
 
-/* Bottom bar: X, back, slot, expand – same on desktop and mobile */
-.modalBottomBar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
-  background: var(--surface);
-  z-index: 2;
-  flex-shrink: 0;
-  transition: transform 0.2s ease-out;
-}
-
-.modalBottomBarSlot {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Top bar: close/back on left, optional slot (e.g. profile tabs) centered – pins to top of pane */
+/* Top bar: optional slot (e.g. profile tabs) centered – pins to top of pane */
 .modalTopBar {
   position: sticky;
   top: 0;
@@ -341,11 +359,7 @@
   .scroll {
     padding-bottom: 0.5rem;
   }
-  /* Mobile only: bottom bar hides when user scrolls down */
-  .modalBottomBarHidden {
-    transform: translateY(100%);
-  }
-  /* Transparent bar on mobile: keep at top so X/back are top left */
+  /* Transparent bar on mobile: keep at top */
   .modalTopBarTransparent {
     top: 0;
     bottom: auto;
@@ -353,8 +367,5 @@
   .scrollWithTransparentBar {
     padding-top: 0;
     padding-bottom: 0;
-  }
-  .scrollWithTransparentBar.scrollWithBottomBar {
-    padding-bottom: calc(3.25rem + env(safe-area-inset-bottom));
   }
 }

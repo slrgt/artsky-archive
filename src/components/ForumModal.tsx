@@ -17,7 +17,6 @@ export default function ForumModal({ onClose, onBack, canGoBack }: ForumModalPro
       onClose={onClose}
       onBack={onBack}
       canGoBack={canGoBack}
-      focusCloseOnOpen
       onPullToRefresh={refreshFn ? () => refreshFn() : undefined}
     >
       <div className={styles.modalBetaAlert} role="status">BETA</div>

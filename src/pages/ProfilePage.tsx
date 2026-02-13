@@ -216,7 +216,7 @@ export function ProfileContent({
   const { openPostModal, isModalOpen } = useProfileModal()
   const editProfileCtx = useEditProfile()
   const topBarSlots = useModalTopBarSlot()
-  const mobileBottomBarSlot = topBarSlots?.mobileBottomBarSlot ?? null
+  const topBarRightSlot = topBarSlots?.rightSlot ?? null
   const openEditProfile = editProfileCtx?.openEditProfile ?? (() => {})
   const editSavedVersion = editProfileCtx?.editSavedVersion ?? 0
   const cardRefsRef = useRef<(HTMLDivElement | null)[]>([])
@@ -894,7 +894,7 @@ export function ProfileContent({
             authenticatedClient={followListModal === 'followedByFollows' ? agent : undefined}
           />
         )}
-        {inModal && mobileBottomBarSlot
+        {inModal && topBarRightSlot
           ? createPortal(
               <div className={styles.modalBottomBarButtons}>
                 <button
@@ -919,7 +919,7 @@ export function ProfileContent({
                   <NsfwEyeIcon mode={nsfwPreference} />
                 </button>
               </div>,
-              mobileBottomBarSlot,
+              topBarRightSlot,
             )
           : null}
         {!inModal && (

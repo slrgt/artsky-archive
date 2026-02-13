@@ -4,11 +4,11 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '../context/SessionContext'
 import { useTheme } from '../context/ThemeContext'
 import { useViewMode, VIEW_LABELS } from '../context/ViewModeContext'
-import { useArtOnly } from '../context/ArtOnlyContext'
+import { useArtOnly, CARD_VIEW_LABELS } from '../context/ArtOnlyContext'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useLoginModal } from '../context/LoginModalContext'
 import { useEditProfile } from '../context/EditProfileContext'
-import { useModeration } from '../context/ModerationContext'
+import { useModeration, NSFW_LABELS } from '../context/ModerationContext'
 import { useMediaOnly } from '../context/MediaOnlyContext'
 import { useScrollLock } from '../context/ScrollLockContext'
 import { useSeenPosts } from '../context/SeenPostsContext'
@@ -60,25 +60,6 @@ function loadFeedOrder(): string[] {
   }
 }
 
-/** NSFW preference row – subscribes to ModerationContext so it stays in sync in account menu and compact sheet. No toast when changing from this row. */
-function NsfwPreferenceRow({ rowClassName }: { rowClassName: string }) {
-  const { nsfwPreference, setNsfwPreference } = useModeration()
-  return (
-    <div className={rowClassName} role="group" aria-label="Adult content preference">
-      {(['blurred', 'nsfw', 'sfw'] as const).map((p) => (
-        <button
-          key={p}
-          type="button"
-          className={nsfwPreference === p ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
-          onClick={() => setNsfwPreference(p, undefined, { showToast: false })}
-        >
-          {p === 'nsfw' ? 'NSFW' : p === 'sfw' ? 'SFW' : 'Blurred'}
-        </button>
-      ))}
-    </div>
-  )
-}
-
 interface Props {
   title: string
   children: React.ReactNode
@@ -97,20 +78,13 @@ export const FeedPullRefreshContext = React.createContext<{
   setHandlers: ((handlers: FeedPullRefreshHandlers | null) => void) | null
 }>({ wrapperRef: null, setHandlers: null })
 
+/** Home icon (purplesky-style: roof house) */
 function HomeIcon({ active }: { active?: boolean }) {
-  const viewBox = '0 0 24 24'
-  const houseOutline = 'M12 3L4 9v12h5v-7h6v7h5V9L12 3z'
-  const houseFill = 'M12 3L4 9L4 21h5v-7h6v7h5L20 9L12 3z'
-  if (active) {
-    return (
-      <svg width="24" height="24" viewBox={viewBox} fill="currentColor" stroke="none" aria-hidden>
-        <path d={houseFill} />
-      </svg>
-    )
-  }
+  const sw = active ? 2.5 : 2
   return (
-    <svg width="24" height="24" viewBox={viewBox} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d={houseOutline} />
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
     </svg>
   )
 }
@@ -136,23 +110,21 @@ function ArtboardsIcon() {
   )
 }
 
-function SearchIcon() {
+function SearchIcon({ active }: { active?: boolean }) {
+  const sw = active ? 2.5 : 2
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <circle cx="11" cy="11" r="8" />
       <path d="m21 21-4.35-4.35" />
     </svg>
   )
 }
 
-/** Forums: message board / topic list (board with thread lines) */
+/** Forums: chat bubble (purplesky-style) */
 function ForumIcon() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-      <line x1="7" y1="8" x2="17" y2="8" />
-      <line x1="7" y1="12" x2="17" y2="12" />
-      <line x1="7" y1="16" x2="13" y2="16" />
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
     </svg>
   )
 }
@@ -264,14 +236,58 @@ function ThemeMoonIcon() {
   )
 }
 
+/** Half sun, half moon – standard for "follow system" theme. */
 function ThemeAutoIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-      <path d="M21 3v5h-5" />
-      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-      <path d="M8 16H3v5" />
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3v18" />
+      <path d="M6 12a6 6 0 0 1 6-6 6 6 0 0 1 6 6" />
+      <circle cx="16.5" cy="12" r="2" />
     </svg>
+  )
+}
+
+function GearIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  )
+}
+
+function AboutIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4M12 8h.01" />
+    </svg>
+  )
+}
+
+/** Media mode: image-only vs image+text. Compact icon to match other gear button widths. */
+function MediaModeIcon({ mediaOnly }: { mediaOnly: boolean }) {
+  if (mediaOnly) {
+    return (
+      <span className={styles.mediaModeIconWrap}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <rect x="5" y="5" width="14" height="14" rx="2" />
+          <circle cx="9" cy="9" r="1.5" />
+          <path d="M19 17l-5-5-7 7" />
+        </svg>
+      </span>
+    )
+  }
+  return (
+    <span className={styles.mediaModeIconWrap}>
+      <svg viewBox="0 0 18 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <rect x="1" y="4" width="8" height="8" rx="1" />
+        <line x1="11" y1="6" x2="16" y2="6" />
+        <line x1="11" y1="10" x2="16" y2="10" />
+        <line x1="11" y1="14" x2="14" y2="14" />
+      </svg>
+    </span>
   )
 }
 
@@ -289,7 +305,7 @@ function subscribeDesktop(cb: () => void) {
 export default function Layout({ title, children, showNav }: Props) {
   const loc = useLocation()
   const navigate = useNavigate()
-  const { openProfileModal, openPostModal, isModalOpen, openForumModal, openArtboardsModal } = useProfileModal()
+  const { openProfileModal, openPostModal, isModalOpen, modalScrollHidden, openForumModal, openArtboardsModal, closeAllModals } = useProfileModal()
   const search = loc.search
   const isForumModalOpen = /\bforum=1\b/.test(search)
   const isArtboardsModalOpen = /\bartboards=1\b/.test(search) || /\bartboard=/.test(search)
@@ -321,40 +337,6 @@ export default function Layout({ title, children, showNav }: Props) {
     return () => { cancelled = true }
   }, [sessionsDidKey, sessionsList, accountProfilesVersion])
   const { theme, setTheme } = useTheme()
-  const themeButtons = (
-    <div className={styles.themeButtonGroup} role="group" aria-label="Theme">
-      <button
-        type="button"
-        className={theme === 'light' ? styles.themeBtnActive : styles.themeBtn}
-        onClick={() => setTheme('light')}
-        title="Light"
-        aria-label="Light"
-        aria-pressed={theme === 'light'}
-      >
-        <ThemeSunIcon />
-      </button>
-      <button
-        type="button"
-        className={theme === 'system' ? styles.themeBtnActive : styles.themeBtn}
-        onClick={() => setTheme('system')}
-        title="Auto (system)"
-        aria-label="Auto"
-        aria-pressed={theme === 'system'}
-      >
-        <ThemeAutoIcon />
-      </button>
-      <button
-        type="button"
-        className={theme === 'dark' ? styles.themeBtnActive : styles.themeBtn}
-        onClick={() => setTheme('dark')}
-        title="Dark"
-        aria-label="Dark"
-        aria-pressed={theme === 'dark'}
-      >
-        <ThemeMoonIcon />
-      </button>
-    </div>
-  )
   const { viewMode, setViewMode, cycleViewMode } = useViewMode()
   const { cardViewMode, cycleCardView } = useArtOnly()
   const { nsfwPreference, cycleNsfwPreference } = useModeration()
@@ -396,6 +378,9 @@ export default function Layout({ title, children, showNav }: Props) {
   const currentSegment = composeSegments[composeSegmentIndex] ?? { text: '', images: [], imageAlts: [] }
   const navVisible = true
   const [mobileNavScrollHidden, setMobileNavScrollHidden] = useState(false)
+  const [feedFloatButtonsExpanded, setFeedFloatButtonsExpanded] = useState(false)
+  const gearFloatWrapRef = useRef<HTMLDivElement>(null)
+  const headerGearWrapRef = useRef<HTMLDivElement>(null)
   const lastScrollYRef = useRef(0)
   const scrollEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [aboutOpen, setAboutOpen] = useState(false)
@@ -413,6 +398,8 @@ export default function Layout({ title, children, showNav }: Props) {
   const homeHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const seenLongPressTriggeredRef = useRef(false)
   const seenHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const accountLongPressTriggeredRef = useRef(false)
+  const accountHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const seenPosts = useSeenPosts()
   const toast = useToast()
   const HOME_HOLD_MS = 500
@@ -500,17 +487,51 @@ export default function Layout({ title, children, showNav }: Props) {
     if (path !== '/feed') navigate('/feed')
   }, [seenPosts, path, navigate])
 
+  const startAccountHold = useCallback(() => {
+    accountHoldTimerRef.current = setTimeout(() => {
+      accountLongPressTriggeredRef.current = true
+      setAccountMenuOpen(true)
+      accountHoldTimerRef.current = null
+    }, HOME_HOLD_MS)
+  }, [])
+
+  const endAccountHold = useCallback(() => {
+    if (accountHoldTimerRef.current) {
+      clearTimeout(accountHoldTimerRef.current)
+      accountHoldTimerRef.current = null
+    }
+  }, [])
+
+  const accountBtnClick = useCallback(() => {
+    if (accountLongPressTriggeredRef.current) {
+      accountLongPressTriggeredRef.current = false
+      return
+    }
+    if (session) {
+      const handle = accountProfiles[session.did]?.handle ?? (session as { handle?: string }).handle ?? session.did
+      setAccountMenuOpen(false)
+      openProfileModal(handle)
+    } else {
+      setAccountMenuOpen((o) => !o)
+    }
+  }, [session, accountProfiles, openProfileModal])
+
   const homeBtnClick = useCallback(() => {
     if (homeLongPressTriggeredRef.current) {
       homeLongPressTriggeredRef.current = false
       return
     }
-    if (path === '/feed') {
-      seenPosts?.onHomeClick()
+    if (isModalOpen) {
+      closeAllModals()
+      if (path !== '/feed') navigate('/feed')
     } else {
-      navigate('/feed')
+      if (path === '/feed') {
+        seenPosts?.onHomeClick()
+      } else {
+        navigate('/feed')
+      }
     }
-  }, [path, seenPosts, navigate])
+  }, [path, seenPosts, navigate, isModalOpen, closeAllModals])
 
   useEffect(() => {
     document.title = title ? `${title} · ArtSky` : 'ArtSky'
@@ -560,6 +581,17 @@ export default function Layout({ title, children, showNav }: Props) {
     document.addEventListener('mousedown', onDocClick)
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [accountMenuOpen])
+
+  useEffect(() => {
+    if (!feedFloatButtonsExpanded) return
+    const onDocClick = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (gearFloatWrapRef.current?.contains(t) || headerGearWrapRef.current?.contains(t)) return
+      setFeedFloatButtonsExpanded(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [feedFloatButtonsExpanded])
 
   useEffect(() => {
     if (!aboutOpen) return
@@ -1066,12 +1098,14 @@ export default function Layout({ title, children, showNav }: Props) {
   }, [composePreviewUrls])
 
   /* Mobile nav: Feed, Forum, New, Search, Accounts (right). Desktop: Feed, Artboards, New, Search, Forum, Accounts */
+  const searchActive = mobileSearchOpen && !isDesktop
+  const homeActive = path === '/feed' && !isModalOpen && !searchActive
   const navTrayItems = (
     <>
       <button
         type="button"
-        className={path === '/feed' ? styles.navActive : ''}
-        aria-current={path === '/feed' ? 'page' : undefined}
+        className={homeActive ? styles.navActive : ''}
+        aria-current={homeActive ? 'page' : undefined}
         onPointerDown={startHomeHold}
         onPointerUp={endHomeHold}
         onPointerLeave={endHomeHold}
@@ -1079,13 +1113,13 @@ export default function Layout({ title, children, showNav }: Props) {
         onClick={homeBtnClick}
         title="Home (hold to show all seen posts)"
       >
-        <span className={styles.navIcon}><HomeIcon active={path === '/feed'} /></span>
+        <span className={styles.navIcon}><HomeIcon active={homeActive} /></span>
         <span className={styles.navLabel}>Home</span>
       </button>
       {isDesktop && (
         <button
           type="button"
-          className={isArtboardsModalOpen ? styles.navActive : ''}
+          className={isArtboardsModalOpen && !searchActive ? styles.navActive : ''}
           onClick={openArtboardsModal}
           aria-pressed={isArtboardsModalOpen}
         >
@@ -1102,13 +1136,13 @@ export default function Layout({ title, children, showNav }: Props) {
         <span className={styles.navIcon}><PlusIcon /></span>
         <span className={styles.navLabel}>New</span>
       </button>
-      <button type="button" className={styles.navBtn} onClick={focusSearch} aria-label="Search">
-        <span className={styles.navIcon}><SearchIcon /></span>
+      <button type="button" className={searchActive ? styles.navActive : styles.navBtn} onClick={focusSearch} aria-label="Search" aria-pressed={searchActive}>
+        <span className={styles.navIcon}><SearchIcon active={searchActive} /></span>
         <span className={styles.navLabel}>Search</span>
       </button>
       <button
         type="button"
-        className={isForumModalOpen ? styles.navActive : ''}
+        className={isForumModalOpen && !searchActive ? styles.navActive : ''}
         onClick={openForumModal}
         aria-pressed={isForumModalOpen}
       >
@@ -1129,8 +1163,8 @@ export default function Layout({ title, children, showNav }: Props) {
           <div className={styles.navHomeWrap}>
             <button
               type="button"
-              className={path === '/feed' ? styles.navActive : ''}
-              aria-current={path === '/feed' ? 'page' : undefined}
+              className={homeActive ? styles.navActive : ''}
+              aria-current={homeActive ? 'page' : undefined}
               onPointerDown={startHomeHold}
               onPointerUp={endHomeHold}
               onPointerLeave={endHomeHold}
@@ -1138,12 +1172,12 @@ export default function Layout({ title, children, showNav }: Props) {
               onClick={homeBtnClick}
               title="Home (hold to show all seen posts)"
             >
-              <span className={styles.navIcon}><HomeIcon active={path === '/feed'} /></span>
+              <span className={styles.navIcon}><HomeIcon active={homeActive} /></span>
             </button>
           </div>
           <button
             type="button"
-            className={isForumModalOpen ? styles.navActive : ''}
+            className={isForumModalOpen && !searchActive ? styles.navActive : ''}
             onClick={openForumModal}
             aria-pressed={isForumModalOpen}
             aria-label="Forums"
@@ -1153,17 +1187,22 @@ export default function Layout({ title, children, showNav }: Props) {
           <button type="button" className={styles.navBtn} onClick={openCompose} aria-label="New post">
             <span className={styles.navIcon}><PlusIcon /></span>
           </button>
-          <button type="button" className={styles.navBtn} onClick={focusSearch} aria-label="Search">
-            <span className={styles.navIcon}><SearchIcon /></span>
+          <button type="button" className={searchActive ? styles.navActive : styles.navBtn} onClick={focusSearch} aria-label="Search" aria-pressed={searchActive}>
+            <span className={styles.navIcon}><SearchIcon active={searchActive} /></span>
           </button>
           <div className={styles.navProfileWrap}>
             <button
               ref={accountBtnRef}
               type="button"
               className={styles.navProfileBtn}
-              onClick={() => setAccountMenuOpen((o) => !o)}
-              aria-label={session ? 'Accounts and settings' : 'Account'}
+              onPointerDown={startAccountHold}
+              onPointerUp={endAccountHold}
+              onPointerLeave={endAccountHold}
+              onPointerCancel={endAccountHold}
+              onClick={accountBtnClick}
+              aria-label={session ? 'Profile (hold for accounts)' : 'Account'}
               aria-expanded={accountMenuOpen}
+              title={session ? 'Profile (hold for accounts and settings)' : 'Account'}
             >
               <span className={styles.navIcon}>
                 {session && currentAccountAvatar ? (
@@ -1258,74 +1297,6 @@ export default function Layout({ title, children, showNav }: Props) {
 
   const accountPanelContent = (
     <>
-      <section className={styles.menuSection}>
-        {!isDesktop && (
-          <div className={styles.menuMobileViewRow} role="group" aria-label="View options">
-            <button
-              type="button"
-              className={`${styles.menuMobileViewBtn} ${styles.menuMobileViewBtnActive}`}
-              onClick={(e) => cycleViewMode(e.currentTarget)}
-              title={`${VIEW_LABELS[viewMode]}. Click to cycle.`}
-              aria-label={`Columns: ${VIEW_LABELS[viewMode]}`}
-            >
-              <span className={styles.menuMobileViewBtnIcon}>
-                {viewMode === '1' && <Column1Icon />}
-                {viewMode === '2' && <Column2Icon />}
-                {viewMode === '3' && <Column3Icon />}
-              </span>
-              <span className={styles.menuMobileViewBtnLabel}>{VIEW_LABELS[viewMode]}</span>
-            </button>
-            <button
-              type="button"
-              className={`${styles.menuMobileViewBtn} ${styles.menuMobileViewBtnActive}`}
-              onClick={(e) => cycleNsfwPreference(e.currentTarget)}
-              title={`${nsfwPreference}. Click to cycle: SFW → Blurred → NSFW`}
-              aria-label={`Content: ${nsfwPreference}. Click to cycle.`}
-            >
-              <span className={styles.menuMobileViewBtnIcon}>
-                <NsfwEyeIcon mode={nsfwPreference === 'sfw' ? 'closed' : nsfwPreference === 'blurred' ? 'half' : 'open'} />
-              </span>
-              <span className={styles.menuMobileViewBtnLabel}>
-                {nsfwPreference === 'sfw' ? 'SFW' : nsfwPreference === 'blurred' ? 'Blurred' : 'NSFW'}
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`${styles.menuMobileViewBtn} ${styles.menuMobileViewBtnActive}`}
-              onClick={(e) => cycleCardView(e.currentTarget)}
-              aria-label={cardViewMode === 'default' ? 'Full Cards' : cardViewMode === 'minimalist' ? 'Mini Cards' : 'Art Cards'}
-              title={cardViewMode === 'default' ? 'Full Cards' : cardViewMode === 'minimalist' ? 'Mini Cards' : 'Art Cards'}
-            >
-              <span className={styles.menuMobileViewBtnIcon}>
-                <CardModeIcon mode={cardViewMode === 'default' ? 'default' : cardViewMode === 'minimalist' ? 'minimalist' : 'artOnly'} />
-              </span>
-              <span className={styles.menuMobileViewBtnLabel}>
-                {cardViewMode === 'default' ? 'Full Cards' : cardViewMode === 'minimalist' ? 'Mini Cards' : 'Art Cards'}
-              </span>
-            </button>
-          </div>
-        )}
-        <div className={styles.menuThemeRow}>
-          {themeButtons}
-        </div>
-        {isDesktop && <NsfwPreferenceRow rowClassName={styles.menuNsfwRow} />}
-        <div className={styles.menuNsfwRow} role="group" aria-label="Feed content">
-          <button
-            type="button"
-            className={mediaOnly ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
-            onClick={() => toggleMediaOnly()}
-          >
-            Only Media Posts
-          </button>
-          <button
-            type="button"
-            className={!mediaOnly ? styles.menuNsfwBtnActive : styles.menuNsfwBtn}
-            onClick={() => toggleMediaOnly()}
-          >
-            Media & Text Posts
-          </button>
-        </div>
-      </section>
       {session && (
         <>
           <section className={styles.menuSection}>
@@ -1448,19 +1419,6 @@ export default function Layout({ title, children, showNav }: Props) {
           </div>
         </section>
       )}
-      <section className={styles.menuSection}>
-        <button
-          type="button"
-          className={`${styles.menuProfileBtn} ${styles.menuProfileBtnAccentHover}`}
-          onClick={() => {
-            setAccountMenuOpen(false)
-            setAboutOpen(true)
-          }}
-          title="About ArtSky and keyboard shortcuts"
-        >
-          <span>About</span>
-        </button>
-      </section>
     </>
   )
 
@@ -1484,6 +1442,89 @@ export default function Layout({ title, children, showNav }: Props) {
         {(
           <>
             <div className={styles.headerLeft}>
+              {isDesktop && (
+                <div ref={headerGearWrapRef} className={styles.headerGearWrap}>
+                  <button
+                    type="button"
+                    className={`${styles.headerGearBtn} float-btn ${feedFloatButtonsExpanded ? styles.feedFloatGearActive : ''}`}
+                    onClick={() => setFeedFloatButtonsExpanded((e) => !e)}
+                    title={feedFloatButtonsExpanded ? 'Hide view options' : 'Show view options'}
+                    aria-label={feedFloatButtonsExpanded ? 'Hide view options' : 'Show view options'}
+                    aria-expanded={feedFloatButtonsExpanded}
+                  >
+                    <GearIcon />
+                  </button>
+                  <div
+                    className={`${styles.headerGearExpandable} ${styles.gearFloatExpandable} ${feedFloatButtonsExpanded ? styles.feedFloatButtonsExpandableOpen : ''}`}
+                    aria-hidden={!feedFloatButtonsExpanded}
+                  >
+                    <button
+                      type="button"
+                      className={`${styles.nsfwFloatBtn} ${styles.gearExpandableBtn} float-btn`}
+                      onClick={(e) => cycleNsfwPreference(e.currentTarget, { showToast: false })}
+                      title={`${nsfwPreference}. Click to cycle: SFW → Blurred → NSFW`}
+                      aria-label={`Content: ${nsfwPreference}. Click to cycle.`}
+                    >
+                      <NsfwEyeIcon mode={nsfwPreference === 'sfw' ? 'closed' : nsfwPreference === 'blurred' ? 'half' : 'open'} />
+                      <span className={styles.gearExpandableLabel}>{NSFW_LABELS[nsfwPreference]}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.feedFloatBtn} ${styles.gearExpandableBtn} float-btn`}
+                      onClick={() => setTheme(theme === 'light' ? 'system' : theme === 'system' ? 'dark' : 'light')}
+                      title={`Theme: ${theme}. Click to cycle.`}
+                      aria-label={`Theme: ${theme}. Click to cycle.`}
+                    >
+                      <span className={styles.feedFloatThemeIcon}>
+                        {theme === 'light' ? <ThemeSunIcon /> : theme === 'dark' ? <ThemeMoonIcon /> : <ThemeAutoIcon />}
+                      </span>
+                      <span className={styles.gearExpandableLabel}>{theme === 'light' ? 'Light' : theme === 'dark' ? 'Dark' : 'Auto'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.feedFloatBtn} ${styles.gearExpandableBtn} float-btn`}
+                      onClick={(e) => cycleCardView(e.currentTarget, { showToast: false })}
+                      title={CARD_VIEW_LABELS[cardViewMode]}
+                      aria-label={CARD_VIEW_LABELS[cardViewMode]}
+                    >
+                      <CardModeIcon mode={cardViewMode === 'default' ? 'default' : cardViewMode === 'minimalist' ? 'minimalist' : 'artOnly'} />
+                      <span className={styles.gearExpandableLabel}>{CARD_VIEW_LABELS[cardViewMode]}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.feedFloatBtn} ${styles.gearExpandableBtn} float-btn`}
+                      onClick={() => toggleMediaOnly({ showToast: false })}
+                      title={mediaOnly ? 'Media only. Click for Media & Text.' : 'Media and text. Click for Media only.'}
+                      aria-label={mediaOnly ? 'Media only' : 'Media and text'}
+                    >
+                      <MediaModeIcon mediaOnly={mediaOnly} />
+                      <span className={styles.gearExpandableLabel}>{mediaOnly ? 'Media only' : 'Media & text'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.feedFloatBtn} ${styles.gearExpandableBtn} float-btn`}
+                      onClick={(e) => cycleViewMode(e.currentTarget, { showToast: false })}
+                      title={`${VIEW_LABELS[viewMode]}. Click to cycle.`}
+                      aria-label={`Columns: ${VIEW_LABELS[viewMode]}. Click to cycle.`}
+                    >
+                      {viewMode === '1' && <Column1Icon />}
+                      {viewMode === '2' && <Column2Icon />}
+                      {viewMode === '3' && <Column3Icon />}
+                      <span className={styles.gearExpandableLabel}>{VIEW_LABELS[viewMode]}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.feedFloatBtn} ${styles.gearExpandableBtn} float-btn`}
+                      onClick={() => setAboutOpen(true)}
+                      title="About ArtSky and keyboard shortcuts"
+                      aria-label="About ArtSky"
+                    >
+                      <AboutIcon />
+                      <span className={styles.gearExpandableLabel}>About</span>
+                    </button>
+                  </div>
+                </div>
+              )}
               <button
                 type="button"
                 className={styles.logoLink}
@@ -1640,39 +1681,6 @@ export default function Layout({ title, children, showNav }: Props) {
                   <span className={styles.headerBtnLabel}>New</span>
                 </button>
               )}
-              {isDesktop && (
-                <>
-                  <button
-                    type="button"
-                    className={`${styles.headerBtn} ${nsfwPreference !== 'sfw' ? styles.headerBtnActive : ''}`}
-                    onClick={(e) => cycleNsfwPreference(e.currentTarget)}
-                    title={`${nsfwPreference}. Click to cycle: SFW → Blurred → NSFW`}
-                    aria-label={`Content filter: ${nsfwPreference}. Click to cycle.`}
-                  >
-                    <NsfwEyeIcon mode={nsfwPreference === 'sfw' ? 'closed' : nsfwPreference === 'blurred' ? 'half' : 'open'} />
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.headerBtn} ${cardViewMode !== 'default' ? styles.headerBtnActive : ''}`}
-                    onClick={(e) => cycleCardView(e.currentTarget)}
-                    aria-label={cardViewMode === 'default' ? 'Show all' : cardViewMode === 'minimalist' ? 'Minimalist' : 'Art only'}
-                    title={cardViewMode === 'default' ? 'Show all' : cardViewMode === 'minimalist' ? 'Minimalist' : 'Art only'}
-                  >
-                    <CardModeIcon mode={cardViewMode === 'default' ? 'default' : cardViewMode === 'minimalist' ? 'minimalist' : 'artOnly'} />
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.headerBtn}
-                    onClick={(e) => cycleViewMode(e.currentTarget)}
-                    title={`${VIEW_LABELS[viewMode]}. Click to cycle.`}
-                    aria-label={`${VIEW_LABELS[viewMode]}. Click to cycle.`}
-                  >
-                    {viewMode === '1' && <Column1Icon />}
-                    {viewMode === '2' && <Column2Icon />}
-                    {viewMode === '3' && <Column3Icon />}
-                  </button>
-                </>
-              )}
               {session && (
                 <div className={styles.headerBtnWrap}>
                   <button
@@ -1712,9 +1720,14 @@ export default function Layout({ title, children, showNav }: Props) {
                       ref={accountBtnRef}
                       type="button"
                       className={styles.headerBtn}
-                      onClick={() => setAccountMenuOpen((o) => !o)}
-                      aria-label="Accounts and settings"
+                      onPointerDown={startAccountHold}
+                      onPointerUp={endAccountHold}
+                      onPointerLeave={endAccountHold}
+                      onPointerCancel={endAccountHold}
+                      onClick={accountBtnClick}
+                      aria-label="Profile (hold for accounts)"
                       aria-expanded={accountMenuOpen}
+                      title="Profile (hold for accounts and settings)"
                     >
                       <span className={styles.navIcon}>
                         {currentAccountAvatar ? (
@@ -1749,9 +1762,14 @@ export default function Layout({ title, children, showNav }: Props) {
                       ref={accountBtnRef}
                       type="button"
                       className={styles.headerAccountNavBtn}
-                      onClick={() => setAccountMenuOpen((o) => !o)}
-                      aria-label="Accounts and settings"
+                      onPointerDown={startAccountHold}
+                      onPointerUp={endAccountHold}
+                      onPointerLeave={endAccountHold}
+                      onPointerCancel={endAccountHold}
+                      onClick={accountBtnClick}
+                      aria-label="Profile (hold for accounts)"
                       aria-expanded={accountMenuOpen}
+                      title="Profile (hold for accounts and settings)"
                     >
                       <span className={styles.navIcon}>
                         {currentAccountAvatar ? (
@@ -1840,6 +1858,89 @@ export default function Layout({ title, children, showNav }: Props) {
               />
             </div>
           )}
+        </div>
+      )}
+      {showNav && !isDesktop && path === '/feed' && (
+        <div ref={gearFloatWrapRef} className={`${styles.gearFloatWrap} ${isModalOpen ? styles.gearFloatWrapModalOpen : ''} ${isModalOpen && modalScrollHidden ? styles.gearFloatWrapScrollHidden : ''}`}>
+          <button
+            type="button"
+            className={`${styles.feedFloatBtn} float-btn ${feedFloatButtonsExpanded ? styles.feedFloatGearActive : ''}`}
+            onClick={() => setFeedFloatButtonsExpanded((e) => !e)}
+            title={feedFloatButtonsExpanded ? 'Hide view options' : 'Show view options'}
+            aria-label={feedFloatButtonsExpanded ? 'Hide view options' : 'Show view options'}
+            aria-expanded={feedFloatButtonsExpanded}
+          >
+            <GearIcon />
+          </button>
+          <div
+            className={`${styles.feedFloatButtonsExpandable} ${styles.gearFloatExpandable} ${feedFloatButtonsExpanded ? styles.feedFloatButtonsExpandableOpen : ''}`}
+            aria-hidden={!feedFloatButtonsExpanded}
+          >
+            <button
+              type="button"
+              className={`${styles.nsfwFloatBtn} ${styles.gearExpandableBtn} float-btn`}
+              onClick={(e) => cycleNsfwPreference(e.currentTarget, { showToast: false })}
+              title={`${nsfwPreference}. Click to cycle: SFW → Blurred → NSFW`}
+              aria-label={`Content: ${nsfwPreference}. Click to cycle.`}
+            >
+              <NsfwEyeIcon mode={nsfwPreference === 'sfw' ? 'closed' : nsfwPreference === 'blurred' ? 'half' : 'open'} />
+              <span className={styles.gearExpandableLabel}>{NSFW_LABELS[nsfwPreference]}</span>
+            </button>
+            <button
+              type="button"
+              className={`${styles.feedFloatBtn} ${styles.gearExpandableBtn} float-btn`}
+              onClick={() => setTheme(theme === 'light' ? 'system' : theme === 'system' ? 'dark' : 'light')}
+              title={`Theme: ${theme}. Click to cycle.`}
+              aria-label={`Theme: ${theme}. Click to cycle.`}
+            >
+              <span className={styles.feedFloatThemeIcon}>
+                {theme === 'light' ? <ThemeSunIcon /> : theme === 'dark' ? <ThemeMoonIcon /> : <ThemeAutoIcon />}
+              </span>
+              <span className={styles.gearExpandableLabel}>{theme === 'light' ? 'Light' : theme === 'dark' ? 'Dark' : 'Auto'}</span>
+            </button>
+            <button
+              type="button"
+              className={`${styles.feedFloatBtn} ${styles.gearExpandableBtn} float-btn`}
+              onClick={(e) => cycleCardView(e.currentTarget, { showToast: false })}
+              title={CARD_VIEW_LABELS[cardViewMode]}
+              aria-label={CARD_VIEW_LABELS[cardViewMode]}
+            >
+              <CardModeIcon mode={cardViewMode === 'default' ? 'default' : cardViewMode === 'minimalist' ? 'minimalist' : 'artOnly'} />
+              <span className={styles.gearExpandableLabel}>{CARD_VIEW_LABELS[cardViewMode]}</span>
+            </button>
+            <button
+              type="button"
+              className={`${styles.feedFloatBtn} ${styles.gearExpandableBtn} float-btn`}
+              onClick={() => toggleMediaOnly({ showToast: false })}
+              title={mediaOnly ? 'Media only. Click for Media & Text.' : 'Media and text. Click for Media only.'}
+              aria-label={mediaOnly ? 'Media only' : 'Media and text'}
+            >
+              <MediaModeIcon mediaOnly={mediaOnly} />
+              <span className={styles.gearExpandableLabel}>{mediaOnly ? 'Media only' : 'Media & text'}</span>
+            </button>
+            <button
+              type="button"
+              className={`${styles.feedFloatBtn} ${styles.gearExpandableBtn} float-btn`}
+              onClick={(e) => cycleViewMode(e.currentTarget, { showToast: false })}
+              title={`${VIEW_LABELS[viewMode]}. Click to cycle.`}
+              aria-label={`Columns: ${VIEW_LABELS[viewMode]}. Click to cycle.`}
+            >
+              {viewMode === '1' && <Column1Icon />}
+              {viewMode === '2' && <Column2Icon />}
+              {viewMode === '3' && <Column3Icon />}
+              <span className={styles.gearExpandableLabel}>{VIEW_LABELS[viewMode]}</span>
+            </button>
+            <button
+              type="button"
+              className={`${styles.feedFloatBtn} ${styles.gearExpandableBtn} float-btn`}
+              onClick={() => setAboutOpen(true)}
+              title="About ArtSky and keyboard shortcuts"
+              aria-label="About ArtSky"
+            >
+              <AboutIcon />
+              <span className={styles.gearExpandableLabel}>About</span>
+            </button>
+          </div>
         </div>
       )}
       {showNav && !isDesktop && !session && (
@@ -1931,21 +2032,23 @@ export default function Layout({ title, children, showNav }: Props) {
       {showNav && (
         <>
           <div
-            className={`${styles.navOuter} nav-outer ${navVisible ? '' : styles.navHidden} ${!isDesktop && mobileNavScrollHidden ? styles.navOuterScrollHidden : ''}`}
+            className={`${styles.navOuter} nav-outer ${navVisible ? '' : styles.navHidden} ${!isDesktop && (mobileNavScrollHidden || (isModalOpen && modalScrollHidden)) ? styles.navOuterScrollHidden : ''}`}
           >
-            <button
-              type="button"
-              className={`${styles.seenPostsFloatBtn} hide-seen-fab float-btn`}
-              onPointerDown={(e) => startSeenHold(e)}
-              onPointerUp={endSeenHold}
-              onPointerLeave={endSeenHold}
-              onPointerCancel={endSeenHold}
-              onClick={(e) => seenBtnClick(e)}
-              title="Tap to hide seen posts, hold to show them again"
-              aria-label="Seen posts: tap to hide, hold to show again"
-            >
-              <SeenPostsIcon />
-            </button>
+            {!isModalOpen && (
+              <button
+                type="button"
+                className={`${styles.seenPostsFloatBtn} hide-seen-fab float-btn`}
+                onPointerDown={(e) => startSeenHold(e)}
+                onPointerUp={endSeenHold}
+                onPointerLeave={endSeenHold}
+                onPointerCancel={endSeenHold}
+                onClick={(e) => seenBtnClick(e)}
+                title="Tap to hide seen posts, hold to show them again"
+                aria-label="Seen posts: tap to hide, hold to show again"
+              >
+                <SeenPostsIcon />
+              </button>
+            )}
             <nav
               className={`${styles.nav} nav`}
               aria-label="Main navigation"
@@ -2180,7 +2283,7 @@ export default function Layout({ title, children, showNav }: Props) {
                 <div className={styles.aboutCard} onClick={(e) => e.stopPropagation()}>
                   <h2 className={styles.aboutTitle}>ArtSky</h2>
                   <p className={styles.aboutIntro}>
-                    A Bluesky client focused on art. Hide seen posts with the home or logo button, reveal them by holding the home or logo button. keyboard-friendly navigation.
+                    A Bluesky client focused on art.
                   </p>
                   <h3 className={styles.aboutSubtitle}>Keyboard shortcuts</h3>
                   <dl className={styles.aboutShortcuts}>

@@ -15,8 +15,8 @@ type ArtOnlyContextValue = {
   /** Current card view: default (full), artOnly (focus on art), minimalist (only collect + like) */
   cardViewMode: CardViewMode
   setCardViewMode: (value: CardViewMode) => void
-  /** Cycle: default → minimalist → artOnly → default. Shows toast. */
-  cycleCardView: (anchor?: HTMLElement) => void
+  /** Cycle: default → minimalist → artOnly → default. Shows toast unless options.showToast is false. */
+  cycleCardView: (anchor?: HTMLElement, options?: { showToast?: boolean }) => void
   /** True when mode is artOnly or minimalist (hide full text/handle in card) */
   artOnly: boolean
   /** True when mode is minimalist (only collect + like buttons) */
@@ -56,10 +56,10 @@ export function ArtOnlyProvider({ children }: { children: React.ReactNode }) {
     setCardViewModeState(value)
   }, [])
 
-  const cycleCardView = useCallback((_anchor?: HTMLElement) => {
+  const cycleCardView = useCallback((_anchor?: HTMLElement, options?: { showToast?: boolean }) => {
     setCardViewModeState((m) => {
       const next = m === 'default' ? 'minimalist' : m === 'minimalist' ? 'artOnly' : 'default'
-      toast?.showToast(CARD_VIEW_LABELS[next])
+      if (options?.showToast !== false) toast?.showToast(CARD_VIEW_LABELS[next])
       return next
     })
   }, [toast])
