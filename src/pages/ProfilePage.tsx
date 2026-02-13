@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams, Link } from 'react-router-dom'
 import { useProfileModal } from '../context/ProfileModalContext'
@@ -9,6 +9,8 @@ import { setInitialPostForUri } from '../lib/postCache'
 import type { AtpAgent } from '@atproto/api'
 import { formatRelativeTime, formatExactDateTime } from '../lib/date'
 import PostCard from '../components/PostCard'
+import VirtualizedProfileColumn from '../components/VirtualizedProfileColumn'
+import { useModalScroll } from '../context/ModalScrollContext'
 import PostText from '../components/PostText'
 import ProfileActionsMenu from '../components/ProfileActionsMenu'
 import BlockedAndMutedModal from '../components/BlockedAndMutedModal'
@@ -214,6 +216,9 @@ export function ProfileContent({
   const [, setFolloweesWhoFollowLoading] = useState(false)
   const [likeOverrides, setLikeOverrides] = useState<Record<string, string | null>>({})
   const { openPostModal, isModalOpen } = useProfileModal()
+  const modalScrollRef = useModalScroll()
+  const gridRef = useRef<HTMLDivElement | null>(null)
+  const [scrollMargin, setScrollMargin] = useState(0)
   const editProfileCtx = useEditProfile()
   const topBarSlots = useModalTopBarSlot()
   const topBarRightSlot = topBarSlots?.rightSlot ?? null
@@ -517,6 +522,16 @@ export function ProfileContent({
   const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
   profileGridItemsRef.current = profileGridItems
   keyboardFocusIndexRef.current = keyboardFocusIndex
+
+  useLayoutEffect(() => {
+    if (inModal || !gridRef.current) return
+    const el = gridRef.current
+    const update = () => setScrollMargin(el.getBoundingClientRect().top + window.scrollY)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [inModal, profileGridItems.length])
 
   useEffect(() => {
     setKeyboardFocusIndex((i) => (profileGridItems.length ? Math.min(i, profileGridItems.length - 1) : 0))
@@ -1112,88 +1127,50 @@ export function ProfileContent({
           </div>
         ) : (
           <>
-            {cols >= 2 ? (
-              <div className={`${styles.gridColumns} ${styles[`gridView${viewMode}`]}`} data-view-mode={viewMode}>
-                {distributeByHeight(mediaItems, cols).map((column, colIndex) => (
-                  <div key={colIndex} className={styles.gridColumn}>
-                    {column.map(({ item, originalIndex }) => (
-                      <div
-                        key={item.post.uri}
-                        className={styles.gridItem}
-                        onMouseEnter={() => {
-                          if (mouseMovedRef.current) {
-                            mouseMovedRef.current = false
-                            setKeyboardFocusIndex(originalIndex)
-                          }
-                        }}
-                      >
-                        <PostCard
-                          item={item}
-                          isSelected={(tab === 'posts' || tab === 'reposts') && originalIndex === keyboardFocusIndex}
-                          cardRef={(el) => { cardRefsRef.current[originalIndex] = el }}
-                          openAddDropdown={(tab === 'posts' || tab === 'reposts') && originalIndex === keyboardFocusIndex && keyboardAddOpen}
-                          onAddClose={() => setKeyboardAddOpen(false)}
-                          onPostClick={(uri, opts) => {
-                        if (opts?.initialItem) setInitialPostForUri(uri, opts.initialItem)
-                        openPostModal(uri, opts?.openReply)
-                      }}
-                          nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
-                          onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
-                          constrainMediaHeight={false}
-                          likedUriOverride={likeOverrides[item.post.uri]}
-                          onLikedChange={(uri, likeRecordUri) => setLikeOverrides((prev) => ({ ...prev, [uri]: likeRecordUri ?? null }))}
-                          onActionsMenuOpenChange={(open) => setActionsMenuOpenForIndex(open ? originalIndex : null)}
-                          cardIndex={originalIndex}
-                          actionsMenuOpenForIndex={actionsMenuOpenForIndex}
-                        />
-                      </div>
-                    ))}
-                    {cursor && (
-                      <div
-                        ref={(el) => { loadMoreSentinelRefs.current[colIndex] = el }}
-                        className={styles.loadMoreSentinel}
-                        aria-hidden
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`} data-view-mode={viewMode}>
-                {mediaItems.map((item, index) => (
-                  <div
-                    key={item.post.uri}
-                    onMouseEnter={() => {
-                      if (mouseMovedRef.current) {
-                        mouseMovedRef.current = false
-                        setKeyboardFocusIndex(index)
-                      }
-                    }}
-                  >
-                    <PostCard
-                      item={item}
-                      isSelected={(tab === 'posts' || tab === 'reposts') && index === keyboardFocusIndex}
-                      cardRef={(el) => { cardRefsRef.current[index] = el }}
-                      openAddDropdown={(tab === 'posts' || tab === 'reposts') && index === keyboardFocusIndex && keyboardAddOpen}
-                      onAddClose={() => setKeyboardAddOpen(false)}
-                      onPostClick={(uri, opts) => {
-                        if (opts?.initialItem) setInitialPostForUri(uri, opts.initialItem)
-                        openPostModal(uri, opts?.openReply)
-                      }}
-                      nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
-                      onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
-                      constrainMediaHeight={cols === 1}
-                      likedUriOverride={likeOverrides[item.post.uri]}
-                      onLikedChange={(uri, likeRecordUri) => setLikeOverrides((prev) => ({ ...prev, [uri]: likeRecordUri ?? null }))}
-                      onActionsMenuOpenChange={(open) => setActionsMenuOpenForIndex(open ? index : null)}
-                      cardIndex={index}
-                      actionsMenuOpenForIndex={actionsMenuOpenForIndex}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-            {cursor && cols === 1 && <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden />}
+            <div
+              ref={gridRef}
+              className={`${styles.gridColumns} ${styles[`gridView${viewMode}`]}`}
+              data-view-mode={viewMode}
+            >
+              {distributeByHeight(mediaItems, cols).map((column, colIndex) => (
+                <VirtualizedProfileColumn
+                  key={colIndex}
+                  column={column}
+                  colIndex={colIndex}
+                  scrollMargin={scrollMargin}
+                  scrollRef={inModal ? modalScrollRef : null}
+                  loadMoreSentinelRef={
+                    cursor
+                      ? (el) => {
+                          if (cols >= 2) loadMoreSentinelRefs.current[colIndex] = el
+                          else ((loadMoreSentinelRef as unknown) as { current: HTMLDivElement | null }).current = el
+                        }
+                      : undefined
+                  }
+                  hasCursor={!!cursor}
+                  keyboardFocusIndex={keyboardFocusIndex}
+                  keyboardAddOpen={keyboardAddOpen}
+                  actionsMenuOpenForIndex={actionsMenuOpenForIndex}
+                  nsfwPreference={nsfwPreference}
+                  unblurredUris={unblurredUris}
+                  setUnblurred={setUnblurred}
+                  likeOverrides={likeOverrides}
+                  setLikeOverrides={setLikeOverrides}
+                  openPostModal={openPostModal}
+                  cardRef={(index) => (el) => { cardRefsRef.current[index] = el }}
+                  onActionsMenuOpenChange={(index, open) => setActionsMenuOpenForIndex(open ? index : null)}
+                  onMouseEnter={(originalIndex) => {
+                    if (mouseMovedRef.current) {
+                      mouseMovedRef.current = false
+                      setKeyboardFocusIndex(originalIndex)
+                    }
+                  }}
+                  onAddClose={() => setKeyboardAddOpen(false)}
+                  constrainMediaHeight={cols === 1}
+                  isSelected={(index) => (tab === 'posts' || tab === 'reposts') && index === keyboardFocusIndex}
+                />
+              ))}
+            </div>
             {loadingMore && <div className={styles.loadingMore}>Loading…</div>}
           </>
         )}

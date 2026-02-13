@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { agent, searchPostsByPhraseAndTags, getPostMediaInfo, isPostNsfw } from '../lib/bsky'
-import { setInitialPostForUri } from '../lib/postCache'
 import type { TimelineItem } from '../lib/bsky'
 import type { AppBskyFeedDefs } from '@atproto/api'
-import PostCard from './PostCard'
+import VirtualizedProfileColumn from './VirtualizedProfileColumn'
 import AppModal from './AppModal'
 import MediaModalTopBar from './MediaModalTopBar'
 import { useSession } from '../context/SessionContext'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useViewMode } from '../context/ViewModeContext'
 import { useModeration } from '../context/ModerationContext'
+import { useModalScroll } from '../context/ModalScrollContext'
 import styles from '../pages/TagPage.module.css'
 import feedStyles from '../pages/FeedPage.module.css'
 import modalStyles from './SearchModal.module.css'
@@ -124,6 +124,7 @@ function SearchContent({ query, onRegisterRefresh }: { query: string; onRegister
   const mediaItemsRef = useRef<TimelineItem[]>([])
   const scrollIntoViewFromKeyboardRef = useRef(false)
   const lastScrollIntoViewIndexRef = useRef(-1)
+  const modalScrollRef = useModalScroll()
 
   const load = useCallback(async (nextCursor?: string) => {
     if (!query.trim()) return
@@ -160,6 +161,8 @@ function SearchContent({ query, onRegisterRefresh }: { query: string; onRegister
   useEffect(() => {
     if (!cursor) return
     const refs = loadMoreSentinelRefs.current
+    const numCols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
+    const root = refs[0]?.closest('[data-modal-scroll]') ?? undefined
     let retryId = 0
     const observer = new IntersectionObserver(
       (entries) => {
@@ -171,9 +174,8 @@ function SearchContent({ query, onRegisterRefresh }: { query: string; onRegister
           }
         }
       },
-      { rootMargin: '600px', threshold: 0 }
+      { root, rootMargin: '600px', threshold: 0 }
     )
-    const numCols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
     for (let c = 0; c < numCols; c++) {
       const el = refs[c]
       if (el) observer.observe(el)
@@ -182,10 +184,11 @@ function SearchContent({ query, onRegisterRefresh }: { query: string; onRegister
     if (numCols > 1) {
       retryId = window.setTimeout(() => {
         if (loadingMoreRef.current) return
+        const rootBottom = root ? (root as Element).getBoundingClientRect().bottom : window.innerHeight
         for (let c = 0; c < numCols; c++) {
           const el = refs[c]
           if (!el) continue
-          if (el.getBoundingClientRect().bottom < window.innerHeight) {
+          if (el.getBoundingClientRect().bottom < rootBottom) {
             loadingMoreRef.current = true
             load(cursor)
             return
@@ -302,40 +305,35 @@ function SearchContent({ query, onRegisterRefresh }: { query: string; onRegister
       ) : mediaItems.length === 0 ? (
         <div className={styles.empty}>No posts found for this search.</div>
       ) : (
-        <div className={`${feedStyles.gridColumns} ${feedStyles[`gridView${viewMode}`]}`}>
+        <div
+          className={`${feedStyles.gridColumns} ${feedStyles[`gridView${viewMode}`]}`}
+          data-view-mode={viewMode}
+        >
           {distributeByHeight(mediaItems, cols).map((column, colIndex) => (
-            <div key={colIndex} className={feedStyles.gridColumn}>
-              {column.map(({ item, originalIndex }) => (
-                <div
-                  key={item.post.uri}
-                  className={feedStyles.gridItem}
-                  onMouseEnter={() => setKeyboardFocusIndex(originalIndex)}
-                >
-                  <PostCard
-                    item={item}
-                    isSelected={originalIndex === keyboardFocusIndex}
-                    cardRef={(el) => { cardRefsRef.current[originalIndex] = el }}
-                    openAddDropdown={originalIndex === keyboardFocusIndex && keyboardAddOpen}
-                    onAddClose={() => setKeyboardAddOpen(false)}
-                    onPostClick={(uri, opts) => {
-                      if (opts?.initialItem) setInitialPostForUri(uri, opts.initialItem)
-                      openPostModal(uri)
-                    }}
-                    nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
-                    onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
-                    likedUriOverride={likeOverrides[item.post.uri]}
-                    onLikedChange={(uri, likeRecordUri) => setLikeOverrides((prev) => ({ ...prev, [uri]: likeRecordUri ?? null }))}
-                  />
-                </div>
-              ))}
-              {cursor && (
-                <div
-                  ref={(el) => { loadMoreSentinelRefs.current[colIndex] = el }}
-                  className={feedStyles.loadMoreSentinel}
-                  aria-hidden
-                />
-              )}
-            </div>
+            <VirtualizedProfileColumn
+              key={colIndex}
+              column={column}
+              colIndex={colIndex}
+              scrollMargin={0}
+              scrollRef={modalScrollRef}
+              loadMoreSentinelRef={cursor ? (el) => { loadMoreSentinelRefs.current[colIndex] = el } : undefined}
+              hasCursor={!!cursor}
+              keyboardFocusIndex={keyboardFocusIndex}
+              keyboardAddOpen={keyboardAddOpen}
+              actionsMenuOpenForIndex={null}
+              nsfwPreference={nsfwPreference}
+              unblurredUris={unblurredUris}
+              setUnblurred={setUnblurred}
+              likeOverrides={likeOverrides}
+              setLikeOverrides={setLikeOverrides}
+              openPostModal={(uri) => openPostModal(uri)}
+              cardRef={(index) => (el) => { cardRefsRef.current[index] = el }}
+              onActionsMenuOpenChange={() => {}}
+              onMouseEnter={(originalIndex) => setKeyboardFocusIndex(originalIndex)}
+              onAddClose={() => setKeyboardAddOpen(false)}
+              constrainMediaHeight={cols === 1}
+              isSelected={(index) => index === keyboardFocusIndex}
+            />
           ))}
         </div>
       )}

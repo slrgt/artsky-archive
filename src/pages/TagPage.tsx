@@ -1,20 +1,61 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { agent, searchPostsByTag, getPostMediaInfo, isPostNsfw } from '../lib/bsky'
-import { setInitialPostForUri } from '../lib/postCache'
 import type { TimelineItem } from '../lib/bsky'
 import type { AppBskyFeedDefs } from '@atproto/api'
-import PostCard from '../components/PostCard'
+import VirtualizedProfileColumn from '../components/VirtualizedProfileColumn'
 import Layout from '../components/Layout'
 import { useSession } from '../context/SessionContext'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useViewMode } from '../context/ViewModeContext'
 import { useModeration } from '../context/ModerationContext'
+import { useModalScroll } from '../context/ModalScrollContext'
 import styles from './TagPage.module.css'
+import profileGridStyles from './ProfilePage.module.css'
+
+const ESTIMATE_COL_WIDTH = 280
+const CARD_CHROME = 100
 
 /** Wrap PostView into TimelineItem shape for PostCard */
 function toTimelineItem(post: AppBskyFeedDefs.PostView): TimelineItem {
   return { post }
+}
+
+function estimateItemHeight(item: TimelineItem): number {
+  const media = getPostMediaInfo(item.post)
+  if (!media) return CARD_CHROME + 80
+  if (media.aspectRatio != null && media.aspectRatio > 0) {
+    return CARD_CHROME + ESTIMATE_COL_WIDTH / media.aspectRatio
+  }
+  return CARD_CHROME + 220
+}
+
+function distributeByHeight(
+  items: TimelineItem[],
+  numCols: number
+): Array<Array<{ item: TimelineItem; originalIndex: number }>> {
+  if (numCols < 1) return []
+  const columns: Array<Array<{ item: TimelineItem; originalIndex: number }>> = Array.from(
+    { length: numCols },
+    () => []
+  )
+  const columnHeights: number[] = Array(numCols).fill(0)
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    const h = estimateItemHeight(item)
+    const lengths = columns.map((col) => col.length)
+    const minCount = lengths.length === 0 ? 0 : Math.min(...lengths)
+    let best = -1
+    for (let c = 0; c < numCols; c++) {
+      if (columns[c].length > minCount + 1) continue
+      if (best === -1 || columnHeights[c] < columnHeights[best]) best = c
+      else if (columnHeights[c] === columnHeights[best] && columns[c].length < columns[best].length) best = c
+    }
+    if (best === -1) best = 0
+    columns[best].push({ item, originalIndex: i })
+    columnHeights[best] += h
+  }
+  return columns
 }
 
 export function TagContent({ tag, inModal = false, onRegisterRefresh }: { tag: string; inModal?: boolean; onRegisterRefresh?: (refresh: () => void | Promise<void>) => void }) {
@@ -31,10 +72,16 @@ export function TagContent({ tag, inModal = false, onRegisterRefresh }: { tag: s
   const [keyboardAddOpen, setKeyboardAddOpen] = useState(false)
   const [likeOverrides, setLikeOverrides] = useState<Record<string, string | null>>({})
   const cardRefsRef = useRef<(HTMLDivElement | null)[]>([])
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
+  const loadMoreSentinelRefs = useRef<(HTMLDivElement | null)[]>([])
+  const loadingMoreRef = useRef(false)
   const keyboardFocusIndexRef = useRef(0)
   const mediaItemsRef = useRef<TimelineItem[]>([])
   const scrollIntoViewFromKeyboardRef = useRef(false)
   const lastScrollIntoViewIndexRef = useRef(-1)
+  const modalScrollRef = useModalScroll()
+  const gridRef = useRef<HTMLDivElement | null>(null)
+  const [scrollMargin, setScrollMargin] = useState(0)
 
   const load = useCallback(async (nextCursor?: string) => {
     if (!tag) return
@@ -73,6 +120,41 @@ export function TagContent({ tag, inModal = false, onRegisterRefresh }: { tag: s
   const cols = viewMode === '1' ? 1 : viewMode === '2' ? 2 : 3
   mediaItemsRef.current = mediaItems
   keyboardFocusIndexRef.current = keyboardFocusIndex
+
+  useLayoutEffect(() => {
+    if (inModal || !gridRef.current) return
+    const el = gridRef.current
+    const update = () => setScrollMargin(el.getBoundingClientRect().top + window.scrollY)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [inModal, mediaItems.length])
+
+  loadingMoreRef.current = loadingMore
+  useEffect(() => {
+    if (!cursor) return
+    const colsForObserver = cols
+    const firstSentinel = colsForObserver >= 2 ? loadMoreSentinelRefs.current[0] : loadMoreSentinelRef.current
+    if (!firstSentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting || loadingMoreRef.current) return
+        loadingMoreRef.current = true
+        load(cursor)
+      },
+      { rootMargin: '600px', threshold: 0 }
+    )
+    observer.observe(firstSentinel)
+    if (colsForObserver >= 2) {
+      const refs = loadMoreSentinelRefs.current
+      for (let c = 1; c < colsForObserver; c++) {
+        const el = refs[c]
+        if (el) observer.observe(el)
+      }
+    }
+    return () => observer.disconnect()
+  }, [cursor, load, cols])
 
   useEffect(() => {
     setKeyboardFocusIndex((i) => (mediaItems.length ? Math.min(i, mediaItems.length - 1) : 0))
@@ -176,40 +258,50 @@ export function TagContent({ tag, inModal = false, onRegisterRefresh }: { tag: s
         <div className={styles.empty}>No posts with images or videos for this tag.</div>
       ) : (
         <>
-          <div className={`${styles.grid} ${styles[`gridView${viewMode}`]}`}>
-            {mediaItems.map((item, index) => (
-              <div
-                key={item.post.uri}
-                onMouseEnter={() => setKeyboardFocusIndex(index)}
-              >
-                <PostCard
-                  item={item}
-                  isSelected={index === keyboardFocusIndex}
-                  cardRef={(el) => { cardRefsRef.current[index] = el }}
-                  openAddDropdown={index === keyboardFocusIndex && keyboardAddOpen}
-                  onAddClose={() => setKeyboardAddOpen(false)}
-                  onPostClick={inModal ? (uri, opts) => {
-                    if (opts?.initialItem) setInitialPostForUri(uri, opts.initialItem)
-                    openPostModal(uri)
-                  } : undefined}
-                  nsfwBlurred={nsfwPreference === 'blurred' && isPostNsfw(item.post) && !unblurredUris.has(item.post.uri)}
-                  onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
-                  likedUriOverride={likeOverrides[item.post.uri]}
-                  onLikedChange={(uri, likeRecordUri) => setLikeOverrides((prev) => ({ ...prev, [uri]: likeRecordUri ?? null }))}
-                />
-              </div>
+          <div
+            ref={gridRef}
+            className={`${profileGridStyles.gridColumns} ${profileGridStyles[`gridView${viewMode}`]}`}
+            data-view-mode={viewMode}
+          >
+            {distributeByHeight(mediaItems, cols).map((column, colIndex) => (
+              <VirtualizedProfileColumn
+                key={colIndex}
+                column={column}
+                colIndex={colIndex}
+                scrollMargin={scrollMargin}
+                scrollRef={inModal ? modalScrollRef : null}
+                loadMoreSentinelRef={
+                  cursor
+                    ? (el) => {
+                        if (cols >= 2) loadMoreSentinelRefs.current[colIndex] = el
+                        else ((loadMoreSentinelRef as unknown) as { current: HTMLDivElement | null }).current = el
+                      }
+                    : undefined
+                }
+                hasCursor={!!cursor}
+                keyboardFocusIndex={keyboardFocusIndex}
+                keyboardAddOpen={keyboardAddOpen}
+                actionsMenuOpenForIndex={null}
+                nsfwPreference={nsfwPreference}
+                unblurredUris={unblurredUris}
+                setUnblurred={setUnblurred}
+                likeOverrides={likeOverrides}
+                setLikeOverrides={setLikeOverrides}
+                openPostModal={
+                  inModal
+                    ? openPostModal
+                    : (uri) => navigate(`/post/${encodeURIComponent(uri)}`)
+                }
+                cardRef={(index) => (el) => { cardRefsRef.current[index] = el }}
+                onActionsMenuOpenChange={() => {}}
+                onMouseEnter={(originalIndex) => setKeyboardFocusIndex(originalIndex)}
+                onAddClose={() => setKeyboardAddOpen(false)}
+                constrainMediaHeight={cols === 1}
+                isSelected={(index) => index === keyboardFocusIndex}
+              />
             ))}
           </div>
-          {cursor && (
-            <button
-              type="button"
-              className={styles.more}
-              onClick={() => load(cursor)}
-              disabled={loadingMore}
-            >
-              {loadingMore ? 'Loading…' : 'Load more'}
-            </button>
-          )}
+          {loadingMore && <div className={profileGridStyles.loadingMore}>Loading…</div>}
         </>
       )}
     </div>

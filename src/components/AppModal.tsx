@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { ModalTopBarSlotContext } from '../context/ModalTopBarSlotContext'
+import { ModalScrollProvider } from '../context/ModalScrollContext'
 import { useModalExpand } from '../context/ModalExpandContext'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useScrollLock } from '../context/ScrollLockContext'
@@ -226,7 +227,9 @@ export default function AppModal({
               className={onPullToRefresh ? styles.pullRefreshContent : undefined}
               style={onPullToRefresh ? { transform: `translateY(${pullRefresh.pullDistance}px)` } : undefined}
             >
-              {children}
+              <ModalScrollProvider scrollRef={scrollRef}>
+                {children}
+              </ModalScrollProvider>
             </div>
           </div>
         </div>

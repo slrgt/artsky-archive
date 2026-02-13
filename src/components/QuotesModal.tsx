@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getQuotes, isPostNsfw } from '../lib/bsky'
+import { getQuotes } from '../lib/bsky'
 import type { TimelineItem } from '../lib/bsky'
-import PostCard from './PostCard'
+import VirtualizedProfileColumn from './VirtualizedProfileColumn'
 import AppModal from './AppModal'
 import { useProfileModal } from '../context/ProfileModalContext'
 import { useModeration } from '../context/ModerationContext'
+import { useModalScroll } from '../context/ModalScrollContext'
 import styles from './QuotesModal.module.css'
+import profileGridStyles from '../pages/ProfilePage.module.css'
 
 interface QuotesModalProps {
   postUri: string
@@ -23,7 +25,9 @@ export default function QuotesModal({ postUri, onClose, onBack, canGoBack }: Quo
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [refreshFn, setRefreshFn] = useState<(() => void | Promise<void>) | null>(null)
+  const [likeOverrides, setLikeOverrides] = useState<Record<string, string | null>>({})
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
+  const modalScrollRef = useModalScroll()
 
   const load = useCallback(
     async (nextCursor?: string) => {
@@ -59,11 +63,12 @@ export default function QuotesModal({ postUri, onClose, onBack, canGoBack }: Quo
     if (!cursor || loadingMore) return
     const el = loadMoreSentinelRef.current
     if (!el) return
+    const root = el.closest('[data-modal-scroll]') ?? undefined
     const obs = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) load(cursor)
       },
-      { rootMargin: '200px', threshold: 0 }
+      { root, rootMargin: '200px', threshold: 0 }
     )
     obs.observe(el)
     return () => obs.disconnect()
@@ -84,27 +89,34 @@ export default function QuotesModal({ postUri, onClose, onBack, canGoBack }: Quo
         ) : items.length === 0 ? (
           <div className={styles.empty}>No one has quoted this post yet.</div>
         ) : (
-          <div className={styles.list}>
-            {items.map((item) => (
-              <div key={item.post.uri} className={styles.cardWrap}>
-                <PostCard
-                  item={item}
-                  onPostClick={(uri) => openPostModal(uri)}
-                  nsfwBlurred={
-                    nsfwPreference === 'blurred' &&
-                    isPostNsfw(item.post) &&
-                    !unblurredUris.has(item.post.uri)
-                  }
-                  onNsfwUnblur={() => setUnblurred(item.post.uri, true)}
-                />
-              </div>
-            ))}
-            {cursor && (
-              <div ref={loadMoreSentinelRef} className={styles.loadMoreSentinel} aria-hidden>
-                {loadingMore && <span className={styles.loadingMore}>Loading more…</span>}
-              </div>
-            )}
-          </div>
+          <>
+            <div className={`${profileGridStyles.gridColumns} ${profileGridStyles.gridView1}`}>
+              <VirtualizedProfileColumn
+                column={items.map((item, i) => ({ item, originalIndex: i }))}
+                colIndex={0}
+                scrollMargin={0}
+                scrollRef={modalScrollRef}
+                loadMoreSentinelRef={cursor ? (el) => { (loadMoreSentinelRef as unknown as { current: HTMLDivElement | null }).current = el } : undefined}
+                hasCursor={!!cursor}
+                keyboardFocusIndex={0}
+                keyboardAddOpen={false}
+                actionsMenuOpenForIndex={null}
+                nsfwPreference={nsfwPreference}
+                unblurredUris={unblurredUris}
+                setUnblurred={setUnblurred}
+                likeOverrides={likeOverrides}
+                setLikeOverrides={setLikeOverrides}
+                openPostModal={openPostModal}
+                cardRef={() => () => {}}
+                onActionsMenuOpenChange={() => {}}
+                onMouseEnter={() => {}}
+                onAddClose={() => {}}
+                constrainMediaHeight
+                isSelected={() => false}
+              />
+            </div>
+            {loadingMore && <div className={styles.loadingMore}>Loading more…</div>}
+          </>
         )}
       </div>
     </AppModal>
