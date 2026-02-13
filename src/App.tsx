@@ -1,7 +1,7 @@
 // ArtSky – Bluesky client focused on art (deploy bump)
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
-import { HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { REPO_URL } from './config/repo'
 import * as bsky from './lib/bsky'
 import { SessionProvider } from './context/SessionContext'
@@ -23,6 +23,12 @@ import FeedPage from './pages/FeedPage'
 import PostDetailPage from './pages/PostDetailPage'
 import ProfilePage from './pages/ProfilePage'
 import TagPage from './pages/TagPage'
+import SearchPage from './pages/SearchPage'
+import QuotesPage from './pages/QuotesPage'
+import ForumPage from './pages/ForumPage'
+import ForumPostPage from './pages/ForumPostPage'
+import ArtboardsPage from './pages/ArtboardsPage'
+import ArtboardDetailPage from './pages/ArtboardDetailPage'
 import CollabPage from './pages/CollabPage'
 import ConsensusPage from './pages/ConsensusPage'
 
@@ -135,38 +141,21 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   }
 }
 
-/** Redirect to feed with artboard modal open (for direct /artboard/:id links). */
-function ArtboardRedirect() {
-  const { id } = useParams<{ id: string }>()
-  return <Navigate to={id ? `/feed?artboard=${encodeURIComponent(id)}` : '/feed'} replace />
-}
-
-/** Redirect to feed with forum post modal open (for direct /forum/post/:uri links). */
-function ForumPostRedirect() {
-  const { '*': splat } = useParams<{ '*': string }>()
-  const trimmed = (splat ?? '').replace(/^\/+/, '').trim()
-  if (!trimmed) return <Navigate to="/feed?forum=1" replace />
-  try {
-    const uri = decodeURIComponent(trimmed)
-    return <Navigate to={`/feed?forumPost=${encodeURIComponent(uri)}`} replace />
-  } catch {
-    return <Navigate to={`/feed?forumPost=${encodeURIComponent(trimmed)}`} replace />
-  }
-}
-
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/feed" element={<FeedPage />} />
-      <Route path="/forum" element={<Navigate to="/feed?forum=1" replace />} />
+      <Route path="/forum" element={<ForumPage />} />
+      <Route path="/forum/post" element={<ForumPostPage />} />
       <Route path="/collab" element={<CollabPage />} />
       <Route path="/consensus" element={<ConsensusPage />} />
-      <Route path="/artboards" element={<Navigate to="/feed?artboards=1" replace />} />
-      <Route path="/artboard/:id" element={<ArtboardRedirect />} />
+      <Route path="/artboards" element={<ArtboardsPage />} />
+      <Route path="/artboard/:id" element={<ArtboardDetailPage />} />
       <Route path="/post/:uri" element={<PostDetailPage />} />
       <Route path="/profile/:handle" element={<ProfilePage />} />
       <Route path="/tag/:tag" element={<TagPage />} />
-      <Route path="/forum/post/*" element={<ForumPostRedirect />} />
+      <Route path="/search" element={<SearchPage />} />
+      <Route path="/quotes" element={<QuotesPage />} />
       <Route path="/" element={<Navigate to="/feed" replace />} />
       <Route path="*" element={<Navigate to="/feed" replace />} />
     </Routes>

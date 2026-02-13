@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { useProfileModal } from '../context/ProfileModalContext'
 
 interface ProfileLinkProps {
   handle: string
@@ -10,21 +9,15 @@ interface ProfileLinkProps {
   children: React.ReactNode
 }
 
-/** Link that opens profile in the modal lightbox instead of navigating. */
+/** Link to profile page (full-page mode: normal navigation). */
 export default function ProfileLink({ handle, className, title, 'aria-label': ariaLabel, onClick, children }: ProfileLinkProps) {
-  const { openProfileModal } = useProfileModal()
   return (
     <Link
       to={`/profile/${encodeURIComponent(handle)}`}
       className={className}
       title={title}
       aria-label={ariaLabel}
-      onClick={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        openProfileModal(handle)
-        onClick?.(e)
-      }}
+      onClick={onClick}
     >
       {children}
     </Link>

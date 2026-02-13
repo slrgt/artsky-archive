@@ -105,7 +105,7 @@ function indexRightByRow(
   return currentIndex
 }
 
-function SearchContent({ query, onRegisterRefresh }: { query: string; onRegisterRefresh?: (refresh: () => void | Promise<void>) => void }) {
+export function SearchContent({ query, onRegisterRefresh }: { query: string; onRegisterRefresh?: (refresh: () => void | Promise<void>) => void }) {
   const { session } = useSession()
   const { viewMode } = useViewMode()
   const { openPostModal } = useProfileModal()
