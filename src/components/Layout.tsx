@@ -1423,6 +1423,8 @@ export default function Layout({ title, children, showNav }: Props) {
     [showNav, path]
   )
 
+  const showBackButton = showNav && path !== '/feed' && path !== '/'
+
   return (
     <div className={`${styles.wrap} ${showNav && isDesktop ? styles.wrapWithHeader : ''} ${showNav && !isDesktop ? styles.wrapMobileTop : ''}`}>
       <FeedPullRefreshContext.Provider value={feedPullRefreshContextValue}>
@@ -1430,6 +1432,19 @@ export default function Layout({ title, children, showNav }: Props) {
       <a href="#main-content" className={styles.skipLink}>
         Skip to main content
       </a>
+      {showBackButton && (
+        <button
+          type="button"
+          className={styles.floatingBackBtn}
+          onClick={() => navigate(-1)}
+          aria-label="Back"
+          title="Back"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+        </button>
+      )}
       {showNav && isDesktop && (
       <header className={`${styles.header} ${!session ? styles.headerLoggedOut : ''}`} role="banner">
         {(
