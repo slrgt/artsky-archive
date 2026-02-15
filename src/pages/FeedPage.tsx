@@ -25,6 +25,9 @@ import { useModeration } from '../context/ModerationContext'
 import { useHideReposts } from '../context/HideRepostsContext'
 import { useSeenPosts } from '../context/SeenPostsContext'
 import { usePullToRefresh } from '../hooks/usePullToRefresh'
+import { useScrollRestoration } from '../hooks/useScrollRestoration'
+import { getFeedScrollKey } from '../utils/feedScrollKey'
+import { useScrollStore } from '../store/scrollStore'
 import SuggestedFollows from '../components/SuggestedFollows'
 import VirtualizedFeedColumn from '../components/VirtualizedFeedColumn'
 import styles from './FeedPage.module.css'
@@ -463,14 +466,34 @@ export default function FeedPage() {
     }
   }, [])
 
+  const {
+    entries: mixEntries,
+    totalPercent: mixTotalPercent,
+  } = useFeedMix()
+  const feedSwipe = useFeedSwipe()
+
+  // Per-feed scroll restoration: each feed (Following, What's Hot, mixed) remembers its own position
+  const feedScrollKey = getFeedScrollKey(source, mixEntries, mixTotalPercent)
+  useScrollRestoration(feedScrollKey, { deferred: true })
+  const getScrollPosition = useScrollStore((s) => s.getScrollPosition)
+
   // When landing on the feed (refresh or logo/feed button): scroll to top and take snapshot of seen URIs so only those are hidden; newly seen posts while scrolling stay visible.
+  // On POP (going back from overlay): don't update snapshot—user controls when to hide seen via the button.
+  // Skip scroll-to-top when navigating to overlay routes (post, profile, tag)—feed stays visible underneath, preserve scroll.
+  // Skip scroll-to-top on page reload when we have a saved scroll position (useScrollRestoration will restore it).
   useEffect(() => {
     const pathnameChanged = prevPathnameRef.current !== location.pathname
     const isFeed = location.pathname === '/' || location.pathname.startsWith('/feed')
-    if (isFeed && pathnameChanged) setSeenUrisAtReset(new Set(seenUris))
+    const isOverlayRoute = location.pathname.startsWith('/post/') || location.pathname.startsWith('/profile/') || location.pathname.startsWith('/tag/')
+    if (isFeed && pathnameChanged && navigationType !== 'POP') setSeenUrisAtReset(new Set(seenUris))
     prevPathnameRef.current = location.pathname
-    if (navigationType !== 'POP' && pathnameChanged) window.scrollTo(0, 0)
-  }, [location.pathname, navigationType, seenUris])
+    if (navigationType !== 'POP' && pathnameChanged && !isOverlayRoute) {
+      const navEntry = typeof performance !== 'undefined' ? performance.getEntriesByType?.('navigation')[0] : undefined
+      const isReload = (navEntry as PerformanceNavigationTiming | undefined)?.type === 'reload'
+      const savedY = getScrollPosition(feedScrollKey)
+      if (!(isReload && savedY > 0)) window.scrollTo(0, 0)
+    }
+  }, [location.pathname, navigationType, seenUris, feedScrollKey, getScrollPosition])
 
   useEffect(() => {
     const stateSource = (location.state as { feedSource?: FeedSource })?.feedSource
@@ -479,12 +502,6 @@ export default function FeedPage() {
       navigate(location.pathname, { replace: true })
     }
   }, [location.state, location.pathname, navigate])
-
-  const {
-    entries: mixEntries,
-    totalPercent: mixTotalPercent,
-  } = useFeedMix()
-  const feedSwipe = useFeedSwipe()
 
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null)
   const swipeGestureRef = useRef<'unknown' | 'swipe' | 'pull'>('unknown')

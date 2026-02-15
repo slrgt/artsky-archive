@@ -1,38 +1,38 @@
 {
   "name": "artsky",
-  "private": true,
   "version": "0.0.0",
-  "type": "module",
+  "private": true,
+  "main": "index.js",
   "scripts": {
-    "dev": "vite",
-    "dev:artsky-dev": "VITE_BASE_PATH=/artsky-dev/ VITE_APP_ENV=dev vite --port 5174",
-    "build": "tsc -b && vite build",
+    "start": "expo start",
+    "dev": "expo start --web --port 19006",
+    "web": "expo start --web",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "build": "node scripts/generate-oauth-metadata.js && npx expo export --platform web"
   },
   "dependencies": {
     "@atproto/api": "^0.18.20",
     "@atproto/oauth-client-browser": "^0.3.40",
-    "@tanstack/react-virtual": "^3.13.18",
-    "hls.js": "^1.6.15",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-router-dom": "^7.13.0",
-    "vite-plugin-pwa": "^1.2.0"
+    "@expo/metro-runtime": "~4.0.1",
+    "@react-native-async-storage/async-storage": "2.1.2",
+    "@react-navigation/bottom-tabs": "^7.9.0",
+    "@react-navigation/native": "^7.0.0",
+    "@react-navigation/native-stack": "^7.0.0",
+    "expo": "~52.0.0",
+    "expo-status-bar": "~2.0.0",
+    "react": "18.3.1",
+    "react-native": "0.76.5",
+    "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.4.0",
+    "react-native-web": "~0.19.13",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/node": "^24.10.1",
-    "@types/react": "^19.2.5",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "@babel/core": "^7.26.0",
+    "@types/react": "~18.3.12",
+    "typescript": "~5.9.3"
   },
   "license": "AGPL-3.0-or-later"
 }

@@ -19,10 +19,7 @@ import { ModerationProvider } from './context/ModerationContext'
 import { HideRepostsProvider } from './context/HideRepostsContext'
 import { SeenPostsProvider } from './context/SeenPostsContext'
 import { ToastProvider } from './context/ToastContext'
-import FeedPage from './pages/FeedPage'
-import PostDetailPage from './pages/PostDetailPage'
-import ProfilePage from './pages/ProfilePage'
-import TagPage from './pages/TagPage'
+import FeedShell from './components/FeedShell'
 import SearchPage from './pages/SearchPage'
 import QuotesPage from './pages/QuotesPage'
 import ForumPage from './pages/ForumPage'
@@ -31,6 +28,7 @@ import ArtboardsPage from './pages/ArtboardsPage'
 import ArtboardDetailPage from './pages/ArtboardDetailPage'
 import CollabPage from './pages/CollabPage'
 import ConsensusPage from './pages/ConsensusPage'
+import ScrollRestoration from './components/ScrollRestoration'
 
 /** Official Git SCM logo (https://git-scm.com/images/logos/downloads/Git-Icon-1788C.svg) */
 function GitLogo() {
@@ -144,16 +142,16 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/feed" element={<FeedPage />} />
+      <Route path="/feed" element={<FeedShell />} />
+      <Route path="/post/:uri" element={<FeedShell />} />
+      <Route path="/profile/:handle" element={<FeedShell />} />
+      <Route path="/tag/:tag" element={<FeedShell />} />
       <Route path="/forum" element={<ForumPage />} />
       <Route path="/forum/post" element={<ForumPostPage />} />
       <Route path="/collab" element={<CollabPage />} />
       <Route path="/consensus" element={<ConsensusPage />} />
       <Route path="/artboards" element={<ArtboardsPage />} />
       <Route path="/artboard/:id" element={<ArtboardDetailPage />} />
-      <Route path="/post/:uri" element={<PostDetailPage />} />
-      <Route path="/profile/:handle" element={<ProfilePage />} />
-      <Route path="/tag/:tag" element={<TagPage />} />
       <Route path="/search" element={<SearchPage />} />
       <Route path="/quotes" element={<QuotesPage />} />
       <Route path="/" element={<Navigate to="/feed" replace />} />
@@ -181,6 +179,7 @@ export default function App() {
                     <LoginModalProvider>
                     <ModalExpandProvider>
                     <ProfileModalProvider>
+                        <ScrollRestoration />
                         <AppRoutes />
                     </ProfileModalProvider>
                     </ModalExpandProvider>

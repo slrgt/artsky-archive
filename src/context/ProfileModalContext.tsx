@@ -1,9 +1,9 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { createContext, useCallback, useContext, useState, useMemo, type ReactNode } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 /**
- * Full-page mode: all "modal" opens navigate to full page routes instead of showing overlays.
- * No modals are rendered; everything uses standard routing.
+ * Bluesky-style: posts, profiles, tags open as overlays on the feed.
+ * Feed stays mounted, scroll position preserved—back feels instant.
  */
 type ProfileModalContextValue = {
   openProfileModal: (handle: string) => void
@@ -27,9 +27,16 @@ type ProfileModalContextValue = {
 
 const ProfileModalContext = createContext<ProfileModalContextValue | null>(null)
 
+function isOverlayRoute(pathname: string): boolean {
+  return pathname.startsWith('/post/') || pathname.startsWith('/profile/') || pathname.startsWith('/tag/')
+}
+
 export function ProfileModalProvider({ children }: { children: ReactNode }) {
   const [modalScrollHidden, setModalScrollHidden] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
+  const isModalOpen = isOverlayRoute(location.pathname)
+  const canGoBack = isModalOpen
 
   const goBack = useCallback(() => {
     navigate(-1)
@@ -101,25 +108,43 @@ export function ProfileModalProvider({ children }: { children: ReactNode }) {
     [navigate]
   )
 
-  const value: ProfileModalContextValue = {
-    openProfileModal,
-    closeProfileModal: goBack,
-    openPostModal,
-    closePostModal: goBack,
-    openTagModal,
-    openSearchModal,
-    openForumModal,
-    openForumPostModal,
-    openArtboardsModal,
-    openArtboardModal,
-    openQuotesModal,
-    closeModal: goBack,
-    closeAllModals: goFeed,
-    isModalOpen: false,
-    canGoBack: false,
-    modalScrollHidden,
-    setModalScrollHidden,
-  }
+  const value: ProfileModalContextValue = useMemo(
+    () => ({
+      openProfileModal,
+      closeProfileModal: goBack,
+      openPostModal,
+      closePostModal: goBack,
+      openTagModal,
+      openSearchModal,
+      openForumModal,
+      openForumPostModal,
+      openArtboardsModal,
+      openArtboardModal,
+      openQuotesModal,
+      closeModal: goBack,
+      closeAllModals: goFeed,
+      isModalOpen,
+      canGoBack,
+      modalScrollHidden,
+      setModalScrollHidden,
+    }),
+    [
+      goBack,
+      goFeed,
+      openProfileModal,
+      openPostModal,
+      openTagModal,
+      openSearchModal,
+      openForumModal,
+      openForumPostModal,
+      openArtboardsModal,
+      openArtboardModal,
+      openQuotesModal,
+      isModalOpen,
+      canGoBack,
+      modalScrollHidden,
+    ]
+  )
 
   return (
     <ProfileModalContext.Provider value={value}>

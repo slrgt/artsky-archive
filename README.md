@@ -83,6 +83,13 @@ After the first push to `dev`, the workflow will build and push the built app in
 4. The app will be at: **`https://YOUR_USERNAME.github.io/artsky/`**  
    Open this exact URL (including the `/artsky/` path). Do not open the repo root or a raw file.
 
+### OAuth and forks
+
+“Log in with Bluesky” (OAuth) only works if the app’s **redirect URL** matches where it’s deployed. The build generates `client-metadata.json` from the deployment URL.
+
+- **Deployments:** The workflow uses **the repo owner** (`github.repository_owner`) as the origin, so the same workflow works for any fork—OAuth is generated for whoever is deploying (e.g. `https://YOUR_USERNAME.github.io/artsky/`).
+- **Local production build:** Set `VITE_APP_ORIGIN` (e.g. `https://YOUR_USERNAME.github.io`) and optionally `VITE_BASE_PATH` (e.g. `/artsky/`) so the generated OAuth metadata matches your deployment.
+
 5. On your phone, open that URL in Safari/Chrome and use “Add to Home Screen” to install the PWA.
 
 ### “Loading failed for the module” or “Disallowed MIME type (text/html)”
